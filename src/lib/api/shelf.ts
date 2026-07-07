@@ -1,6 +1,6 @@
 import { Shelf, ShelfListResponse, CreateShelfRequest, UpdateShelfRequest } from '../types/shelf';
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api/v1';
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api/v1/admin';
 
 async function fetchWithAuth(endpoint: string, options?: RequestInit) {
   const token = localStorage.getItem('access_token');

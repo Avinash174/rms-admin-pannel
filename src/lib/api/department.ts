@@ -1,6 +1,6 @@
 import { Department, DepartmentListResponse, CreateDepartmentRequest, UpdateDepartmentRequest } from '../types/department';
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api/v1';
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api/v1/admin';
 
 async function fetchWithAuth(endpoint: string, options?: RequestInit) {
   const token = localStorage.getItem('access_token');
@@ -48,7 +48,7 @@ export async function getDepartments(clientId: string, page: number = 1, pageSiz
 }
 
 export async function getDepartment(id: string): Promise<Department> {
-  const response = await fetchWithAuth(`/departments/${id}`);
+  const response = await fetchWithAuth(`/clients/departments/${id}`);
   return response.data;
 }
 
@@ -61,7 +61,7 @@ export async function createDepartment(clientId: string, data: CreateDepartmentR
 }
 
 export async function updateDepartment(id: string, data: UpdateDepartmentRequest): Promise<Department> {
-  const response = await fetchWithAuth(`/departments/${id}`, {
+  const response = await fetchWithAuth(`/clients/departments/${id}`, {
     method: 'PUT',
     body: JSON.stringify(data),
   });
@@ -69,7 +69,7 @@ export async function updateDepartment(id: string, data: UpdateDepartmentRequest
 }
 
 export async function deleteDepartment(id: string): Promise<void> {
-  await fetchWithAuth(`/departments/${id}`, {
+  await fetchWithAuth(`/clients/departments/${id}`, {
     method: 'DELETE',
   });
 }

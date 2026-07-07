@@ -1,56 +1,113 @@
 import { LoginRequest, LoginResponse, RefreshTokenRequest, RefreshTokenResponse } from '../types/auth';
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api/v1';
-
-async function fetchAuth(endpoint: string, options?: RequestInit) {
-  // Skip API calls for now - return mock response
-  return null;
-}
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api/v1/admin';
 
 export async function login(data: LoginRequest): Promise<LoginResponse> {
-  // Skip API call - mock response
-  const response = {
-    accessToken: 'mock_token_' + Date.now(),
-    refreshToken: 'mock_refresh_token_' + Date.now(),
+  const response = await fetch(`${API_BASE_URL}/auth/login`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(data),
+  });
+
+  if (!response.ok) {
+    throw new Error(`Login failed: ${response.status} ${response.statusText}`);
+  }
+
+  const json = await response.json();
+  if (!json.success || !json.data) {
+    throw new Error(json.error?.message || 'Login failed');
+  }
+
+  const result = json.data;
+
+  // Split full name into first and last names for frontend compatibility
+  const names = result.user.fullName ? result.user.fullName.split(' ') : ['Admin', 'User'];
+  const firstName = names[0];
+  const lastName = names.slice(1).join(' ') || '';
+
+  // Decode JWT to extract companyId and roleId
+  let companyId = '1';
+  let roleId = '1';
+  try {
+    const payload = JSON.parse(atob(result.accessToken.split('.')[1]));
+    companyId = payload.companyId || '1';
+    roleId = payload.roleId || '1';
+  } catch (e) {
+    console.error('Failed to decode access token payload:', e);
+  }
+
+  const responseData: LoginResponse = {
+    accessToken: result.accessToken,
+    refreshToken: result.refreshToken,
     user: {
-      id: '1',
-      email: data.email,
-      firstName: 'Admin',
-      lastName: 'User',
-      companyId: '1',
-      roleId: '1',
-      roleName: 'Super Administrator'
-    }
+      id: result.user.id,
+      email: result.user.email,
+      firstName,
+      lastName,
+      companyId,
+      roleId,
+      roleName: result.user.role || 'Operator',
+    },
   };
 
   // Store tokens in localStorage
-  if (response.accessToken) {
-    localStorage.setItem('access_token', response.accessToken);
-    localStorage.setItem('refresh_token', response.refreshToken);
-    localStorage.setItem('user', JSON.stringify(response.user));
-  }
+  localStorage.setItem('access_token', responseData.accessToken);
+  localStorage.setItem('refresh_token', responseData.refreshToken);
+  localStorage.setItem('user', JSON.stringify(responseData.user));
 
-  return response;
+  return responseData;
 }
 
 export async function refreshToken(data: RefreshTokenRequest): Promise<RefreshTokenResponse> {
-  // Skip API call - mock response
-  const response = {
-    accessToken: 'mock_token_' + Date.now(),
-    refreshToken: 'mock_refresh_token_' + Date.now()
+  const response = await fetch(`${API_BASE_URL}/auth/refresh`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(data),
+  });
+
+  if (!response.ok) {
+    throw new Error(`Token refresh failed: ${response.status} ${response.statusText}`);
+  }
+
+  const json = await response.json();
+  if (!json.success || !json.data) {
+    throw new Error(json.error?.message || 'Token refresh failed');
+  }
+
+  const result = json.data;
+
+  const responseData: RefreshTokenResponse = {
+    accessToken: result.accessToken,
+    refreshToken: result.refreshToken,
   };
 
   // Update tokens in localStorage
-  if (response.accessToken) {
-    localStorage.setItem('access_token', response.accessToken);
-    localStorage.setItem('refresh_token', response.refreshToken);
-  }
+  localStorage.setItem('access_token', responseData.accessToken);
+  localStorage.setItem('refresh_token', responseData.refreshToken);
 
-  return response;
+  return responseData;
 }
 
 export async function logout(): Promise<void> {
-  // Skip API call - just clear tokens
+  const token = localStorage.getItem('refresh_token');
+  if (token) {
+    try {
+      await fetch(`${API_BASE_URL}/auth/logout`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ refreshToken: token }),
+      });
+    } catch (e) {
+      console.error('Logout API call failed:', e);
+    }
+  }
+
   localStorage.removeItem('access_token');
   localStorage.removeItem('refresh_token');
   localStorage.removeItem('user');
