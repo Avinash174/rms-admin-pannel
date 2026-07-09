@@ -1,20 +1,6 @@
 import { ColumnDef } from '@tanstack/react-table';
 import { Clock, CheckCircle2, XCircle } from 'lucide-react';
-
-interface AuditLog {
-  id: string;
-  action: string;
-  entity: string;
-  entityId: string;
-  entityType: string;
-  userId: string;
-  userName: string;
-  changes?: string;
-  ipAddress?: string;
-  userAgent?: string;
-  status: 'SUCCESS' | 'FAILED';
-  createdAt: string;
-}
+import { AuditLog } from '@/lib/types/audit';
 
 export const columns: ColumnDef<AuditLog>[] = [
   {

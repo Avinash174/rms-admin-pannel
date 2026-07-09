@@ -1,16 +1,18 @@
 "use client";
 
 import { useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
-import { 
-  Loader2, AlertCircle, RefreshCw, Package, MapPin, CheckCircle, 
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { toast } from 'sonner';
+import {
+  Loader2, AlertCircle, RefreshCw, Package, MapPin, CheckCircle,
   Clock, XCircle, Search, Sparkles, ArrowRight, User, Calendar, Info, X
 } from 'lucide-react';
 import { DataTable } from '@/components/ui/data-table';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-
 import { columns } from './columns';
+import { startFreshBoxMoveSession, submitFreshBoxMoveScan, endFreshBoxMoveSession, getFreshBoxMoveSessionDetails, listFreshBoxMoveSessions } from '@/lib/api/freshBoxMove';
+import { FreshBoxMoveSession } from '@/lib/types/freshBoxMove';
 
 interface FreshBoxMove {
   id: string;
@@ -55,18 +57,41 @@ export default function FreshBoxMovePage() {
   const [page, setPage] = useState(1);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('ALL');
+  const queryClient = useQueryClient();
 
   // Detail Drawer state
   const [selectedMove, setSelectedMove] = useState<FreshBoxMove | null>(null);
   const [isDetailsOpen, setIsDetailsOpen] = useState(false);
 
+  // Session state
+  const [activeSession, setActiveSession] = useState<FreshBoxMoveSession | null>(null);
+
+  const startSessionMutation = useMutation({
+    mutationFn: () => startFreshBoxMoveSession({ deviceId: undefined }),
+    onSuccess: (session) => {
+      setActiveSession(session);
+      toast.success('Session started successfully');
+    },
+    onError: () => {
+      toast.error('Failed to start session');
+    },
+  });
+
+  const endSessionMutation = useMutation({
+    mutationFn: (sessionId: string) => endFreshBoxMoveSession(sessionId),
+    onSuccess: () => {
+      setActiveSession(null);
+      queryClient.invalidateQueries({ queryKey: ['fresh-box-sessions'] });
+      toast.success('Session ended successfully');
+    },
+    onError: () => {
+      toast.error('Failed to end session');
+    },
+  });
+
   const { data, isLoading, error, refetch } = useQuery({
     queryKey: ['fresh-box-moves', page],
-    queryFn: async () => {
-      // Simulate API fetch delay
-      await new Promise(resolve => setTimeout(resolve, 300));
-      return { data: mockData, meta: { page, pageSize: 20, total: 2, totalPages: 1 } };
-    },
+    queryFn: () => listFreshBoxMoveSessions(page, 20),
   });
 
   if (isLoading) {
@@ -95,10 +120,24 @@ export default function FreshBoxMovePage() {
     );
   }
 
-  const moves = data?.data || [];
+  const sessions = data?.data || [];
   const meta = data?.meta;
 
-  const filteredMoves = moves.filter((move) => {
+  // Map sessions to the expected FreshBoxMove format
+  const moves = sessions.map((session: any) => ({
+    id: session.id,
+    boxBarcode: session.scans?.[0]?.box?.barcode || 'N/A',
+    boxName: session.scans?.[0]?.box?.description || 'Unknown',
+    sourceLocation: session.scans?.[0]?.location?.barcode || 'N/A',
+    destinationLocation: 'N/A', // Will need to be calculated from scans
+    status: session.endedAt ? 'COMPLETED' : 'IN_PROGRESS',
+    assignedTo: session.operator?.fullName || 'Unknown',
+    startedAt: session.createdAt,
+    completedAt: session.endedAt || undefined,
+    createdAt: session.createdAt,
+  }));
+
+  const filteredMoves = moves.filter((move: any) => {
     const matchesSearch = move.boxBarcode.toLowerCase().includes(searchTerm.toLowerCase()) ||
       (move.boxName && move.boxName.toLowerCase().includes(searchTerm.toLowerCase()));
     const matchesStatus = statusFilter === 'ALL' || move.status === statusFilter;
@@ -106,8 +145,8 @@ export default function FreshBoxMovePage() {
   });
 
   const totalMoves = moves.length;
-  const completedMoves = moves.filter(m => m.status === 'COMPLETED').length;
-  const activeMoves = moves.filter(m => m.status === 'IN_PROGRESS' || m.status === 'PENDING').length;
+  const completedMoves = moves.filter((m: any) => m.status === 'COMPLETED').length;
+  const activeMoves = moves.filter((m: any) => m.status === 'IN_PROGRESS' || m.status === 'PENDING').length;
 
   return (
     <div className="w-full space-y-8 px-4 sm:px-6 lg:px-8 pb-16">
@@ -219,7 +258,7 @@ export default function FreshBoxMovePage() {
       </div>
 
       {/* Data Table */}
-      <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
+      <div className="bg-white rounded-2xl border border-slate-100 shadow-sm">
         {filteredMoves.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-80 text-slate-400 p-6 space-y-3">
             <div className="p-4 bg-slate-50 rounded-full">

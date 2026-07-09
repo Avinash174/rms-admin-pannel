@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { toast } from 'sonner';
 import { 
   Plus, Loader2, AlertCircle, RefreshCw, Search, Building2, 
   CheckCircle2, XCircle, Info, Sparkles, X, Calendar, 
@@ -46,6 +47,10 @@ export default function CompaniesPage() {
       queryClient.invalidateQueries({ queryKey: ['companies'] });
       setIsFormDrawerOpen(false);
       createForm.reset();
+      toast.success('Company created successfully');
+    },
+    onError: (error: any) => {
+      toast.error(error.response?.data?.message || 'Failed to create company');
     },
   });
 
@@ -55,6 +60,10 @@ export default function CompaniesPage() {
       queryClient.invalidateQueries({ queryKey: ['companies'] });
       setIsFormDrawerOpen(false);
       setSelectedCompany(null);
+      toast.success('Company updated successfully');
+    },
+    onError: (error: any) => {
+      toast.error(error.response?.data?.message || 'Failed to update company');
     },
   });
 
@@ -66,6 +75,10 @@ export default function CompaniesPage() {
         setIsDetailsOpen(false);
         setSelectedCompanyForDetail(null);
       }
+      toast.success('Company deleted successfully');
+    },
+    onError: (error: any) => {
+      toast.error(error.response?.data?.message || 'Failed to delete company');
     },
   });
 
@@ -256,7 +269,7 @@ export default function CompaniesPage() {
       </div>
 
       {/* Data Table */}
-      <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
+      <div className="bg-white rounded-2xl border border-slate-100 shadow-sm">
         {filteredCompanies.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-80 text-slate-400 p-6 space-y-3">
             <div className="p-4 bg-slate-50 rounded-full">

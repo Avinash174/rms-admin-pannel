@@ -1,15 +1,7 @@
 import { ColumnDef } from '@tanstack/react-table';
 import { FileRecord } from '@/lib/types/fileRecord';
-import { MoreHorizontal, Pencil, Trash2, Calendar, FileText } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
+import { Calendar, FileText } from 'lucide-react';
+import { ActionDropdown } from '@/components/ui/action-dropdown';
 
 export const columns: ColumnDef<FileRecord>[] = [
   {
@@ -85,18 +77,20 @@ export const columns: ColumnDef<FileRecord>[] = [
     ),
   },
   {
-    accessorKey: 'isActive',
+    accessorKey: 'status',
     header: () => <span className="text-xs font-bold tracking-wider text-slate-500 uppercase">Status</span>,
     cell: ({ row, table }) => {
       const fileRecord = row.original;
       const meta = table.options.meta as any;
-      const isActive = row.getValue('isActive') as boolean;
+      const status = row.getValue('status') as 'ACTIVE' | 'ARCHIVED' | 'DESTROYED';
+      const isActive = status === 'ACTIVE';
 
       return (
         <button
           onClick={(e) => {
             e.stopPropagation();
-            meta?.onEdit?.({ ...fileRecord, isActive: !isActive }, true);
+            const nextStatus = isActive ? 'ARCHIVED' : 'ACTIVE';
+            meta?.onEdit?.({ ...fileRecord, status: nextStatus }, true);
           }}
           className={`group flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs font-bold transition-all duration-300 border ${
             isActive
@@ -136,38 +130,11 @@ export const columns: ColumnDef<FileRecord>[] = [
       const meta = table.options.meta as any;
 
       return (
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="ghost" className="h-8 w-8 p-0 hover:bg-slate-100 rounded-xl transition-all" onClick={(e) => e.stopPropagation()}>
-              <span className="sr-only">Open menu</span>
-              <MoreHorizontal className="h-4.5 w-4.5 text-slate-500" />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            <DropdownMenuLabel>Actions</DropdownMenuLabel>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem
-              onClick={(e) => {
-                e.stopPropagation();
-                meta?.onEdit?.(fileRecord);
-              }}
-              className="flex items-center gap-2 px-2.5 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 rounded-lg cursor-pointer transition-colors"
-            >
-              <Pencil className="h-3.5 w-3.5 text-slate-400" />
-              Edit Details
-            </DropdownMenuItem>
-            <DropdownMenuItem
-              onClick={(e) => {
-                e.stopPropagation();
-                meta?.onDelete?.(fileRecord);
-              }}
-              className="flex items-center gap-2 px-2.5 py-2 text-xs font-semibold text-red-650 hover:bg-red-50 hover:text-red-700 rounded-lg cursor-pointer transition-colors"
-            >
-              <Trash2 className="h-3.5 w-3.5 text-red-500" />
-              Delete Record
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
+        <ActionDropdown
+          onEdit={() => meta?.onEdit?.(fileRecord)}
+          onDelete={() => meta?.onDelete?.(fileRecord)}
+          deleteLabel="Delete File Record"
+        />
       );
     },
   },

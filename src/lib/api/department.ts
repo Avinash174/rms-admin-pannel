@@ -1,26 +1,5 @@
 import { Department, DepartmentListResponse, CreateDepartmentRequest, UpdateDepartmentRequest } from '../types/department';
-
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api/v1/admin';
-
-async function fetchWithAuth(endpoint: string, options?: RequestInit) {
-  const token = localStorage.getItem('access_token');
-  const headers = {
-    'Content-Type': 'application/json',
-    ...(token && { Authorization: `Bearer ${token}` }),
-    ...options?.headers,
-  };
-
-  const response = await fetch(`${API_BASE_URL}${endpoint}`, {
-    ...options,
-    headers,
-  });
-
-  if (!response.ok) {
-    throw new Error(`API error: ${response.status} ${response.statusText}`);
-  }
-
-  return response.json();
-}
+import { fetchWithAuth } from './auth';
 
 export async function getDepartments(clientId: string, page: number = 1, pageSize: number = 20): Promise<DepartmentListResponse> {
   try {

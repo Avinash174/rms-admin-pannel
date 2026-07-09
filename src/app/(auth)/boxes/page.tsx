@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { toast } from 'sonner';
 import { Plus, Loader2, AlertCircle, RefreshCw, X, Archive, CheckCircle2, Info, FileText, Search } from 'lucide-react';
 import { DataTable } from '@/components/ui/data-table';
 import { columns } from './columns';
@@ -44,6 +45,10 @@ export default function BoxesPage() {
       queryClient.invalidateQueries({ queryKey: ['boxes'] });
       setIsFormDrawerOpen(false);
       form.reset();
+      toast.success('Box created successfully');
+    },
+    onError: (error: any) => {
+      toast.error(error.response?.data?.message || 'Failed to create box');
     },
   });
 
@@ -54,6 +59,10 @@ export default function BoxesPage() {
       setIsFormDrawerOpen(false);
       setSelectedBox(null);
       form.reset();
+      toast.success('Box updated successfully');
+    },
+    onError: (error: any) => {
+      toast.error(error.response?.data?.message || 'Failed to update box');
     },
   });
 
@@ -65,6 +74,10 @@ export default function BoxesPage() {
         setIsDetailsOpen(false);
         setSelectedBoxForDetail(null);
       }
+      toast.success('Box deleted successfully');
+    },
+    onError: (error: any) => {
+      toast.error(error.response?.data?.message || 'Failed to delete box');
     },
   });
 
@@ -83,10 +96,17 @@ export default function BoxesPage() {
   });
 
   const handleFormSubmit = (data: CreateBoxData) => {
+    const { isActive, name, ...rest } = data;
+    const apiData = {
+      ...rest,
+      description: data.description || name || '',
+      status: isActive ? 'IN_WAREHOUSE' as const : 'CHECKED_OUT' as const,
+    };
+
     if (formMode === 'CREATE') {
-      createMutation.mutate(data);
+      createMutation.mutate(apiData as any);
     } else if (selectedBox) {
-      updateMutation.mutate({ id: selectedBox.id, data });
+      updateMutation.mutate({ id: selectedBox.id, data: apiData as any });
     }
   };
 
@@ -126,16 +146,17 @@ export default function BoxesPage() {
   const meta = data?.meta;
 
   const totalCount = boxes.length;
-  const activeCount = boxes.filter(b => b.isActive).length;
+  const activeCount = boxes.filter(b => b.status === 'IN_WAREHOUSE').length;
   const inactiveCount = totalCount - activeCount;
 
   const filteredBoxes = boxes.filter((b) => {
     const matchesSearch = !searchTerm ||
       b.barcode.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (b.name && b.name.toLowerCase().includes(searchTerm.toLowerCase()));
+      (b.description && b.description.toLowerCase().includes(searchTerm.toLowerCase()));
+    const isActive = b.status === 'IN_WAREHOUSE';
     const matchesStatus = statusFilter === 'ALL' ||
-      (statusFilter === 'ACTIVE' && b.isActive) ||
-      (statusFilter === 'INACTIVE' && !b.isActive);
+      (statusFilter === 'ACTIVE' && isActive) ||
+      (statusFilter === 'INACTIVE' && !isActive);
     return matchesSearch && matchesStatus;
   });
 
@@ -258,7 +279,7 @@ export default function BoxesPage() {
       </div>
 
       {/* Table Container */}
-      <div className="bg-white rounded-[14px] border border-slate-200 shadow-sm overflow-hidden">
+      <div className="bg-white rounded-[14px] border border-slate-200 shadow-sm">
         {filteredBoxes.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-80 text-slate-400 p-6 space-y-3">
             <div className="p-4 bg-slate-50 rounded-full">
@@ -277,19 +298,19 @@ export default function BoxesPage() {
             onPageChange={setPage}
             onEdit={(box, isToggle) => {
               if (isToggle) {
-                updateMutation.mutate({ id: box.id, data: box });
+                updateMutation.mutate({ id: box.id, data: { status: box.status } });
               } else {
                 setSelectedBox(box);
                 setFormMode('EDIT');
                 form.reset({
                   barcode: box.barcode,
-                  name: box.name || '',
+                  name: box.description || '',
                   description: box.description || '',
-                  year: box.year,
-                  locationId: box.locationId,
+                  year: new Date().getFullYear(),
+                  locationId: box.currentLocationId || '',
                   clientId: box.clientId,
                   departmentId: box.departmentId || '',
-                  isActive: box.isActive,
+                  isActive: box.status === 'IN_WAREHOUSE',
                 });
                 setIsFormDrawerOpen(true);
               }
@@ -423,11 +444,11 @@ export default function BoxesPage() {
                   <div className="w-16 h-16 rounded-2xl bg-blue-600 text-white flex items-center justify-center font-mono font-bold text-sm shadow-md mb-3">
                     {selectedBoxForDetail.barcode}
                   </div>
-                  <h4 className="text-base font-extrabold text-slate-900">{selectedBoxForDetail.name || 'Unnamed Box'}</h4>
+                  <h4 className="text-base font-extrabold text-slate-900">{selectedBoxForDetail.description || 'No Description'}</h4>
                   <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-xl text-xs font-bold border mt-3 ${
-                    selectedBoxForDetail.isActive ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-rose-50 text-rose-700 border-rose-200'
+                    selectedBoxForDetail.status === 'IN_WAREHOUSE' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-rose-50 text-rose-700 border-rose-200'
                   }`}>
-                    {selectedBoxForDetail.isActive ? 'Active' : 'Inactive'}
+                    {selectedBoxForDetail.status === 'IN_WAREHOUSE' ? 'In Warehouse' : 'Checked Out'}
                   </span>
                 </div>
 
@@ -452,10 +473,6 @@ export default function BoxesPage() {
                         <FileText className="w-3.5 h-3.5 text-slate-450" />
                         {selectedBoxForDetail.fileCount || 0} files
                       </span>
-                    </div>
-                    <div className="flex justify-between items-center px-4 py-3">
-                      <span className="text-xs font-semibold text-slate-500">Year</span>
-                      <span className="text-xs font-semibold text-slate-700">{selectedBoxForDetail.year || '-'}</span>
                     </div>
                     <div className="flex justify-between px-4 py-3">
                       <span className="text-xs font-semibold text-slate-500">Description</span>

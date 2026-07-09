@@ -1,30 +1,16 @@
 import { ReasonCode, CreateReasonCodeRequest } from '../types/reasonCode';
-
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api/v1/admin';
-
-async function fetchWithAuth(endpoint: string, options?: RequestInit) {
-  const token = localStorage.getItem('access_token');
-  const headers = {
-    'Content-Type': 'application/json',
-    ...(token && { Authorization: `Bearer ${token}` }),
-    ...options?.headers,
-  };
-
-  const response = await fetch(`${API_BASE_URL}${endpoint}`, {
-    ...options,
-    headers,
-  });
-
-  if (!response.ok) {
-    throw new Error(`API error: ${response.status} ${response.statusText}`);
-  }
-
-  return response.json();
-}
+import { fetchWithAuth } from './auth';
 
 export async function getReasonCodes(): Promise<{ data: ReasonCode[] }> {
   try {
     const response = await fetchWithAuth('/reason-codes');
+    if (response && Array.isArray(response.data)) {
+      response.data = response.data.map((rc: any) => ({
+        ...rc,
+        category: rc.appliesTo,
+        description: rc.label,
+      }));
+    }
     return response;
   } catch (error) {
     // Mock Fallback Data
@@ -33,8 +19,10 @@ export async function getReasonCodes(): Promise<{ data: ReasonCode[] }> {
         {
           id: '1',
           code: 'DAMAGED_BARCODE',
+          label: 'The physical barcode on the box is unreadable/scratched',
+          appliesTo: 'LOCATION_OVERRIDE',
+          category: 'LOCATION_OVERRIDE',
           description: 'The physical barcode on the box is unreadable/scratched',
-          category: 'OVERRIDE',
           isActive: true,
           companyId: '1',
           createdAt: new Date().toISOString(),
@@ -43,8 +31,10 @@ export async function getReasonCodes(): Promise<{ data: ReasonCode[] }> {
         {
           id: '2',
           code: 'TEMP_OUT_OF_BOUNDS',
+          label: 'Warehouse sensor readings are out of standard bounds',
+          appliesTo: 'REFILE_REJECT',
+          category: 'REFILE_REJECT',
           description: 'Warehouse sensor readings are out of standard bounds',
-          category: 'REJECTION',
           isActive: true,
           companyId: '1',
           createdAt: new Date().toISOString(),
@@ -56,9 +46,25 @@ export async function getReasonCodes(): Promise<{ data: ReasonCode[] }> {
 }
 
 export async function createReasonCode(data: CreateReasonCodeRequest): Promise<ReasonCode> {
+  const user = typeof window !== 'undefined' ? JSON.parse(localStorage.getItem('user') || '{}') : null;
+  const companyId = user?.companyId || '1';
+
+  const payload = {
+    code: data.code,
+    label: data.description || data.label || '',
+    appliesTo: data.category || data.appliesTo || 'REJECTION',
+    isActive: data.isActive !== undefined ? data.isActive : true,
+    companyId
+  };
+
   const response = await fetchWithAuth('/reason-codes', {
     method: 'POST',
-    body: JSON.stringify(data),
+    body: JSON.stringify(payload),
   });
+
+  if (response && response.data) {
+    response.data.category = response.data.appliesTo;
+    response.data.description = response.data.label;
+  }
   return response.data;
 }

@@ -1,26 +1,5 @@
 import { Box, BoxListResponse, CreateBoxRequest, UpdateBoxRequest } from '../types/box';
-
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api/v1/admin';
-
-async function fetchWithAuth(endpoint: string, options?: RequestInit) {
-  const token = localStorage.getItem('access_token');
-  const headers = {
-    'Content-Type': 'application/json',
-    ...(token && { Authorization: `Bearer ${token}` }),
-    ...options?.headers,
-  };
-
-  const response = await fetch(`${API_BASE_URL}${endpoint}`, {
-    ...options,
-    headers,
-  });
-
-  if (!response.ok) {
-    throw new Error(`API error: ${response.status} ${response.statusText}`);
-  }
-
-  return response.json();
-}
+import { fetchWithAuth } from './auth';
 
 export async function getBoxes(page: number = 1, pageSize: number = 20): Promise<BoxListResponse> {
   try {
@@ -32,10 +11,9 @@ export async function getBoxes(page: number = 1, pageSize: number = 20): Promise
         {
           id: '1',
           barcode: 'BOX-001',
-          name: 'Finance Records 2024',
+          status: 'ACTIVE',
           description: 'Annual finance documents',
-          year: 2024,
-          locationId: '1',
+          currentLocationId: '1',
           locationName: 'LOC-001',
           clientId: '1',
           clientName: 'Acme Corporation',
@@ -43,7 +21,6 @@ export async function getBoxes(page: number = 1, pageSize: number = 20): Promise
           departmentName: 'Finance',
           companyId: '1',
           fileCount: 25,
-          isActive: true,
           createdAt: new Date().toISOString(),
           updatedAt: new Date().toISOString(),
         },

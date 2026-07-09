@@ -1,15 +1,8 @@
 import { ColumnDef } from '@tanstack/react-table';
 import { User } from '@/lib/types/user';
-import { MoreHorizontal, Pencil, Trash2, Key, User2 } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
+import { Key, User2 } from 'lucide-react';
+import { ActionDropdown } from '@/components/ui/action-dropdown';
+import { DropdownMenuItem } from '@/components/ui/dropdown-menu';
 
 function getAvatarColors(name: string) {
   let hash = 0;
@@ -133,46 +126,28 @@ export const columns: ColumnDef<User>[] = [
   },
   {
     id: 'actions',
-    header: 'Actions',
+    header: () => <span className="text-xs font-bold tracking-wider text-slate-500 uppercase">Actions</span>,
     cell: ({ row, table }) => {
       const user = row.original;
       const meta = table.options.meta as any;
 
       return (
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="ghost" className="h-9 w-9 p-0 hover:bg-slate-100 rounded-full transition-colors">
-              <span className="sr-only">Open menu</span>
-              <MoreHorizontal className="h-4 w-4 text-slate-500" />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            <DropdownMenuLabel>Actions</DropdownMenuLabel>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem
-              onClick={() => meta?.onEdit?.(user)}
-              className="flex items-center gap-2 px-2.5 py-2 text-sm text-slate-700 hover:bg-slate-50 rounded-lg cursor-pointer transition-colors"
-            >
-              <Pencil className="h-4 w-4 text-slate-500" />
-              Edit details
-            </DropdownMenuItem>
-            <DropdownMenuItem
-              onClick={() => meta?.onCustomAction?.(user)}
-              className="flex items-center gap-2 px-2.5 py-2 text-sm text-slate-700 hover:bg-slate-50 rounded-lg cursor-pointer transition-colors"
-            >
-              <Key className="h-4 w-4 text-slate-500" />
-              Reset password
-            </DropdownMenuItem>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem
-              onClick={() => meta?.onDelete?.(user)}
-              className="flex items-center gap-2 px-2.5 py-2 text-sm text-red-600 hover:bg-red-50 hover:text-red-700 rounded-lg cursor-pointer transition-colors"
-            >
-              <Trash2 className="h-4 w-4 text-red-500" />
-              Delete user
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
+        <ActionDropdown
+          onEdit={() => meta?.onEdit?.(user)}
+          onDelete={() => meta?.onDelete?.(user)}
+          deleteLabel="Delete User"
+        >
+          <DropdownMenuItem
+            onClick={(e) => {
+              e.stopPropagation();
+              meta?.onCustomAction?.(user);
+            }}
+            className="flex items-center gap-3 px-3 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50 hover:text-slate-900 rounded-lg cursor-pointer transition-colors"
+          >
+            <Key className="h-4 w-4 text-slate-400 stroke-[2]" />
+            Reset Password
+          </DropdownMenuItem>
+        </ActionDropdown>
       );
     },
   },

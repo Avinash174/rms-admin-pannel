@@ -1,26 +1,5 @@
 import { Branch, BranchListResponse, CreateBranchRequest, UpdateBranchRequest } from '../types/branch';
-
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api/v1/admin';
-
-async function fetchWithAuth(endpoint: string, options?: RequestInit) {
-  const token = localStorage.getItem('access_token');
-  const headers = {
-    'Content-Type': 'application/json',
-    ...(token && { Authorization: `Bearer ${token}` }),
-    ...options?.headers,
-  };
-
-  const response = await fetch(`${API_BASE_URL}${endpoint}`, {
-    ...options,
-    headers,
-  });
-
-  if (!response.ok) {
-    throw new Error(`API error: ${response.status} ${response.statusText}`);
-  }
-
-  return response.json();
-}
+import { fetchWithAuth } from './auth';
 
 export async function getBranches(page: number = 1, pageSize: number = 20): Promise<BranchListResponse> {
   try {
@@ -37,8 +16,8 @@ export async function getBranches(page: number = 1, pageSize: number = 20): Prom
           city: 'New York',
           state: 'NY',
           country: 'USA',
-          zipCode: '10001',
-          phone: '+1 234-567-8900',
+          zipCode: 10001,
+          phone: '12345678900',
           companyId: '1',
           isActive: true,
           createdAt: new Date().toISOString(),
@@ -52,7 +31,10 @@ export async function getBranches(page: number = 1, pageSize: number = 20): Prom
 
 export async function getBranch(id: string): Promise<Branch> {
   const response = await fetchWithAuth(`/branches/${id}`);
-  return response.data;
+  if (response.success && response.data) {
+    return response.data;
+  }
+  throw new Error('Failed to fetch branch');
 }
 
 export async function createBranch(data: CreateBranchRequest): Promise<Branch> {
@@ -60,7 +42,10 @@ export async function createBranch(data: CreateBranchRequest): Promise<Branch> {
     method: 'POST',
     body: JSON.stringify(data),
   });
-  return response.data;
+  if (response.success && response.data) {
+    return response.data;
+  }
+  throw new Error('Failed to create branch');
 }
 
 export async function updateBranch(id: string, data: UpdateBranchRequest): Promise<Branch> {
@@ -68,11 +53,17 @@ export async function updateBranch(id: string, data: UpdateBranchRequest): Promi
     method: 'PUT',
     body: JSON.stringify(data),
   });
-  return response.data;
+  if (response.success && response.data) {
+    return response.data;
+  }
+  throw new Error('Failed to update branch');
 }
 
 export async function deleteBranch(id: string): Promise<void> {
-  await fetchWithAuth(`/branches/${id}`, {
+  const response = await fetchWithAuth(`/branches/${id}`, {
     method: 'DELETE',
   });
+  if (!response.success) {
+    throw new Error('Failed to delete branch');
+  }
 }

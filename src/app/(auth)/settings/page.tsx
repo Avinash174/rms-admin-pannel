@@ -1,22 +1,30 @@
 "use client";
 
 import { useState } from 'react';
-import { useMutation } from '@tanstack/react-query';
-import { 
-  Loader2, Settings, ShieldAlert, Sparkles, Check, 
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { toast } from 'sonner';
+import {
+  Loader2, Settings, ShieldAlert, Sparkles, Check,
   Database, Smartphone, Server, FileText, Info
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { getCompanySettings, updateCompanySettings } from '@/lib/api/setting';
+import { CompanySettings } from '@/lib/types/setting';
 
 export default function SettingsPage() {
   const [activeTab, setActiveTab] = useState<'general' | 'scanning' | 'sync'>('general');
   const [saveSuccess, setSaveSuccess] = useState(false);
+  const queryClient = useQueryClient();
 
-  // Mock Form State
+  const { data: companySettings, isLoading } = useQuery({
+    queryKey: ['company-settings'],
+    queryFn: getCompanySettings,
+  });
+
   const [settings, setSettings] = useState({
-    companyName: 'Acme Records Management Corp',
+    companyName: companySettings?.name || '',
     systemMode: 'PRODUCTION',
     fileRetentionYears: 7,
     boxRetentionYears: 10,
@@ -29,20 +37,21 @@ export default function SettingsPage() {
   });
 
   const saveMutation = useMutation({
-    mutationFn: async (updatedSettings: typeof settings) => {
-      // Simulate API saving
-      await new Promise((resolve) => setTimeout(resolve, 800));
-      setSettings(updatedSettings);
-    },
+    mutationFn: (name: string) => updateCompanySettings({ name }),
     onSuccess: () => {
       setSaveSuccess(true);
+      queryClient.invalidateQueries({ queryKey: ['company-settings'] });
       setTimeout(() => setSaveSuccess(false), 3000);
+      toast.success('Settings saved successfully');
+    },
+    onError: () => {
+      toast.error('Failed to save settings');
     },
   });
 
   const handleSave = (e: React.FormEvent) => {
     e.preventDefault();
-    saveMutation.mutate(settings);
+    saveMutation.mutate(settings.companyName);
   };
 
   const handleInputChange = (key: keyof typeof settings, value: any) => {
@@ -51,6 +60,14 @@ export default function SettingsPage() {
       [key]: value,
     }));
   };
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center h-[500px]">
+        <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
+      </div>
+    );
+  }
 
   return (
     <div className="w-full space-y-8 px-4 sm:px-6 lg:px-8 pb-16">

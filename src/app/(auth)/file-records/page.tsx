@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { toast } from 'sonner';
 import { 
   Plus, Loader2, AlertCircle, RefreshCw, Search, FileText, 
   CheckCircle2, XCircle, Info, Sparkles, X, Calendar, 
@@ -46,6 +47,10 @@ export default function FileRecordsPage() {
       queryClient.invalidateQueries({ queryKey: ['file-records'] });
       setIsFormDrawerOpen(false);
       createForm.reset();
+      toast.success('File record created successfully');
+    },
+    onError: (error: any) => {
+      toast.error(error.response?.data?.message || 'Failed to create file record');
     },
   });
 
@@ -55,6 +60,10 @@ export default function FileRecordsPage() {
       queryClient.invalidateQueries({ queryKey: ['file-records'] });
       setIsFormDrawerOpen(false);
       setSelectedFileRecord(null);
+      toast.success('File record updated successfully');
+    },
+    onError: (error: any) => {
+      toast.error(error.response?.data?.message || 'Failed to update file record');
     },
   });
 
@@ -66,6 +75,10 @@ export default function FileRecordsPage() {
         setIsDetailsOpen(false);
         setSelectedFileRecordForDetail(null);
       }
+      toast.success('File record deleted successfully');
+    },
+    onError: (error: any) => {
+      toast.error(error.response?.data?.message || 'Failed to delete file record');
     },
   });
 
@@ -84,10 +97,16 @@ export default function FileRecordsPage() {
   });
 
   const handleFormSubmit = (data: CreateFileRecordData) => {
+    const { isActive, ...rest } = data;
+    const apiData = {
+      ...rest,
+      status: isActive ? 'ACTIVE' as const : 'ARCHIVED' as const,
+    };
+
     if (formMode === 'CREATE') {
-      createMutation.mutate(data);
+      createMutation.mutate(apiData as any);
     } else if (selectedFileRecord) {
-      updateMutation.mutate({ id: selectedFileRecord.id, data });
+      updateMutation.mutate({ id: selectedFileRecord.id, data: apiData });
     }
   };
 
@@ -132,17 +151,18 @@ export default function FileRecordsPage() {
 
   const filteredFileRecords = fileRecords.filter((file: FileRecord) => {
     const matchesSearch = file.barcode.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      file.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (file.title && file.title.toLowerCase().includes(searchTerm.toLowerCase())) ||
       (file.referenceNumber && file.referenceNumber.toLowerCase().includes(searchTerm.toLowerCase()));
+    const isActive = file.status === 'ACTIVE';
     const matchesStatus = statusFilter === 'ALL' ||
-      (statusFilter === 'ACTIVE' && file.isActive) ||
-      (statusFilter === 'INACTIVE' && !file.isActive);
+      (statusFilter === 'ACTIVE' && isActive) ||
+      (statusFilter === 'INACTIVE' && !isActive);
     return matchesSearch && matchesStatus;
   });
 
   const totalCount = meta?.total || fileRecords.length;
-  const activeCount = fileRecords.filter(f => f.isActive).length;
-  const inactiveCount = fileRecords.filter(f => !f.isActive).length;
+  const activeCount = fileRecords.filter(f => f.status === 'ACTIVE').length;
+  const inactiveCount = fileRecords.filter(f => f.status !== 'ACTIVE').length;
 
   return (
     <div className="w-full space-y-8 px-4 sm:px-6 lg:px-8 pb-16">
@@ -271,7 +291,7 @@ export default function FileRecordsPage() {
       </div>
 
       {/* Data Table */}
-      <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
+      <div className="bg-white rounded-2xl border border-slate-100 shadow-sm">
         {filteredFileRecords.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-80 text-slate-400 p-6 space-y-3">
             <div className="p-4 bg-slate-50 rounded-full">
@@ -297,7 +317,7 @@ export default function FileRecordsPage() {
             onPageChange={setPage}
             onEdit={(fileRecord, isToggle) => {
               if (isToggle) {
-                updateMutation.mutate({ id: fileRecord.id, data: { isActive: fileRecord.isActive } });
+                updateMutation.mutate({ id: fileRecord.id, data: { status: fileRecord.status } });
               } else {
                 setFormMode('EDIT');
                 setSelectedFileRecord(fileRecord);
@@ -309,7 +329,7 @@ export default function FileRecordsPage() {
                   boxId: fileRecord.boxId,
                   clientId: fileRecord.clientId,
                   departmentId: fileRecord.departmentId || '',
-                  isActive: fileRecord.isActive,
+                  isActive: fileRecord.status === 'ACTIVE',
                 });
                 setIsFormDrawerOpen(true);
               }
@@ -512,14 +532,14 @@ export default function FileRecordsPage() {
                       {selectedFileRecordForDetail.barcode}
                     </span>
                     <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-bold ${
-                      selectedFileRecordForDetail.isActive 
+                      selectedFileRecordForDetail.status === 'ACTIVE'
                         ? 'bg-emerald-50 text-emerald-700' 
                         : 'bg-rose-50 text-rose-700'
                     }`}>
                       <span className={`w-1.5 h-1.5 rounded-full ${
-                        selectedFileRecordForDetail.isActive ? 'bg-emerald-500' : 'bg-rose-500'
+                        selectedFileRecordForDetail.status === 'ACTIVE' ? 'bg-emerald-500' : 'bg-rose-500'
                       }`} />
-                      {selectedFileRecordForDetail.isActive ? 'Active' : 'Inactive'}
+                      {selectedFileRecordForDetail.status === 'ACTIVE' ? 'Active' : 'Inactive'}
                     </span>
                   </div>
                 </div>
@@ -608,7 +628,7 @@ export default function FileRecordsPage() {
                         boxId: selectedFileRecordForDetail.boxId,
                         clientId: selectedFileRecordForDetail.clientId,
                         departmentId: selectedFileRecordForDetail.departmentId || '',
-                        isActive: selectedFileRecordForDetail.isActive,
+                        isActive: selectedFileRecordForDetail.status === 'ACTIVE',
                       });
                       setIsDetailsOpen(false);
                       setIsFormDrawerOpen(true);

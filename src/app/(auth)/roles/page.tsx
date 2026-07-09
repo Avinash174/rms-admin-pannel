@@ -2,12 +2,13 @@
 
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { toast } from 'sonner';
 import { 
   Plus, Loader2, AlertCircle, RefreshCw, Shield, 
   CheckCircle2, Info, Sparkles, X, Calendar, 
-  ShieldAlert, ShieldCheck, KeyRound, Check, Edit2, Search
+  ShieldAlert, ShieldCheck, KeyRound, Check, Edit2, Search, Trash2
 } from 'lucide-react';
-import { getRoles, createRole, updateRole, getPermissions, assignPermissions } from '@/lib/api/role';
+import { getRoles, createRole, updateRole, deleteRole, getPermissions, assignPermissions } from '@/lib/api/role';
 import { Role, Permission } from '@/lib/types/role';
 import { useForm } from 'react-hook-form';
 import { Button } from '@/components/ui/button';
@@ -43,6 +44,10 @@ export default function RolesPage() {
       queryClient.invalidateQueries({ queryKey: ['roles'] });
       setIsFormDrawerOpen(false);
       resetForm();
+      toast.success('Role created successfully');
+    },
+    onError: (error: any) => {
+      toast.error(error.response?.data?.message || 'Failed to create role');
     },
   });
 
@@ -52,6 +57,10 @@ export default function RolesPage() {
       queryClient.invalidateQueries({ queryKey: ['roles'] });
       setIsFormDrawerOpen(false);
       setSelectedRole(null);
+      toast.success('Role updated successfully');
+    },
+    onError: (error: any) => {
+      toast.error(error.response?.data?.message || 'Failed to update role');
     },
   });
 
@@ -60,8 +69,29 @@ export default function RolesPage() {
       assignPermissions(roleId, permissionIds),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['roles'] });
+      toast.success('Permissions updated successfully');
+    },
+    onError: (error: any) => {
+      toast.error(error.response?.data?.message || 'Failed to update permissions');
     },
   });
+
+  const deleteMutation = useMutation({
+    mutationFn: deleteRole,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['roles'] });
+      toast.success('Role deleted successfully');
+    },
+    onError: (error: any) => {
+      toast.error(error.response?.data?.message || 'Failed to delete role');
+    },
+  });
+
+  const handleDeleteRole = (role: Role) => {
+    if (confirm(`Are you sure you want to delete role "${role.label}"?`)) {
+      deleteMutation.mutate(role.id);
+    }
+  };
 
   const { register, handleSubmit, reset: resetForm, formState: { errors } } = useForm({
     defaultValues: {
@@ -293,6 +323,18 @@ export default function RolesPage() {
                 >
                   <Edit2 className="w-3.5 h-3.5 mr-1" /> Edit
                 </Button>
+                {!['SUPER_ADMIN', 'COMPANY_ADMIN', 'WAREHOUSE_MANAGER', 'SUPERVISOR', 'OPERATOR', 'VIEWER'].includes(role.name.toUpperCase()) && (
+                  <Button
+                    variant="ghost"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleDeleteRole(role);
+                    }}
+                    className="h-8 rounded-lg text-red-500 hover:text-red-700 hover:bg-red-50 px-2.5"
+                  >
+                    <Trash2 className="w-3.5 h-3.5 mr-1" /> Delete
+                  </Button>
+                )}
               </div>
             </div>
           );
@@ -403,7 +445,35 @@ export default function RolesPage() {
 
                 {/* Permission Checklist */}
                 <div className="space-y-6">
-                  <h4 className="text-xs font-bold text-slate-400 uppercase tracking-widest">Authorized Actions</h4>
+                  <div className="flex items-center justify-between">
+                    <h4 className="text-xs font-bold text-slate-400 uppercase tracking-widest">Authorized Actions</h4>
+                    <div className="flex gap-2">
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        className="h-7 px-2 text-[10px] font-bold text-blue-600 hover:bg-blue-50 rounded-lg"
+                        onClick={() => {
+                          const allNames = permissions.map(p => p.name);
+                          setActiveRolePermissions(allNames);
+                          const allIds = permissions.map(p => p.id);
+                          assignPermissionsMutation.mutate({ roleId: selectedRoleForDetail.id, permissionIds: allIds });
+                        }}
+                      >
+                        Select All
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        className="h-7 px-2 text-[10px] font-bold text-slate-500 hover:bg-slate-100 rounded-lg"
+                        onClick={() => {
+                          setActiveRolePermissions([]);
+                          assignPermissionsMutation.mutate({ roleId: selectedRoleForDetail.id, permissionIds: [] });
+                        }}
+                      >
+                        Clear All
+                      </Button>
+                    </div>
+                  </div>
 
                   {Object.keys(groupedPermissions).map((category) => (
                     <div key={category} className="space-y-2.5">

@@ -2,8 +2,9 @@
 
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { 
-  Loader2, AlertCircle, RefreshCw, FileText, Download, 
+import { toast } from 'sonner';
+import {
+  Loader2, AlertCircle, RefreshCw, FileText, Download,
   Calendar, Package, Users, Sparkles, X, Plus, Info, CheckCircle, Search, KeyRound
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -12,100 +13,36 @@ import { Label } from '@/components/ui/label';
 import { DataTable } from '@/components/ui/data-table';
 import { columns } from './columns';
 import { useForm } from 'react-hook-form';
-
-interface Report {
-  id: string;
-  name: string;
-  type: 'INVENTORY' | 'ACTIVITY' | 'AUDIT' | 'PERFORMANCE';
-  description: string;
-  generatedAt: string;
-  generatedBy: string;
-  fileUrl?: string;
-  status: 'READY' | 'GENERATING' | 'FAILED';
-}
-
-const mockData: Report[] = [
-  {
-    id: 'REP-001',
-    name: 'Monthly Inventory Report - January 2026',
-    type: 'INVENTORY',
-    description: 'Complete inventory summary for all locations',
-    generatedAt: '2026-06-30T23:59:00Z',
-    generatedBy: 'John Doe',
-    fileUrl: '/reports/inventory-jan-2026.pdf',
-    status: 'READY',
-  },
-  {
-    id: 'REP-002',
-    name: 'Activity Report - Week 26',
-    type: 'ACTIVITY',
-    description: 'Weekly workflow activity summary',
-    generatedAt: '2026-07-01T18:00:00Z',
-    generatedBy: 'Jane Smith',
-    fileUrl: '/reports/activity-week-26.pdf',
-    status: 'READY',
-  },
-  {
-    id: 'REP-003',
-    name: 'Audit Log Report - Q2 2026',
-    type: 'AUDIT',
-    description: 'Quarterly audit trail summary',
-    generatedAt: '2026-07-02T17:00:00Z',
-    generatedBy: 'Admin Operator',
-    fileUrl: '/reports/audit-q2-2026.pdf',
-    status: 'READY',
-  },
-  {
-    id: 'REP-004',
-    name: 'Performance Report - June 2026',
-    type: 'PERFORMANCE',
-    description: 'System performance metrics',
-    generatedAt: '2026-07-03T09:00:00Z',
-    generatedBy: 'System Cron',
-    status: 'GENERATING',
-  },
-];
+import { listReports, generateReport, downloadReport } from '@/lib/api/report';
+import { ReportType, ReportJob } from '@/lib/types/report';
+import { exportToPDF } from '@/lib/utils/pdf';
 
 export default function ReportsPage() {
   const [page, setPage] = useState(1);
   const [searchTerm, setSearchTerm] = useState('');
   const [typeFilter, setTypeFilter] = useState<string>('ALL');
-  
+
   // Drawer states
   const [isFormDrawerOpen, setIsFormDrawerOpen] = useState(false);
-  const [selectedReportForDetail, setSelectedReportForDetail] = useState<Report | null>(null);
+  const [selectedReportForDetail, setSelectedReportForDetail] = useState<ReportJob | null>(null);
   const [isDetailsOpen, setIsDetailsOpen] = useState(false);
 
   const queryClient = useQueryClient();
 
   const { data, isLoading, error, refetch } = useQuery({
-    queryKey: ['reports', page],
-    queryFn: async () => {
-      // Simulate API delay
-      await new Promise(resolve => setTimeout(resolve, 300));
-      return { data: mockData, meta: { page, pageSize: 20, total: 4, totalPages: 1 } };
-    },
+    queryKey: ['reports'],
+    queryFn: listReports,
   });
 
   const generateReportMutation = useMutation({
-    mutationFn: async (formData: any) => {
-      // Simulate API POST /reports/generate
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      return {
-        id: `REP-00${Math.floor(Math.random() * 100)}`,
-        name: formData.name,
-        type: formData.type,
-        description: formData.description,
-        generatedAt: new Date().toISOString(),
-        generatedBy: 'Admin Operator',
-        status: 'GENERATING' as const,
-      };
-    },
+    mutationFn: (type: ReportType) => generateReport({ type }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['reports'] });
       setIsFormDrawerOpen(false);
-      resetForm();
-    }
+    },
+    onError: () => {
+      toast.error('Failed to generate report');
+    },
   });
 
   const { register, handleSubmit, reset: resetForm, formState: { errors } } = useForm({
@@ -118,6 +55,26 @@ export default function ReportsPage() {
 
   const handleFormSubmit = (data: any) => {
     generateReportMutation.mutate(data);
+  };
+
+  const handleExportPDF = () => {
+    exportToPDF({
+      title: 'System Reports',
+      subtitle: `Total Reports: ${reports.length}`,
+      columns: [
+        { header: 'Type', dataKey: 'type' },
+        { header: 'Status', dataKey: 'status' },
+        { header: 'Created', dataKey: 'createdAt' },
+        { header: 'Completed', dataKey: 'completedAt' },
+      ],
+      data: reports.map(r => ({
+        type: r.type,
+        status: r.status,
+        createdAt: new Date(r.createdAt).toLocaleString(),
+        completedAt: r.completedAt ? new Date(r.completedAt).toLocaleString() : 'N/A',
+      })),
+      fileName: `reports-${Date.now()}.pdf`,
+    });
   };
 
   if (isLoading) {
@@ -146,20 +103,19 @@ export default function ReportsPage() {
     );
   }
 
-  const reports = data?.data || [];
-  const meta = data?.meta;
+  const reports = data || [];
 
-  const filteredReports = reports.filter((report) => {
-    const matchesSearch = report.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      report.description.toLowerCase().includes(searchTerm.toLowerCase());
+  const filteredReports = reports.filter((report: ReportJob) => {
+    const matchesSearch = (report.name?.toLowerCase().includes(searchTerm.toLowerCase()) || false) ||
+      (report.description?.toLowerCase().includes(searchTerm.toLowerCase()) || false);
     const matchesType = typeFilter === 'ALL' || report.type === typeFilter;
     return matchesSearch && matchesType;
   });
 
-  const inventoryCount = reports.filter(r => r.type === 'INVENTORY').length;
-  const activityCount = reports.filter(r => r.type === 'ACTIVITY').length;
-  const auditCount = reports.filter(r => r.type === 'AUDIT').length;
-  const performanceCount = reports.filter(r => r.type === 'PERFORMANCE').length;
+  const inventoryCount = reports.filter((r: ReportJob) => r.type === 'BOX_INVENTORY').length;
+  const activityCount = reports.filter((r: ReportJob) => r.type === 'USER_WORKLOAD').length;
+  const auditCount = reports.filter((r: ReportJob) => r.type === 'CUSTODY_HISTORY').length;
+  const performanceCount = 0; // No performance type in backend
 
   return (
     <div className="w-full space-y-8 px-4 sm:px-6 lg:px-8 pb-16">
@@ -175,16 +131,26 @@ export default function ReportsPage() {
           </div>
           <p className="text-sm text-slate-500">Generate, view, and export detailed analytical PDFs for inventory states, operations tracking, and speed benchmarks.</p>
         </div>
-        <Button
-          onClick={() => {
-            resetForm({ name: '', type: 'INVENTORY', description: '' });
-            setIsFormDrawerOpen(true);
-          }}
-          className="bg-blue-600 hover:bg-blue-700 text-white rounded-xl shadow-md hover:shadow-blue-500/20 transition-all duration-300 self-start sm:self-center h-11 px-5"
-        >
-          <Plus className="w-4 h-4 mr-2 stroke-[2.5]" />
-          Generate New Report
-        </Button>
+        <div className="flex gap-2">
+          <Button
+            onClick={handleExportPDF}
+            variant="outline"
+            className="border-blue-200 text-blue-700 hover:bg-blue-50 rounded-xl h-11 px-4"
+          >
+            <Download className="w-4 h-4 mr-2" />
+            Export PDF
+          </Button>
+          <Button
+            onClick={() => {
+              resetForm({ name: '', type: 'INVENTORY', description: '' });
+              setIsFormDrawerOpen(true);
+            }}
+            className="bg-blue-600 hover:bg-blue-700 text-white rounded-xl shadow-md hover:shadow-blue-500/20 transition-all duration-300 h-11 px-5"
+          >
+            <Plus className="w-4 h-4 mr-2 stroke-[2.5]" />
+            Generate New Report
+          </Button>
+        </div>
       </div>
 
       {/* Reports Summary Cards */}
@@ -302,7 +268,7 @@ export default function ReportsPage() {
       </div>
 
       {/* Data Table */}
-      <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
+      <div className="bg-white rounded-2xl border border-slate-100 shadow-sm">
         {filteredReports.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-80 text-slate-400 p-6 space-y-3">
             <div className="p-4 bg-slate-50 rounded-full">
@@ -324,8 +290,6 @@ export default function ReportsPage() {
           <DataTable
             columns={columns}
             data={filteredReports}
-            meta={meta}
-            onPageChange={setPage}
             onCustomAction={(report) => {
               setSelectedReportForDetail(report);
               setIsDetailsOpen(true);
@@ -487,7 +451,7 @@ export default function ReportsPage() {
                         <span className="text-xs font-semibold text-slate-500">Timestamp</span>
                       </div>
                       <span className="text-xs font-semibold text-slate-700">
-                        {new Date(selectedReportForDetail.generatedAt).toLocaleString()}
+                        {new Date(selectedReportForDetail.createdAt).toLocaleString()}
                       </span>
                     </div>
 

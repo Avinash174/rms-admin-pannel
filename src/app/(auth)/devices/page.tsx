@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { toast } from 'sonner';
 import { Plus, Loader2, AlertCircle, RefreshCw, X, Tablet, CheckCircle2, Info, User, Search } from 'lucide-react';
 import { DataTable } from '@/components/ui/data-table';
 import { columns } from './columns';
@@ -50,6 +51,10 @@ export default function DevicesPage() {
       queryClient.invalidateQueries({ queryKey: ['devices'] });
       setIsFormDrawerOpen(false);
       form.reset();
+      toast.success('Device created successfully');
+    },
+    onError: (error: any) => {
+      toast.error(error.response?.data?.message || 'Failed to create device');
     },
   });
 
@@ -60,6 +65,10 @@ export default function DevicesPage() {
       setIsFormDrawerOpen(false);
       setSelectedDevice(null);
       form.reset();
+      toast.success('Device updated successfully');
+    },
+    onError: (error: any) => {
+      toast.error(error.response?.data?.message || 'Failed to update device');
     },
   });
 
@@ -71,6 +80,10 @@ export default function DevicesPage() {
         setIsDetailsOpen(false);
         setSelectedDeviceForDetail(null);
       }
+      toast.success('Device deleted successfully');
+    },
+    onError: (error: any) => {
+      toast.error(error.response?.data?.message || 'Failed to delete device');
     },
   });
 
@@ -247,7 +260,7 @@ export default function DevicesPage() {
       </div>
 
       {/* Table Container */}
-      <div className="bg-white rounded-[14px] border border-slate-200 shadow-sm overflow-hidden">
+      <div className="bg-white rounded-[14px] border border-slate-200 shadow-sm">
         {filteredDevices.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-80 text-slate-400 p-6 space-y-3">
             <div className="p-4 bg-slate-50 rounded-full">

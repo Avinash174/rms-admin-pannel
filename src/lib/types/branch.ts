@@ -6,7 +6,7 @@ export interface Branch {
   city?: string;
   state?: string;
   country?: string;
-  zipCode?: string;
+  zipCode?: number;
   phone?: string;
   companyId: string;
   isActive: boolean;
@@ -21,7 +21,7 @@ export interface CreateBranchRequest {
   city?: string;
   state?: string;
   country?: string;
-  zipCode?: string;
+  zipCode?: number;
   phone?: string;
   isActive?: boolean;
 }
@@ -33,7 +33,7 @@ export interface UpdateBranchRequest {
   city?: string;
   state?: string;
   country?: string;
-  zipCode?: string;
+  zipCode?: number;
   phone?: string;
   isActive?: boolean;
 }

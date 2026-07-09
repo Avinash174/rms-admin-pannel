@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import "./globals.css";
 import { Providers } from "./providers";
+import { Toaster } from "sonner";
 
 export const metadata: Metadata = {
   title: "Enterprise RMS Admin",
@@ -18,6 +19,7 @@ export default function RootLayout({
         <Providers>
           {children}
         </Providers>
+        <Toaster position="top-right" richColors />
       </body>
     </html>
   );

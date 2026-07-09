@@ -1,15 +1,8 @@
 import { ColumnDef } from '@tanstack/react-table';
 import { Company } from '@/lib/types/company';
-import { MoreHorizontal, Pencil, Trash2, Building2, Calendar } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
+import { Building2, Calendar, Ban, CheckCircle2 } from 'lucide-react';
+import { ActionDropdown } from '@/components/ui/action-dropdown';
+import { DropdownMenuItem } from '@/components/ui/dropdown-menu';
 
 // Highly curated, vibrant gradient configurations based on initials
 function getAvatarGradient(name: string) {
@@ -133,40 +126,34 @@ export const columns: ColumnDef<Company>[] = [
     cell: ({ row, table }) => {
       const company = row.original;
       const meta = table.options.meta as any;
+      const isActive = company.isActive;
 
       return (
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="ghost" className="h-8 w-8 p-0 hover:bg-slate-100 rounded-xl transition-all" onClick={(e) => e.stopPropagation()}>
-              <span className="sr-only">Open menu</span>
-              <MoreHorizontal className="h-4.5 w-4.5 text-slate-500" />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            <DropdownMenuLabel>Tenant Settings</DropdownMenuLabel>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem
-              onClick={(e) => {
-                e.stopPropagation();
-                meta?.onEdit?.(company);
-              }}
-              className="flex items-center gap-2 px-2.5 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 rounded-lg cursor-pointer transition-colors"
-            >
-              <Pencil className="h-3.5 w-3.5 text-slate-400" />
-              Edit Details
-            </DropdownMenuItem>
-            <DropdownMenuItem
-              onClick={(e) => {
-                e.stopPropagation();
-                meta?.onDelete?.(company);
-              }}
-              className="flex items-center gap-2 px-2.5 py-2 text-xs font-semibold text-red-600 hover:bg-red-50 hover:text-red-700 rounded-lg cursor-pointer transition-colors"
-            >
-              <Trash2 className="h-3.5 w-3.5 text-red-500" />
-              Delete Tenant
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
+        <ActionDropdown
+          onEdit={() => meta?.onEdit?.(company)}
+          onDelete={() => meta?.onDelete?.(company)}
+          deleteLabel="Delete Company"
+        >
+          <DropdownMenuItem
+            onClick={(e) => {
+              e.stopPropagation();
+              meta?.onEdit?.({ ...company, isActive: !isActive }, true);
+            }}
+            className="flex items-center gap-3 px-3 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50 hover:text-slate-900 rounded-lg cursor-pointer transition-colors"
+          >
+            {isActive ? (
+              <>
+                <Ban className="h-4 w-4 text-slate-400 stroke-[2]" />
+                Suspend Company
+              </>
+            ) : (
+              <>
+                <CheckCircle2 className="h-4 w-4 text-slate-400 stroke-[2]" />
+                Activate Company
+              </>
+            )}
+          </DropdownMenuItem>
+        </ActionDropdown>
       );
     },
   },

@@ -6,11 +6,13 @@ import { useAuth } from '@/contexts/auth-context';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Eye, EyeOff } from 'lucide-react';
 
 export default function LoginPage() {
   const router = useRouter();
   const { login } = useAuth();
   const [email, setEmail] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -21,31 +23,20 @@ export default function LoginPage() {
     setIsLoading(true);
 
     try {
-      // Mock login for now - skip API call
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      // Mock user data
-      const mockUser = {
-        id: '1',
-        email: email,
-        firstName: 'Admin',
-        lastName: 'User',
-        companyId: '1',
-        roleId: '1',
-        roleName: 'Super Administrator'
-      };
-      
-      // Store mock data in localStorage
-      localStorage.setItem('access_token', 'mock_token_' + Date.now());
-      localStorage.setItem('refresh_token', 'mock_refresh_token_' + Date.now());
-      localStorage.setItem('user', JSON.stringify(mockUser));
-      
-      // Update auth context
-      (login as any)({ email, password });
+      if (!email.trim() || !password.trim()) {
+        throw new Error('Email and password are required.');
+      }
+
+      // Call auth context login which calls real backend API and handles storage
+      await login({ email, password });
       
       router.push('/dashboard');
     } catch (err: any) {
-      setError(err.message || 'Login failed. Please check your credentials.');
+      if (err.message === 'Failed to fetch' || err.name === 'TypeError') {
+        setError('Cannot connect to the backend server. Please make sure the backend service is running on port 3001.');
+      } else {
+        setError(err.message || 'Login failed. Please check your credentials.');
+      }
     } finally {
       setIsLoading(false);
     }
@@ -75,14 +66,25 @@ export default function LoginPage() {
 
             <div className="space-y-2">
               <Label htmlFor="password">Password</Label>
-              <Input
-                id="password"
-                type="password"
-                placeholder="••••••••"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                disabled={isLoading}
-              />
+              <div className="relative">
+                <Input
+                  id="password"
+                  type={showPassword ? 'text' : 'password'}
+                  placeholder="••••••••"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  disabled={isLoading}
+                  className="pr-10"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors"
+                  disabled={isLoading}
+                >
+                  {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                </button>
+              </div>
             </div>
 
             {error && (

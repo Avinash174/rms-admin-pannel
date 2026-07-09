@@ -2,14 +2,8 @@ export interface Client {
   id: string;
   name: string;
   code: string;
-  contactPerson?: string;
-  email?: string;
-  phone?: string;
-  address?: string;
-  city?: string;
-  state?: string;
-  country?: string;
-  zipCode?: string;
+  contactEmail?: string | null;
+  contactPhone?: string | null;
   companyId: string;
   isActive: boolean;
   createdAt: string;
@@ -19,28 +13,15 @@ export interface Client {
 export interface CreateClientRequest {
   name: string;
   code: string;
-  contactPerson?: string;
-  email?: string;
-  phone?: string;
-  address?: string;
-  city?: string;
-  state?: string;
-  country?: string;
-  zipCode?: string;
+  contactEmail?: string;
+  contactPhone?: string;
   isActive?: boolean;
 }
 
 export interface UpdateClientRequest {
   name?: string;
-  code?: string;
-  contactPerson?: string;
-  email?: string;
-  phone?: string;
-  address?: string;
-  city?: string;
-  state?: string;
-  country?: string;
-  zipCode?: string;
+  contactEmail?: string | null;
+  contactPhone?: string | null;
   isActive?: boolean;
 }
 

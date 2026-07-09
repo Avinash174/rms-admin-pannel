@@ -1,19 +1,9 @@
 import { ColumnDef } from '@tanstack/react-table';
 import { Package, FileText, Users, Calendar, Download, RefreshCw, AlertCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { ReportJob } from '@/lib/types/report';
 
-interface Report {
-  id: string;
-  name: string;
-  type: 'INVENTORY' | 'ACTIVITY' | 'AUDIT' | 'PERFORMANCE';
-  description: string;
-  generatedAt: string;
-  generatedBy: string;
-  fileUrl?: string;
-  status: 'READY' | 'GENERATING' | 'FAILED';
-}
-
-export const columns: ColumnDef<Report>[] = [
+export const columns: ColumnDef<ReportJob>[] = [
   {
     accessorKey: 'name',
     header: () => <span className="text-xs font-bold tracking-wider text-slate-500 uppercase">Report Name</span>,
@@ -86,10 +76,10 @@ export const columns: ColumnDef<Report>[] = [
     ),
   },
   {
-    accessorKey: 'generatedAt',
+    accessorKey: 'createdAt',
     header: () => <span className="text-xs font-bold tracking-wider text-slate-500 uppercase">Generated At</span>,
     cell: ({ row }) => {
-      const date = new Date(row.getValue('generatedAt'));
+      const date = new Date(row.getValue('createdAt'));
       return (
         <div className="flex items-center gap-1.5 text-xs text-slate-500 font-medium">
           <Calendar className="w-3.5 h-3.5 text-slate-400" />

@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { toast } from 'sonner';
 import { Plus, Loader2, AlertCircle, RefreshCw, X, User, CheckCircle2, Info, Search } from 'lucide-react';
 import { DataTable } from '@/components/ui/data-table';
 import { columns } from './columns';
@@ -43,6 +44,10 @@ export default function ClientsPage() {
       queryClient.invalidateQueries({ queryKey: ['clients'] });
       setIsFormDrawerOpen(false);
       form.reset();
+      toast.success('Client created successfully');
+    },
+    onError: (error: any) => {
+      toast.error(error.response?.data?.message || 'Failed to create client');
     },
   });
 
@@ -53,6 +58,10 @@ export default function ClientsPage() {
       setIsFormDrawerOpen(false);
       setSelectedClient(null);
       form.reset();
+      toast.success('Client updated successfully');
+    },
+    onError: (error: any) => {
+      toast.error(error.response?.data?.message || 'Failed to update client');
     },
   });
 
@@ -64,6 +73,10 @@ export default function ClientsPage() {
         setIsDetailsOpen(false);
         setSelectedClientForDetail(null);
       }
+      toast.success('Client deleted successfully');
+    },
+    onError: (error: any) => {
+      toast.error(error.response?.data?.message || 'Failed to delete client');
     },
   });
 
@@ -72,14 +85,8 @@ export default function ClientsPage() {
     defaultValues: {
       name: '',
       code: '',
-      contactPerson: '',
-      email: '',
-      phone: '',
-      address: '',
-      city: '',
-      state: '',
-      country: '',
-      zipCode: '',
+      contactEmail: '',
+      contactPhone: '',
       isActive: true,
     },
   });
@@ -127,159 +134,105 @@ export default function ClientsPage() {
   const clients = data?.data || [];
   const meta = data?.meta;
 
-  const totalCount = clients.length;
-  const activeCount = clients.filter(c => c.isActive).length;
-  const inactiveCount = totalCount - activeCount;
-
-  const filteredClients = clients.filter((c) => {
-    const matchesSearch = !searchTerm ||
-      c.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (c.code && c.code.toLowerCase().includes(searchTerm.toLowerCase()));
+  const filteredClients = clients.filter((client: Client) => {
+    const matchesSearch = client.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      client.code.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesStatus = statusFilter === 'ALL' ||
-      (statusFilter === 'ACTIVE' && c.isActive) ||
-      (statusFilter === 'INACTIVE' && !c.isActive);
+      (statusFilter === 'ACTIVE' && client.isActive) ||
+      (statusFilter === 'INACTIVE' && !client.isActive);
     return matchesSearch && matchesStatus;
   });
 
   return (
-    <div className="w-full space-y-6 px-4 sm:px-6 lg:px-0 pb-16">
+    <div className="w-full space-y-8 px-4 sm:px-6 lg:px-8 pb-16">
       
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div>
-          <h1 className="text-2xl sm:text-3xl font-bold text-slate-900 tracking-tight">Client Management</h1>
-          <p className="text-sm text-slate-500 mt-1">Manage external client records and contacts.</p>
+      {/* Page Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border-b border-slate-100 pb-6">
+        <div className="space-y-1.5">
+          <h1 className="text-3xl font-extrabold text-slate-900 tracking-tight">Clients</h1>
+          <p className="text-sm text-slate-500">Manage client organizations and contact details.</p>
         </div>
-        <Button 
+        <Button
           onClick={() => {
             setFormMode('CREATE');
             setSelectedClient(null);
-            form.reset({
-              name: '',
-              code: '',
-              contactPerson: '',
-              email: '',
-              phone: '',
-              address: '',
-              city: '',
-              state: '',
-              country: '',
-              zipCode: '',
-              isActive: true,
-            });
+            form.reset({ name: '', code: '', contactEmail: '', contactPhone: '', isActive: true });
             setIsFormDrawerOpen(true);
           }}
           className="bg-blue-600 hover:bg-blue-700 text-white rounded-xl shadow-md hover:shadow-blue-500/20 transition-all duration-300 self-start sm:self-center h-11 px-5"
         >
           <Plus className="w-4 h-4 mr-2 stroke-[2.5]" />
-          Add Client
+          Create Client
         </Button>
       </div>
 
-      {/* Metrics Section */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        {/* Total */}
-        <div className="relative overflow-hidden bg-white p-6 rounded-2xl border border-slate-150 shadow-sm hover:shadow-md transition-all duration-300 group">
-          <div className="absolute top-0 right-0 w-28 h-28 bg-gradient-to-bl from-blue-50 to-indigo-50/30 rounded-bl-full -z-0 opacity-80 transition-transform duration-500 group-hover:scale-105" />
-          <div className="relative z-10 flex items-center justify-between">
-            <div className="space-y-2">
-              <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">Total Clients</p>
-              <h3 className="text-3xl font-extrabold text-slate-900 tracking-tight">{totalCount}</h3>
-            </div>
-            <div className="p-3.5 bg-blue-50 text-blue-600 rounded-2xl border border-blue-100/50 shadow-sm">
-              <User className="w-6 h-6 stroke-[2]" />
-            </div>
-          </div>
-          <div className="mt-5 text-xs text-slate-400 flex items-center gap-1.5 border-t border-slate-50 pt-4">
-            <Info className="w-4 h-4 text-blue-500" /> Physical clients registered
-          </div>
-        </div>
-
-        {/* Active */}
-        <div className="relative overflow-hidden bg-white p-6 rounded-2xl border border-slate-150 shadow-sm hover:shadow-md transition-all duration-300 group">
-          <div className="absolute top-0 right-0 w-28 h-28 bg-gradient-to-bl from-emerald-50 to-teal-50/30 rounded-bl-full -z-0 opacity-80 transition-transform duration-500 group-hover:scale-105" />
-          <div className="relative z-10 flex items-center justify-between">
-            <div className="space-y-2">
-              <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">Active Clients</p>
-              <h3 className="text-3xl font-extrabold text-slate-900 tracking-tight">{activeCount}</h3>
-            </div>
-            <div className="p-3.5 bg-emerald-50 text-emerald-600 rounded-2xl border border-emerald-100/50 shadow-sm">
-              <CheckCircle2 className="w-6 h-6 stroke-[2]" />
-            </div>
-          </div>
-          <div className="mt-5 text-xs text-slate-400 flex items-center gap-1.5 border-t border-slate-50 pt-4">
-            <span className="relative flex h-2 w-2">
-              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-              <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
-            </span>
-            Fully active clients
-          </div>
-        </div>
-
-        {/* Suspended */}
-        <div className="relative overflow-hidden bg-white p-6 rounded-2xl border border-slate-150 shadow-sm hover:shadow-md transition-all duration-300 group">
-          <div className="absolute top-0 right-0 w-28 h-28 bg-gradient-to-bl from-rose-50 to-red-50/30 rounded-bl-full -z-0 opacity-80 transition-transform duration-500 group-hover:scale-105" />
-          <div className="relative z-10 flex items-center justify-between">
-            <div className="space-y-2">
-              <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">Inactive Clients</p>
-              <h3 className="text-3xl font-extrabold text-slate-900 tracking-tight">{inactiveCount}</h3>
-            </div>
-            <div className="p-3.5 bg-rose-50 text-rose-600 rounded-2xl border border-rose-100/50 shadow-sm">
-              <X className="w-6 h-6 stroke-[2]" />
-            </div>
-          </div>
-          <div className="mt-5 text-xs text-slate-400 flex items-center gap-1.5 border-t border-slate-50 pt-4">
-            <Info className="w-4 h-4 text-rose-500" /> Suspended client access
-          </div>
-        </div>
-      </div>
-
-      {/* Toolbar */}
+      {/* Toolbar Controls */}
       <div className="flex flex-col md:flex-row gap-4 justify-between items-center bg-white p-4 rounded-2xl border border-slate-100 shadow-sm">
+        {/* Search */}
         <div className="relative w-full md:w-80">
           <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-          <Input value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} placeholder="Search by name or code..." className="pl-10 h-11 bg-slate-50 border-slate-200 focus:bg-white focus:ring-2 focus:ring-blue-500/10 focus:border-blue-500 transition-all rounded-xl text-sm" />
+          <Input
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            placeholder="Search client name or code..."
+            className="pl-10 h-11 bg-slate-50 border-slate-200 focus:bg-white focus:ring-2 focus:ring-blue-500/10 focus:border-blue-500 transition-all rounded-xl text-sm"
+          />
         </div>
+
+        {/* Status Filter Tab Buttons */}
         <div className="flex bg-slate-100 p-1.5 rounded-xl w-full md:w-auto">
           {(['ALL', 'ACTIVE', 'INACTIVE'] as const).map((status) => (
-            <button key={status} onClick={() => setStatusFilter(status)} className={`flex-1 md:flex-none px-5 py-1.5 text-xs font-bold tracking-wide rounded-lg transition-all capitalize ${statusFilter === status ? 'bg-white text-blue-600 shadow-sm border border-slate-200/50' : 'text-slate-500 hover:text-slate-800'}`}>{status.toLowerCase()}</button>
+            <button
+              key={status}
+              onClick={() => setStatusFilter(status)}
+              className={`flex-1 md:flex-none px-5 py-1.5 text-xs font-bold tracking-wide rounded-lg transition-all capitalize ${
+                statusFilter === status
+                  ? 'bg-white text-blue-600 shadow-sm border border-slate-200/50'
+                  : 'text-slate-500 hover:text-slate-800'
+              }`}
+            >
+              {status.toLowerCase()}
+            </button>
           ))}
         </div>
       </div>
 
-      {/* Table Container */}
-      <div className="bg-white rounded-[14px] border border-slate-200 shadow-sm overflow-hidden">
+      {/* Data Table */}
+      <div className="bg-white rounded-2xl border border-slate-100 shadow-sm">
         {filteredClients.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-80 text-slate-400 p-6 space-y-3">
             <div className="p-4 bg-slate-50 rounded-full">
               <User className="w-10 h-10 text-slate-350 stroke-[1.5]" />
             </div>
             <div className="text-center space-y-1">
-              <p className="text-sm font-semibold text-slate-800">No clients found</p>
-              <p className="text-xs text-slate-400">Add a new client to start organizing departments & files</p>
+              <p className="text-sm font-semibold text-slate-800">No results found</p>
+              <p className="text-xs text-slate-400">Try altering your keyword or clear current filters</p>
             </div>
+            <Button
+              onClick={() => { setSearchTerm(''); setStatusFilter('ALL'); }}
+              variant="outline"
+              className="text-xs font-bold text-blue-600 hover:bg-slate-50 border-slate-200 rounded-xl"
+            >
+              Reset Filters
+            </Button>
           </div>
         ) : (
-          <DataTable columns={columns} data={filteredClients}
+          <DataTable
+            columns={columns}
+            data={filteredClients}
             meta={meta}
             onPageChange={setPage}
             onEdit={(client, isToggle) => {
               if (isToggle) {
-                updateMutation.mutate({ id: client.id, data: client });
+                updateMutation.mutate({ id: client.id, data: { isActive: client.isActive } });
               } else {
-                setSelectedClient(client);
                 setFormMode('EDIT');
+                setSelectedClient(client);
                 form.reset({
                   name: client.name,
                   code: client.code,
-                  contactPerson: client.contactPerson || '',
-                  email: client.email || '',
-                  phone: client.phone || '',
-                  address: client.address || '',
-                  city: client.city || '',
-                  state: client.state || '',
-                  country: client.country || '',
-                  zipCode: client.zipCode || '',
+                  contactEmail: client.contactEmail || '',
+                  contactPhone: client.contactPhone || '',
                   isActive: client.isActive,
                 });
                 setIsFormDrawerOpen(true);
@@ -329,46 +282,16 @@ export default function ClientsPage() {
                   </div>
                 </div>
 
-                <div className="space-y-2">
-                  <Label htmlFor="contactPerson">Contact Person</Label>
-                  <Input id="contactPerson" placeholder="John Doe" className="h-11 rounded-xl border-slate-200" {...form.register('contactPerson')} />
-                </div>
-
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 gap-4">
                   <div className="space-y-2">
-                    <Label htmlFor="email">Email</Label>
-                    <Input id="email" placeholder="contact@acme.com" className="h-11 rounded-xl border-slate-200" {...form.register('email')} />
+                    <Label htmlFor="contactEmail">Contact Email</Label>
+                    <Input id="contactEmail" placeholder="contact@acme.com" className="h-11 rounded-xl border-slate-200" {...form.register('contactEmail')} />
+                    {form.formState.errors.contactEmail && <p className="text-xs text-red-500">{form.formState.errors.contactEmail.message}</p>}
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="phone">Phone</Label>
-                    <Input id="phone" placeholder="+1 555-0189" className="h-11 rounded-xl border-slate-200" {...form.register('phone')} />
-                  </div>
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="address">Address</Label>
-                  <Input id="address" placeholder="123 Corporate Blvd" className="h-11 rounded-xl border-slate-200" {...form.register('address')} />
-                </div>
-
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="city">City</Label>
-                    <Input id="city" placeholder="Chicago" className="h-11 rounded-xl border-slate-200" {...form.register('city')} />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="state">State</Label>
-                    <Input id="state" placeholder="IL" className="h-11 rounded-xl border-slate-200" {...form.register('state')} />
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="country">Country</Label>
-                    <Input id="country" placeholder="USA" className="h-11 rounded-xl border-slate-200" {...form.register('country')} />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="zipCode">Zip Code</Label>
-                    <Input id="zipCode" placeholder="60601" className="h-11 rounded-xl border-slate-200" {...form.register('zipCode')} />
+                    <Label htmlFor="contactPhone">Contact Phone</Label>
+                    <Input id="contactPhone" placeholder="911234567890" className="h-11 rounded-xl border-slate-200" {...form.register('contactPhone')} />
+                    {form.formState.errors.contactPhone && <p className="text-xs text-red-500">{form.formState.errors.contactPhone.message}</p>}
                   </div>
                 </div>
 
@@ -406,14 +329,14 @@ export default function ClientsPage() {
 
       {/* SLIDE-OVER DRAWER: Client Details */}
       <div className={`fixed inset-0 z-50 overflow-hidden transition-opacity duration-300 ${isDetailsOpen ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'}`}>
-        <div className="absolute inset-0 bg-slate-900/40 backdrop-blur-xs" onClick={() => setIsDetailsOpen(false)} />
+        <div className="absolute inset-0 bg-slate-900/40 backdrop-blur-xs transition-opacity duration-300" onClick={() => setIsDetailsOpen(false)} />
         <div className="absolute inset-y-0 right-0 max-w-full flex pl-10">
           <div className={`w-screen max-w-md bg-white shadow-2xl flex flex-col transform transition-transform duration-300 ease-in-out ${isDetailsOpen ? 'translate-x-0' : 'translate-x-full'}`}>
             
             <div className="px-6 py-5 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
               <div className="flex items-center gap-2">
                 <User className="w-5 h-5 text-blue-600" />
-                <h3 className="text-lg font-bold text-slate-900">Client Details</h3>
+                <h3 className="text-lg font-bold text-slate-900">Client Insights</h3>
               </div>
               <Button onClick={() => setIsDetailsOpen(false)} variant="ghost" className="h-9 w-9 p-0 hover:bg-slate-100 rounded-full">
                 <X className="w-5 h-5 text-slate-400" />
@@ -423,7 +346,7 @@ export default function ClientsPage() {
             {selectedClientForDetail && (
               <div className="flex-1 overflow-y-auto p-6 space-y-6">
                 
-                <div className="flex flex-col items-center text-center p-6 bg-gradient-to-b from-blue-50/30 to-indigo-50/10 rounded-2xl border border-slate-100">
+                <div className="flex flex-col items-center text-center p-6 bg-gradient-to-b from-blue-50/30 to-indigo-50/10 rounded-2xl border border-slate-100 shadow-xs">
                   <div className="w-16 h-16 rounded-2xl bg-blue-600 text-white flex items-center justify-center font-bold text-lg shadow-md mb-3">
                     {selectedClientForDetail.code}
                   </div>
@@ -439,24 +362,12 @@ export default function ClientsPage() {
                   <h5 className="text-xs font-bold text-slate-400 uppercase tracking-widest">Metadata Info</h5>
                   <div className="divide-y divide-slate-100 border border-slate-100 rounded-2xl overflow-hidden bg-white shadow-xs">
                     <div className="flex justify-between items-center px-4 py-3">
-                      <span className="text-xs font-semibold text-slate-500">Contact Person</span>
-                      <span className="text-xs font-semibold text-slate-700">{selectedClientForDetail.contactPerson || '-'}</span>
-                    </div>
-                    <div className="flex justify-between items-center px-4 py-3">
                       <span className="text-xs font-semibold text-slate-500">Email</span>
-                      <span className="text-xs font-semibold text-slate-700 font-mono">{selectedClientForDetail.email || '-'}</span>
+                      <span className="text-xs font-semibold text-slate-700 font-mono">{selectedClientForDetail.contactEmail || '-'}</span>
                     </div>
                     <div className="flex justify-between items-center px-4 py-3">
                       <span className="text-xs font-semibold text-slate-500">Phone</span>
-                      <span className="text-xs font-semibold text-slate-700 font-mono">{selectedClientForDetail.phone || '-'}</span>
-                    </div>
-                    <div className="flex justify-between items-center px-4 py-3">
-                      <span className="text-xs font-semibold text-slate-500">Address</span>
-                      <span className="text-xs font-semibold text-slate-700">{selectedClientForDetail.address || '-'}</span>
-                    </div>
-                    <div className="flex justify-between items-center px-4 py-3">
-                      <span className="text-xs font-semibold text-slate-500">Location Details</span>
-                      <span className="text-xs font-semibold text-slate-700">{[selectedClientForDetail.city, selectedClientForDetail.state, selectedClientForDetail.country].filter(Boolean).join(', ') || '-'}</span>
+                      <span className="text-xs font-semibold text-slate-700 font-mono">{selectedClientForDetail.contactPhone || '-'}</span>
                     </div>
                   </div>
                 </div>

@@ -2,8 +2,8 @@
 
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { 
-  Loader2, AlertCircle, RefreshCw, FileText, CheckCircle2, 
+import {
+  Loader2, AlertCircle, RefreshCw, FileText, CheckCircle2,
   XCircle, Info, Sparkles, X, Terminal, Monitor, Globe, KeyRound, Search, Clock
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -11,85 +11,48 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { DataTable } from '@/components/ui/data-table';
 import { columns } from './columns';
-
-interface AuditLog {
-  id: string;
-  action: string;
-  entity: string;
-  entityId: string;
-  entityType: string;
-  userId: string;
-  userName: string;
-  changes?: string;
-  ipAddress?: string;
-  userAgent?: string;
-  status: 'SUCCESS' | 'FAILED';
-  createdAt: string;
-}
-
-const mockData: AuditLog[] = [
-  {
-    id: '1',
-    action: 'CREATE',
-    entity: 'Box',
-    entityId: 'BOX-001',
-    entityType: 'Box',
-    userId: 'user-100',
-    userName: 'John Doe',
-    changes: 'Created new box with barcode BOX-001 under client Acme Corp.',
-    ipAddress: '192.168.1.100',
-    userAgent: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)',
-    status: 'SUCCESS',
-    createdAt: '2026-07-03T09:30:00Z',
-  },
-  {
-    id: '2',
-    action: 'UPDATE',
-    entity: 'Location',
-    entityId: 'LOC-001',
-    entityType: 'Location',
-    userId: 'user-101',
-    userName: 'Jane Smith',
-    changes: 'Updated status to inactive to perform inventory verification.',
-    ipAddress: '192.168.1.101',
-    userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)',
-    status: 'SUCCESS',
-    createdAt: '2026-07-03T09:25:00Z',
-  },
-  {
-    id: '3',
-    action: 'DELETE',
-    entity: 'FileRecord',
-    entityId: 'FILE-005',
-    entityType: 'FileRecord',
-    userId: 'user-100',
-    userName: 'John Doe',
-    changes: 'Attempted to delete file record FILE-005 without segregation auth.',
-    ipAddress: '192.168.1.100',
-    userAgent: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)',
-    status: 'FAILED',
-    createdAt: '2026-07-03T09:20:00Z',
-  },
-];
+import { getAuditLogs } from '@/lib/api/audit';
+import { AuditLogFilters } from '@/lib/types/audit';
+import { exportToPDF } from '@/lib/utils/pdf';
 
 export default function AuditLogsPage() {
   const [page, setPage] = useState(1);
   const [searchTerm, setSearchTerm] = useState('');
   const [actionFilter, setActionFilter] = useState<string>('ALL');
   const [statusFilter, setStatusFilter] = useState<string>('ALL');
-  
+
   // Detail Drawer state
-  const [selectedLog, setSelectedLog] = useState<AuditLog | null>(null);
+  const [selectedLog, setSelectedLog] = useState<any>(null);
   const [isDetailsOpen, setIsDetailsOpen] = useState(false);
 
+  const filters: AuditLogFilters = {
+    action: actionFilter !== 'ALL' ? actionFilter : undefined,
+  };
+
   const { data, isLoading, error, refetch } = useQuery({
-    queryKey: ['audit-logs', page],
-    queryFn: async () => {
-      // Simulate API fetch delay
-      await new Promise(resolve => setTimeout(resolve, 300));
-      return { data: mockData, meta: { page, pageSize: 20, total: 3, totalPages: 1 } };
-    },
+    queryKey: ['audit-logs', page, filters],
+    queryFn: () => getAuditLogs(filters, page, 20),
   });
+
+  const handleExportPDF = () => {
+    exportToPDF({
+      title: 'Audit Logs',
+      subtitle: `Total Logs: ${logs.length}`,
+      columns: [
+        { header: 'Action', dataKey: 'action' },
+        { header: 'User', dataKey: 'userName' },
+        { header: 'Outcome', dataKey: 'outcome' },
+        { header: 'Timestamp', dataKey: 'createdAt' },
+      ],
+      data: logs.map(log => ({
+        action: log.action,
+        userName: log.userName || 'N/A',
+        outcome: log.outcome,
+        createdAt: new Date(log.createdAt).toLocaleString(),
+      })),
+      fileName: `audit-logs-${Date.now()}.pdf`,
+    });
+  };
 
   if (isLoading) {
     return (
@@ -121,9 +84,9 @@ export default function AuditLogsPage() {
   const meta = data?.meta;
 
   const filteredLogs = logs.filter((log) => {
-    const matchesSearch = log.userName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      log.entity.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      log.entityId.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesSearch = (log.userName?.toLowerCase().includes(searchTerm.toLowerCase()) || false) ||
+      (log.entity?.toLowerCase().includes(searchTerm.toLowerCase()) || false) ||
+      (log.entityId?.toLowerCase().includes(searchTerm.toLowerCase()) || false);
     const matchesAction = actionFilter === 'ALL' || log.action === actionFilter;
     const matchesStatus = statusFilter === 'ALL' || log.status === statusFilter;
     return matchesSearch && matchesAction && matchesStatus;
@@ -149,7 +112,7 @@ export default function AuditLogsPage() {
           <p className="text-sm text-slate-500">Inspect system operation trails, write success states, login attempts, and record changes.</p>
         </div>
         <Button
-          onClick={() => alert('CSV export job started. You will be notified when the report is ready.')}
+          onClick={handleExportPDF}
           className="bg-blue-600 hover:bg-blue-700 text-white rounded-xl shadow-md hover:shadow-blue-500/20 transition-all duration-300 self-start sm:self-center h-11 px-5"
         >
           <FileText className="w-4 h-4 mr-2" />
@@ -264,7 +227,7 @@ export default function AuditLogsPage() {
       </div>
 
       {/* Data Table */}
-      <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
+      <div className="bg-white rounded-2xl border border-slate-100 shadow-sm">
         {filteredLogs.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-80 text-slate-400 p-6 space-y-3">
             <div className="p-4 bg-slate-50 rounded-full">

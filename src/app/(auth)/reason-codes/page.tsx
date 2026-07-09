@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { toast } from 'sonner';
 import { 
   Plus, Loader2, AlertCircle, RefreshCw, Settings, 
   CheckCircle2, XCircle, Info, Sparkles, X, Tag, Search
@@ -29,6 +30,10 @@ export default function ReasonCodesPage() {
       queryClient.invalidateQueries({ queryKey: ['reason-codes'] });
       setIsFormDrawerOpen(false);
       resetForm();
+      toast.success('Reason code created successfully');
+    },
+    onError: (error: any) => {
+      toast.error(error.response?.data?.message || 'Failed to create reason code');
     },
   });
 

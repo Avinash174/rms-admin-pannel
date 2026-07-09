@@ -1,26 +1,5 @@
 import { Company, CompanyListResponse, CreateCompanyRequest, UpdateCompanyRequest } from '../types/company';
-
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api/v1/admin';
-
-async function fetchWithAuth(endpoint: string, options?: RequestInit) {
-  const token = localStorage.getItem('access_token');
-  const headers = {
-    'Content-Type': 'application/json',
-    ...(token && { Authorization: `Bearer ${token}` }),
-    ...options?.headers,
-  };
-
-  const response = await fetch(`${API_BASE_URL}${endpoint}`, {
-    ...options,
-    headers,
-  });
-
-  if (!response.ok) {
-    throw new Error(`API error: ${response.status} ${response.statusText}`);
-  }
-
-  return response.json();
-}
+import { fetchWithAuth } from './auth';
 
 export async function getCompanies(page: number = 1, pageSize: number = 20): Promise<CompanyListResponse> {
   try {
@@ -39,7 +18,10 @@ export async function getCompanies(page: number = 1, pageSize: number = 20): Pro
 
 export async function getCompany(id: string): Promise<Company> {
   const response = await fetchWithAuth(`/companies/${id}`);
-  return response.data;
+  if (response.success && response.data) {
+    return response.data;
+  }
+  throw new Error('Failed to fetch company');
 }
 
 export async function createCompany(data: CreateCompanyRequest): Promise<Company> {
@@ -47,7 +29,10 @@ export async function createCompany(data: CreateCompanyRequest): Promise<Company
     method: 'POST',
     body: JSON.stringify(data),
   });
-  return response.data;
+  if (response.success && response.data) {
+    return response.data;
+  }
+  throw new Error('Failed to create company');
 }
 
 export async function updateCompany(id: string, data: UpdateCompanyRequest): Promise<Company> {
@@ -55,11 +40,17 @@ export async function updateCompany(id: string, data: UpdateCompanyRequest): Pro
     method: 'PUT',
     body: JSON.stringify(data),
   });
-  return response.data;
+  if (response.success && response.data) {
+    return response.data;
+  }
+  throw new Error('Failed to update company');
 }
 
 export async function deleteCompany(id: string): Promise<void> {
-  await fetchWithAuth(`/companies/${id}`, {
+  const response = await fetchWithAuth(`/companies/${id}`, {
     method: 'DELETE',
   });
+  if (!response.success) {
+    throw new Error('Failed to delete company');
+  }
 }

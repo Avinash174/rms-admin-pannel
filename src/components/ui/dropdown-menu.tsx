@@ -67,15 +67,16 @@ export function DropdownMenuTrigger({ children, asChild }: DropdownMenuTriggerPr
 export interface DropdownMenuContentProps {
   children: React.ReactNode
   align?: 'start' | 'center' | 'end'
+  className?: string
 }
 
-export function DropdownMenuContent({ children, align = 'end' }: DropdownMenuContentProps) {
+export function DropdownMenuContent({ children, align = 'end', className }: DropdownMenuContentProps) {
   const context = React.useContext(DropdownContext);
   if (!context || !context.isOpen) return null;
 
   return (
     <div 
-      className={`absolute right-0 mt-2 w-48 rounded-[14px] bg-white border border-slate-200 shadow-lg focus:outline-none z-50 ${align === 'start' ? 'left-0' : align === 'center' ? 'left-1/2 -translate-x-1/2' : 'right-0'}`}
+      className={`absolute right-0 mt-2 w-48 rounded-[14px] bg-white border border-slate-200 shadow-lg focus:outline-none z-50 ${align === 'start' ? 'left-0' : align === 'center' ? 'left-1/2 -translate-x-1/2' : 'right-0'} ${className || ''}`}
       onClick={() => context.setIsOpen(false)}
     >
       {children}
@@ -83,9 +84,9 @@ export function DropdownMenuContent({ children, align = 'end' }: DropdownMenuCon
   )
 }
 
-export function DropdownMenuLabel({ children }: { children: React.ReactNode }) {
+export function DropdownMenuLabel({ children, className }: { children: React.ReactNode; className?: string }) {
   return (
-    <div className="px-4 py-2 text-sm font-semibold text-slate-900">
+    <div className={`px-4 py-2 text-sm font-semibold text-slate-900 ${className || ''}`}>
       {children}
     </div>
   )

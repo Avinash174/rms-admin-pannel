@@ -1,30 +1,26 @@
 import { Role, Permission, CreateRoleRequest, UpdateRoleRequest } from '../types/role';
-
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api/v1/admin';
-
-async function fetchWithAuth(endpoint: string, options?: RequestInit) {
-  const token = localStorage.getItem('access_token');
-  const headers = {
-    'Content-Type': 'application/json',
-    ...(token && { Authorization: `Bearer ${token}` }),
-    ...options?.headers,
-  };
-
-  const response = await fetch(`${API_BASE_URL}${endpoint}`, {
-    ...options,
-    headers,
-  });
-
-  if (!response.ok) {
-    throw new Error(`API error: ${response.status} ${response.statusText}`);
-  }
-
-  return response.json();
-}
+import { fetchWithAuth } from './auth';
 
 export async function getRoles(): Promise<{ data: Role[] }> {
   try {
     const response = await fetchWithAuth('/roles');
+    if (response && Array.isArray(response.data)) {
+      response.data = response.data.map((r: any) => {
+        const flatPermissions = (r.permissions || []).map((rp: any) => {
+          const p = rp.permission || {};
+          return {
+            id: p.id || rp.permissionId,
+            name: p.key || '',
+            description: p.description || '',
+            category: (p.key || '').split(':')[0] || 'General',
+          };
+        });
+        return {
+          ...r,
+          permissions: flatPermissions,
+        };
+      });
+    }
     return response;
   } catch (error) {
     // Fallback Mock Data for local UI development
@@ -63,7 +59,10 @@ export async function createRole(data: CreateRoleRequest): Promise<Role> {
     method: 'POST',
     body: JSON.stringify(data),
   });
-  return response.data;
+  if (response.success && response.data) {
+    return response.data;
+  }
+  throw new Error('Failed to create role');
 }
 
 export async function updateRole(id: string, data: UpdateRoleRequest): Promise<Role> {
@@ -71,12 +70,32 @@ export async function updateRole(id: string, data: UpdateRoleRequest): Promise<R
     method: 'PUT',
     body: JSON.stringify(data),
   });
-  return response.data;
+  if (response.success && response.data) {
+    return response.data;
+  }
+  throw new Error('Failed to update role');
+}
+
+export async function deleteRole(id: string): Promise<void> {
+  const response = await fetchWithAuth(`/roles/${id}`, {
+    method: 'DELETE',
+  });
+  if (!response.success) {
+    throw new Error('Failed to delete role');
+  }
 }
 
 export async function getPermissions(): Promise<{ data: Permission[] }> {
   try {
-    const response = await fetchWithAuth('/permissions');
+    const response = await fetchWithAuth('/roles/permissions');
+    if (response && Array.isArray(response.data)) {
+      response.data = response.data.map((p: any) => ({
+        id: p.id,
+        name: p.key,
+        description: p.description,
+        category: (p.key || '').split(':')[0] || 'General',
+      }));
+    }
     return response;
   } catch (error) {
     return {
@@ -95,8 +114,11 @@ export async function getPermissions(): Promise<{ data: Permission[] }> {
 }
 
 export async function assignPermissions(roleId: string, permissionIds: string[]): Promise<void> {
-  await fetchWithAuth(`/roles/${roleId}/permissions`, {
+  const response = await fetchWithAuth(`/roles/${roleId}/permissions`, {
     method: 'PUT',
     body: JSON.stringify({ permissionIds }),
   });
+  if (!response.success) {
+    throw new Error('Failed to assign permissions');
+  }
 }

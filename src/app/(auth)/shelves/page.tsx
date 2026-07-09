@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { toast } from 'sonner';
 import { Plus, Loader2, AlertCircle, RefreshCw, X, FileBox, CheckCircle2, Info, Search } from 'lucide-react';
 import { DataTable } from '@/components/ui/data-table';
 import { columns } from './columns';
@@ -44,6 +45,10 @@ export default function ShelvesPage() {
       queryClient.invalidateQueries({ queryKey: ['shelves'] });
       setIsFormDrawerOpen(false);
       form.reset();
+      toast.success('Shelf created successfully');
+    },
+    onError: (error: any) => {
+      toast.error(error.response?.data?.message || 'Failed to create shelf');
     },
   });
 
@@ -54,6 +59,10 @@ export default function ShelvesPage() {
       setIsFormDrawerOpen(false);
       setSelectedShelf(null);
       form.reset();
+      toast.success('Shelf updated successfully');
+    },
+    onError: (error: any) => {
+      toast.error(error.response?.data?.message || 'Failed to update shelf');
     },
   });
 
@@ -65,6 +74,10 @@ export default function ShelvesPage() {
         setIsDetailsOpen(false);
         setSelectedShelfForDetail(null);
       }
+      toast.success('Shelf deleted successfully');
+    },
+    onError: (error: any) => {
+      toast.error(error.response?.data?.message || 'Failed to delete shelf');
     },
   });
 
@@ -237,7 +250,7 @@ export default function ShelvesPage() {
       </div>
 
       {/* Table Container */}
-      <div className="bg-white rounded-[14px] border border-slate-200 shadow-sm overflow-hidden">
+      <div className="bg-white rounded-[14px] border border-slate-200 shadow-sm">
         {filteredShelves.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-80 text-slate-400 p-6 space-y-3">
             <div className="p-4 bg-slate-50 rounded-full">

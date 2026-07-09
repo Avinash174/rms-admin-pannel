@@ -10,47 +10,7 @@ import { DataTable } from '@/components/ui/data-table';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { columns, InventoryVerification } from './columns';
-
-const mockData: InventoryVerification[] = [
-  {
-    id: '1',
-    verificationCode: 'INV-2024-001',
-    locationId: 'LOC-001',
-    locationName: 'Shelf 1 - Rack A1',
-    status: 'COMPLETED',
-    totalBoxes: 50,
-    verifiedBoxes: 50,
-    discrepancyBoxes: 0,
-    assignedTo: 'John Doe',
-    startedAt: '2024-01-15T09:00:00Z',
-    completedAt: '2024-01-15T11:30:00Z',
-    createdAt: '2024-01-15T08:55:00Z',
-  },
-  {
-    id: '2',
-    verificationCode: 'INV-2024-002',
-    locationId: 'LOC-002',
-    locationName: 'Shelf 2 - Rack A1',
-    status: 'IN_PROGRESS',
-    totalBoxes: 35,
-    verifiedBoxes: 20,
-    discrepancyBoxes: 2,
-    assignedTo: 'Jane Smith',
-    startedAt: '2024-01-15T10:00:00Z',
-    createdAt: '2024-01-15T09:50:00Z',
-  },
-  {
-    id: '3',
-    verificationCode: 'INV-2024-003',
-    locationId: 'LOC-003',
-    locationName: 'Rack B2 - Room 3',
-    status: 'PENDING',
-    totalBoxes: 20,
-    verifiedBoxes: 0,
-    discrepancyBoxes: 0,
-    createdAt: '2024-01-15T10:00:00Z',
-  },
-];
+import { listInventoryVerifySessions } from '@/lib/api/inventoryVerify';
 
 export default function InventoryVerificationPage() {
   const [page, setPage] = useState(1);
@@ -62,10 +22,7 @@ export default function InventoryVerificationPage() {
 
   const { data, isLoading, error, refetch } = useQuery({
     queryKey: ['inventory-verifications', page],
-    queryFn: async () => {
-      await new Promise(resolve => setTimeout(resolve, 300));
-      return { data: mockData, meta: { page, pageSize: 20, total: mockData.length, totalPages: 1 } };
-    },
+    queryFn: () => listInventoryVerifySessions(page, 20),
   });
 
   if (isLoading) {
@@ -94,10 +51,26 @@ export default function InventoryVerificationPage() {
     );
   }
 
-  const items = data?.data || [];
+  const sessions = data?.data || [];
   const meta = data?.meta;
 
-  const filtered = items.filter((item) => {
+  // Map sessions to the expected InventoryVerification format
+  const items = sessions.map((session: any) => ({
+    id: session.id,
+    verificationCode: `INV-${session.id.substring(0, 8).toUpperCase()}`,
+    locationId: session.box?.id || 'N/A',
+    locationName: session.box?.barcode || 'Unknown',
+    status: session.endedAt ? 'COMPLETED' : 'IN_PROGRESS',
+    totalBoxes: session._count?.scans || 0,
+    verifiedBoxes: session.scans?.filter((s: any) => s.isExpected).length || 0,
+    discrepancyBoxes: session.unexpectedFileCount || 0,
+    assignedTo: session.operator?.fullName || 'Unknown',
+    startedAt: session.createdAt,
+    completedAt: session.endedAt || undefined,
+    createdAt: session.createdAt,
+  }));
+
+  const filtered = items.filter((item: any) => {
     const matchesSearch = item.verificationCode.toLowerCase().includes(searchTerm.toLowerCase()) ||
       item.locationName.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesStatus = statusFilter === 'ALL' || item.status === statusFilter;
@@ -105,8 +78,8 @@ export default function InventoryVerificationPage() {
   });
 
   const total = items.length;
-  const completed = items.filter(i => i.status === 'COMPLETED').length;
-  const active = items.filter(i => i.status === 'IN_PROGRESS' || i.status === 'PENDING').length;
+  const completed = items.filter((i: any) => i.status === 'COMPLETED').length;
+  const active = items.filter((i: any) => i.status === 'IN_PROGRESS' || i.status === 'PENDING').length;
 
   return (
     <div className="w-full space-y-8 px-4 sm:px-6 lg:px-8 pb-16">
@@ -209,7 +182,7 @@ export default function InventoryVerificationPage() {
       </div>
 
       {/* Data Table */}
-      <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
+      <div className="bg-white rounded-2xl border border-slate-100 shadow-sm">
         {filtered.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-80 text-slate-400 p-6 space-y-3">
             <div className="p-4 bg-slate-50 rounded-full">

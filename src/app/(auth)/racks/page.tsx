@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { toast } from 'sonner';
 import { Plus, Loader2, AlertCircle, RefreshCw, X, FileBox, CheckCircle2, Info, Search } from 'lucide-react';
 import { DataTable } from '@/components/ui/data-table';
 import { columns } from './columns';
@@ -44,6 +45,10 @@ export default function RacksPage() {
       queryClient.invalidateQueries({ queryKey: ['racks'] });
       setIsFormDrawerOpen(false);
       form.reset();
+      toast.success('Rack created successfully');
+    },
+    onError: (error: any) => {
+      toast.error(error.response?.data?.message || 'Failed to create rack');
     },
   });
 
@@ -54,6 +59,10 @@ export default function RacksPage() {
       setIsFormDrawerOpen(false);
       setSelectedRack(null);
       form.reset();
+      toast.success('Rack updated successfully');
+    },
+    onError: (error: any) => {
+      toast.error(error.response?.data?.message || 'Failed to update rack');
     },
   });
 
@@ -65,6 +74,10 @@ export default function RacksPage() {
         setIsDetailsOpen(false);
         setSelectedRackForDetail(null);
       }
+      toast.success('Rack deleted successfully');
+    },
+    onError: (error: any) => {
+      toast.error(error.response?.data?.message || 'Failed to delete rack');
     },
   });
 
@@ -237,7 +250,7 @@ export default function RacksPage() {
       </div>
 
       {/* Table Container */}
-      <div className="bg-white rounded-[14px] border border-slate-200 shadow-sm overflow-hidden">
+      <div className="bg-white rounded-[14px] border border-slate-200 shadow-sm">
         {filteredRacks.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-80 text-slate-400 p-6 space-y-3">
             <div className="p-4 bg-slate-50 rounded-full">

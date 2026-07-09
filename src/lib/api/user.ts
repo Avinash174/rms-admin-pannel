@@ -1,26 +1,5 @@
 import { User, UserListResponse, CreateUserRequest, UpdateUserRequest } from '../types/user';
-
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api/v1/admin';
-
-async function fetchWithAuth(endpoint: string, options?: RequestInit) {
-  const token = localStorage.getItem('access_token');
-  const headers = {
-    'Content-Type': 'application/json',
-    ...(token && { Authorization: `Bearer ${token}` }),
-    ...options?.headers,
-  };
-
-  const response = await fetch(`${API_BASE_URL}${endpoint}`, {
-    ...options,
-    headers,
-  });
-
-  if (!response.ok) {
-    throw new Error(`API error: ${response.status} ${response.statusText}`);
-  }
-
-  return response.json();
-}
+import { fetchWithAuth } from './auth';
 
 export async function getUsers(page: number = 1, pageSize: number = 20, filters?: Record<string, any>): Promise<UserListResponse> {
   try {
@@ -32,6 +11,19 @@ export async function getUsers(page: number = 1, pageSize: number = 20, filters?
       ...(filters?.warehouseId && { warehouseId: filters.warehouseId }),
     });
     const response = await fetchWithAuth(`/users?${queryParams}`);
+    if (response.success && Array.isArray(response.data)) {
+      response.data = response.data.map((u: any) => {
+        const parts = (u.fullName || '').trim().split(/\s+/);
+        const firstName = parts[0] || '';
+        const lastName = parts.slice(1).join(' ') || '';
+        return {
+          ...u,
+          firstName,
+          lastName,
+          roleName: u.role?.label || u.role?.name || '',
+        };
+      });
+    }
     return response;
   } catch (error) {
     // Return mock data for development
@@ -75,7 +67,19 @@ export async function getUsers(page: number = 1, pageSize: number = 20, filters?
 
 export async function getUser(id: string): Promise<User> {
   const response = await fetchWithAuth(`/users/${id}`);
-  return response.data;
+  if (response.success && response.data) {
+    const u = response.data;
+    const parts = (u.fullName || '').trim().split(/\s+/);
+    const firstName = parts[0] || '';
+    const lastName = parts.slice(1).join(' ') || '';
+    return {
+      ...u,
+      firstName,
+      lastName,
+      roleName: u.role?.label || u.role?.name || '',
+    };
+  }
+  throw new Error('Failed to fetch user');
 }
 
 export async function createUser(data: CreateUserRequest): Promise<User> {
@@ -83,7 +87,19 @@ export async function createUser(data: CreateUserRequest): Promise<User> {
     method: 'POST',
     body: JSON.stringify(data),
   });
-  return response.data;
+  if (response.success && response.data) {
+    const u = response.data;
+    const parts = (u.fullName || '').trim().split(/\s+/);
+    const firstName = parts[0] || '';
+    const lastName = parts.slice(1).join(' ') || '';
+    return {
+      ...u,
+      firstName,
+      lastName,
+      roleName: u.role?.label || u.role?.name || '',
+    };
+  }
+  throw new Error('Failed to create user');
 }
 
 export async function updateUser(id: string, data: UpdateUserRequest): Promise<User> {
@@ -91,18 +107,36 @@ export async function updateUser(id: string, data: UpdateUserRequest): Promise<U
     method: 'PUT',
     body: JSON.stringify(data),
   });
-  return response.data;
+  if (response.success && response.data) {
+    const u = response.data;
+    const parts = (u.fullName || '').trim().split(/\s+/);
+    const firstName = parts[0] || '';
+    const lastName = parts.slice(1).join(' ') || '';
+    return {
+      ...u,
+      firstName,
+      lastName,
+      roleName: u.role?.label || u.role?.name || '',
+    };
+  }
+  throw new Error('Failed to update user');
 }
 
 export async function deleteUser(id: string): Promise<void> {
-  await fetchWithAuth(`/users/${id}`, {
+  const response = await fetchWithAuth(`/users/${id}`, {
     method: 'DELETE',
   });
+  if (!response.success) {
+    throw new Error('Failed to delete user');
+  }
 }
 
 export async function resetUserPassword(id: string, newPassword: string): Promise<void> {
-  await fetchWithAuth(`/users/${id}/reset-password`, {
+  const response = await fetchWithAuth(`/users/${id}/reset-password`, {
     method: 'POST',
     body: JSON.stringify({ password: newPassword }),
   });
+  if (!response.success) {
+    throw new Error('Failed to reset password');
+  }
 }

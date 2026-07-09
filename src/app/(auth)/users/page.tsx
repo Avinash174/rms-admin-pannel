@@ -2,10 +2,12 @@
 
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { toast } from 'sonner';
 import { Plus, Loader2, AlertCircle, RefreshCw, Key, Search, Users, UserCheck, UserX, Info, Sparkles } from 'lucide-react';
 import { DataTable } from '@/components/ui/data-table';
 import { columns } from './columns';
 import { getUsers, createUser, updateUser, deleteUser, resetUserPassword } from '@/lib/api/user';
+import { getRoles } from '@/lib/api/role';
 import { User } from '@/lib/types/user';
 import { CreateUserData, createUserSchema } from '@/lib/validations/user';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -44,12 +46,22 @@ export default function UsersPage() {
     queryFn: () => getUsers(page, 20),
   });
 
+  const { data: rolesData } = useQuery({
+    queryKey: ['roles-all'],
+    queryFn: getRoles,
+  });
+  const roles = rolesData?.data || [];
+
   const createMutation = useMutation({
     mutationFn: createUser,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['users'] });
       setIsCreateDialogOpen(false);
       createForm.reset();
+      toast.success('User created successfully');
+    },
+    onError: (error: any) => {
+      toast.error(error.response?.data?.message || 'Failed to create user');
     },
   });
 
@@ -59,6 +71,10 @@ export default function UsersPage() {
       queryClient.invalidateQueries({ queryKey: ['users'] });
       setIsEditDialogOpen(false);
       setSelectedUser(null);
+      toast.success('User updated successfully');
+    },
+    onError: (error: any) => {
+      toast.error(error.response?.data?.message || 'Failed to update user');
     },
   });
 
@@ -66,6 +82,10 @@ export default function UsersPage() {
     mutationFn: deleteUser,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['users'] });
+      toast.success('User deleted successfully');
+    },
+    onError: (error: any) => {
+      toast.error(error.response?.data?.message || 'Failed to delete user');
     },
   });
 
@@ -75,6 +95,10 @@ export default function UsersPage() {
       queryClient.invalidateQueries({ queryKey: ['users'] });
       setIsPasswordDialogOpen(false);
       setSelectedUser(null);
+      toast.success('Password reset successfully');
+    },
+    onError: (error: any) => {
+      toast.error(error.response?.data?.message || 'Failed to reset password');
     },
   });
 
@@ -92,12 +116,24 @@ export default function UsersPage() {
   });
 
   const handleCreateSubmit = (data: CreateUserData) => {
-    createMutation.mutate(data);
+    const { firstName, lastName, ...rest } = data;
+    const employeeCode = 'EMP-' + Math.floor(100000 + Math.random() * 900000);
+    const apiData = {
+      ...rest,
+      fullName: `${firstName} ${lastName}`.trim(),
+      employeeCode,
+    };
+    createMutation.mutate(apiData as any);
   };
 
   const handleEditSubmit = (data: any) => {
     if (selectedUser) {
-      updateMutation.mutate({ id: selectedUser.id, data });
+      const { firstName, lastName, email, password, ...rest } = data;
+      const apiData = {
+        ...rest,
+        fullName: `${firstName} ${lastName}`.trim(),
+      };
+      updateMutation.mutate({ id: selectedUser.id, data: apiData });
     }
   };
 
@@ -287,7 +323,7 @@ export default function UsersPage() {
       </div>
 
       {/* Data Table */}
-      <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
+      <div className="bg-white rounded-2xl border border-slate-100 shadow-sm">
         {filteredUsers.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-72 text-slate-400 p-6 space-y-2">
             <Users className="w-12 h-12 text-slate-300 stroke-[1.5]" />
@@ -398,10 +434,11 @@ export default function UsersPage() {
                     <SelectValue placeholder="Select role" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="1">Operator</SelectItem>
-                    <SelectItem value="2">Supervisor</SelectItem>
-                    <SelectItem value="3">Warehouse Manager</SelectItem>
-                    <SelectItem value="4">Company Admin</SelectItem>
+                    {roles.map((role) => (
+                      <SelectItem key={role.id} value={role.id}>
+                        {role.label}
+                      </SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
                 {createForm.formState.errors.roleId && (
@@ -473,7 +510,8 @@ export default function UsersPage() {
                   type="email"
                   {...createForm.register('email')}
                   placeholder="Email"
-                  className="h-10 rounded-xl"
+                  className="h-10 rounded-xl bg-slate-50 text-slate-400 cursor-not-allowed border-slate-150"
+                  disabled
                 />
               </div>
               <div className="grid gap-2">

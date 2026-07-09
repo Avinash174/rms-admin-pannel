@@ -2,10 +2,12 @@
 
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { toast } from 'sonner';
 import { Plus, Loader2, AlertCircle, RefreshCw, X, Building, MapPin, Phone, CheckCircle2, Info, Search } from 'lucide-react';
 import { DataTable } from '@/components/ui/data-table';
 import { columns } from './columns';
 import { getWarehouses, createWarehouse, updateWarehouse, deleteWarehouse } from '@/lib/api/warehouse';
+import { getSites } from '@/lib/api/site';
 import { Warehouse } from '@/lib/types/warehouse';
 import { CreateWarehouseData, createWarehouseSchema } from '@/lib/validations/warehouse';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -33,12 +35,22 @@ export default function WarehousesPage() {
     queryFn: () => getWarehouses(page, 20),
   });
 
+  const { data: sitesData } = useQuery({
+    queryKey: ['sites-all'],
+    queryFn: () => getSites(1, 100),
+  });
+  const sites = sitesData?.data || [];
+
   const createMutation = useMutation({
     mutationFn: createWarehouse,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['warehouses'] });
       setIsFormDrawerOpen(false);
       form.reset();
+      toast.success('Warehouse created successfully');
+    },
+    onError: (error: any) => {
+      toast.error(error.response?.data?.message || 'Failed to create warehouse');
     },
   });
 
@@ -49,6 +61,10 @@ export default function WarehousesPage() {
       setIsFormDrawerOpen(false);
       setSelectedWarehouse(null);
       form.reset();
+      toast.success('Warehouse updated successfully');
+    },
+    onError: (error: any) => {
+      toast.error(error.response?.data?.message || 'Failed to update warehouse');
     },
   });
 
@@ -56,6 +72,10 @@ export default function WarehousesPage() {
     mutationFn: deleteWarehouse,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['warehouses'] });
+      toast.success('Warehouse deleted successfully');
+    },
+    onError: (error: any) => {
+      toast.error(error.response?.data?.message || 'Failed to delete warehouse');
     },
   });
 
@@ -68,7 +88,7 @@ export default function WarehousesPage() {
       city: '',
       state: '',
       country: '',
-      zipCode: '',
+      zipCode: undefined,
       phone: '',
       siteId: '',
       isActive: true,
@@ -152,7 +172,7 @@ export default function WarehousesPage() {
               city: '',
               state: '',
               country: '',
-              zipCode: '',
+              zipCode: undefined,
               phone: '',
               siteId: '',
               isActive: true,
@@ -238,7 +258,7 @@ export default function WarehousesPage() {
       </div>
 
       {/* Table Container */}
-      <div className="bg-white rounded-[14px] border border-slate-200 shadow-sm overflow-hidden">
+      <div className="bg-white rounded-[14px] border border-slate-200 shadow-sm">
         {filteredWarehouses.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-80 text-slate-400 p-6 space-y-3">
             <div className="p-4 bg-slate-50 rounded-full">
@@ -263,7 +283,7 @@ export default function WarehousesPage() {
                 city: warehouse.city || '',
                 state: warehouse.state || '',
                 country: warehouse.country || '',
-                zipCode: warehouse.zipCode || '',
+                zipCode: warehouse.zipCode || undefined,
                 phone: warehouse.phone || '',
                 siteId: warehouse.siteId || '',
                 isActive: warehouse.isActive,
@@ -331,15 +351,21 @@ export default function WarehousesPage() {
                   </div>
                 </div>
 
-                {/* Site ID */}
+                {/* Site Selection */}
                 <div className="space-y-2">
-                  <Label htmlFor="siteId">Site Assignment ID</Label>
-                  <Input 
-                    id="siteId" 
-                    placeholder="Enter site ID..." 
-                    className="h-11 rounded-xl border-slate-200 focus:ring-blue-500/10 focus:border-blue-500" 
-                    {...form.register('siteId')} 
-                  />
+                  <Label htmlFor="siteId">Site *</Label>
+                  <select
+                    id="siteId"
+                    className="flex h-11 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/10 disabled:cursor-not-allowed disabled:opacity-50"
+                    {...form.register('siteId')}
+                  >
+                    <option value="">Select a site</option>
+                    {sites.map((site) => (
+                      <option key={site.id} value={site.id}>
+                        {site.name} ({site.code})
+                      </option>
+                    ))}
+                  </select>
                   {form.formState.errors.siteId && (
                     <p className="text-xs text-red-500">{form.formState.errors.siteId.message}</p>
                   )}
@@ -395,7 +421,7 @@ export default function WarehousesPage() {
                       id="zipCode" 
                       placeholder="10003" 
                       className="h-11 rounded-xl border-slate-200 focus:ring-blue-500/10 focus:border-blue-500" 
-                      {...form.register('zipCode')} 
+                      {...form.register('zipCode', { setValueAs: (v) => v === '' ? undefined : Number(v) })} 
                     />
                   </div>
                 </div>

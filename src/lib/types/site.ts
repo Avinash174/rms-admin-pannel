@@ -6,7 +6,6 @@ export interface Site {
   city?: string;
   state?: string;
   country?: string;
-  zipCode?: string;
   phone?: string;
   branchId: string;
   branchName?: string;
@@ -23,7 +22,6 @@ export interface CreateSiteRequest {
   city?: string;
   state?: string;
   country?: string;
-  zipCode?: string;
   phone?: string;
   branchId: string;
   isActive?: boolean;
@@ -36,7 +34,6 @@ export interface UpdateSiteRequest {
   city?: string;
   state?: string;
   country?: string;
-  zipCode?: string;
   phone?: string;
   branchId?: string;
   isActive?: boolean;

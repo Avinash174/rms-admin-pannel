@@ -8,7 +8,7 @@ export interface Transfer {
   boxName?: string;
   sourceLocation: string;
   destinationLocation: string;
-  status: 'PENDING' | 'IN_PROGRESS' | 'COMPLETED' | 'FAILED';
+  status: 'PENDING_ACCEPTANCE' | 'ACCEPTED' | 'COMPLETED' | 'REJECTED';
   reason?: string;
   assignedTo?: string;
   startedAt?: string;
@@ -17,17 +17,17 @@ export interface Transfer {
 }
 
 const statusStyles = {
-  PENDING: 'bg-yellow-50 text-yellow-700 border-yellow-200',
-  IN_PROGRESS: 'bg-blue-50 text-blue-700 border-blue-200',
+  PENDING_ACCEPTANCE: 'bg-yellow-50 text-yellow-700 border-yellow-200',
+  ACCEPTED: 'bg-blue-50 text-blue-700 border-blue-200',
   COMPLETED: 'bg-emerald-50 text-emerald-700 border-emerald-200',
-  FAILED: 'bg-rose-50 text-rose-700 border-rose-200',
+  REJECTED: 'bg-rose-50 text-rose-700 border-rose-200',
 };
 
 const statusIcons = {
-  PENDING: <Clock className="w-3.5 h-3.5" />,
-  IN_PROGRESS: <Package className="w-3.5 h-3.5" />,
+  PENDING_ACCEPTANCE: <Clock className="w-3.5 h-3.5" />,
+  ACCEPTED: <Package className="w-3.5 h-3.5" />,
   COMPLETED: <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" />,
-  FAILED: <XCircle className="w-3.5 h-3.5 text-rose-500" />,
+  REJECTED: <XCircle className="w-3.5 h-3.5 text-rose-500" />,
 };
 
 export const columns: ColumnDef<Transfer>[] = [
@@ -97,7 +97,7 @@ export const columns: ColumnDef<Transfer>[] = [
       const status = row.getValue('status') as string;
       return (
         <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-xl text-xs font-bold border ${
-          statusStyles[status as keyof typeof statusStyles] || statusStyles.PENDING
+          statusStyles[status as keyof typeof statusStyles] || statusStyles.PENDING_ACCEPTANCE
         }`}>
           {statusIcons[status as keyof typeof statusIcons]}
           {status.replace('_', ' ')}

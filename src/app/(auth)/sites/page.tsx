@@ -2,10 +2,12 @@
 
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { toast } from 'sonner';
 import { Plus, Loader2, AlertCircle, RefreshCw, X, Map, CheckCircle2, Info, Search } from 'lucide-react';
 import { DataTable } from '@/components/ui/data-table';
 import { columns } from './columns';
 import { getSites, createSite, updateSite, deleteSite } from '@/lib/api/site';
+import { getBranches } from '@/lib/api/branch';
 import { Site } from '@/lib/types/site';
 import { CreateSiteData, createSiteSchema } from '@/lib/validations/site';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -37,12 +39,22 @@ export default function SitesPage() {
     queryFn: () => getSites(page, 20),
   });
 
+  const { data: branchesData } = useQuery({
+    queryKey: ['branches-all'],
+    queryFn: () => getBranches(1, 100),
+  });
+  const branches = branchesData?.data || [];
+
   const createMutation = useMutation({
     mutationFn: createSite,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['sites'] });
       setIsFormDrawerOpen(false);
       form.reset();
+      toast.success('Site created successfully');
+    },
+    onError: (error: any) => {
+      toast.error(error.response?.data?.message || 'Failed to create site');
     },
   });
 
@@ -53,6 +65,10 @@ export default function SitesPage() {
       setIsFormDrawerOpen(false);
       setSelectedSite(null);
       form.reset();
+      toast.success('Site updated successfully');
+    },
+    onError: (error: any) => {
+      toast.error(error.response?.data?.message || 'Failed to update site');
     },
   });
 
@@ -64,6 +80,10 @@ export default function SitesPage() {
         setIsDetailsOpen(false);
         setSelectedSiteForDetail(null);
       }
+      toast.success('Site deleted successfully');
+    },
+    onError: (error: any) => {
+      toast.error(error.response?.data?.message || 'Failed to delete site');
     },
   });
 
@@ -76,7 +96,6 @@ export default function SitesPage() {
       city: '',
       state: '',
       country: '',
-      zipCode: '',
       phone: '',
       branchId: '',
       isActive: true,
@@ -160,7 +179,6 @@ export default function SitesPage() {
               city: '',
               state: '',
               country: '',
-              zipCode: '',
               phone: '',
               branchId: '',
               isActive: true,
@@ -246,7 +264,7 @@ export default function SitesPage() {
       </div>
 
       {/* Table Container */}
-      <div className="bg-white rounded-[14px] border border-slate-200 shadow-sm overflow-hidden">
+      <div className="bg-white rounded-[14px] border border-slate-200 shadow-sm">
         {filteredSites.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-80 text-slate-400 p-6 space-y-3">
             <div className="p-4 bg-slate-50 rounded-full">
@@ -274,7 +292,6 @@ export default function SitesPage() {
                   city: site.city || '',
                   state: site.state || '',
                   country: site.country || '',
-                  zipCode: site.zipCode || '',
                   phone: site.phone || '',
                   branchId: site.branchId || '',
                   isActive: site.isActive,
@@ -327,8 +344,19 @@ export default function SitesPage() {
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="branchId">Branch ID</Label>
-                  <Input id="branchId" placeholder="Enter branch ID..." className="h-11 rounded-xl border-slate-200" {...form.register('branchId')} />
+                  <Label htmlFor="branchId">Branch Assignment</Label>
+                  <select
+                    id="branchId"
+                    className="flex h-11 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/10 disabled:cursor-not-allowed disabled:opacity-50"
+                    {...form.register('branchId')}
+                  >
+                    <option value="">Select a Branch...</option>
+                    {branches.map((branch) => (
+                      <option key={branch.id} value={branch.id}>
+                        {branch.name} ({branch.code})
+                      </option>
+                    ))}
+                  </select>
                   {form.formState.errors.branchId && <p className="text-xs text-red-500">{form.formState.errors.branchId.message}</p>}
                 </div>
 
@@ -348,14 +376,10 @@ export default function SitesPage() {
                   </div>
                 </div>
 
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 gap-4">
                   <div className="space-y-2">
                     <Label htmlFor="country">Country</Label>
                     <Input id="country" placeholder="USA" className="h-11 rounded-xl border-slate-200" {...form.register('country')} />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="zipCode">Zip Code</Label>
-                    <Input id="zipCode" placeholder="60601" className="h-11 rounded-xl border-slate-200" {...form.register('zipCode')} />
                   </div>
                 </div>
 
@@ -439,8 +463,8 @@ export default function SitesPage() {
                       <span className="text-xs font-semibold text-slate-700">{[selectedSiteForDetail.city, selectedSiteForDetail.state].filter(Boolean).join(', ') || '-'}</span>
                     </div>
                     <div className="flex justify-between items-center px-4 py-3">
-                      <span className="text-xs font-semibold text-slate-500">Zip / Country</span>
-                      <span className="text-xs font-semibold text-slate-700">{[selectedSiteForDetail.zipCode, selectedSiteForDetail.country].filter(Boolean).join(', ') || '-'}</span>
+                      <span className="text-xs font-semibold text-slate-500">Country</span>
+                      <span className="text-xs font-semibold text-slate-700">{selectedSiteForDetail.country || '-'}</span>
                     </div>
                     <div className="flex justify-between items-center px-4 py-3">
                       <span className="text-xs font-semibold text-slate-500">Phone Contact</span>

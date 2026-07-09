@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { toast } from 'sonner';
 import { Plus, Loader2, AlertCircle, RefreshCw, X, MapPin, CheckCircle2, Info, Search } from 'lucide-react';
 import { DataTable } from '@/components/ui/data-table';
 import { columns } from './columns';
@@ -44,6 +45,10 @@ export default function LocationsPage() {
       queryClient.invalidateQueries({ queryKey: ['locations'] });
       setIsFormDrawerOpen(false);
       form.reset();
+      toast.success('Location created successfully');
+    },
+    onError: (error: any) => {
+      toast.error(error.response?.data?.message || 'Failed to create location');
     },
   });
 
@@ -54,6 +59,10 @@ export default function LocationsPage() {
       setIsFormDrawerOpen(false);
       setSelectedLocation(null);
       form.reset();
+      toast.success('Location updated successfully');
+    },
+    onError: (error: any) => {
+      toast.error(error.response?.data?.message || 'Failed to update location');
     },
   });
 
@@ -65,6 +74,10 @@ export default function LocationsPage() {
         setIsDetailsOpen(false);
         setSelectedLocationForDetail(null);
       }
+      toast.success('Location deleted successfully');
+    },
+    onError: (error: any) => {
+      toast.error(error.response?.data?.message || 'Failed to delete location');
     },
   });
 
@@ -235,7 +248,7 @@ export default function LocationsPage() {
       </div>
 
       {/* Table Container */}
-      <div className="bg-white rounded-[14px] border border-slate-200 shadow-sm overflow-hidden">
+      <div className="bg-white rounded-[14px] border border-slate-200 shadow-sm">
         {filteredLocations.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-80 text-slate-400 p-6 space-y-3">
             <div className="p-4 bg-slate-50 rounded-full">

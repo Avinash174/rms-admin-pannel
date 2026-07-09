@@ -1,15 +1,7 @@
 import { ColumnDef } from '@tanstack/react-table';
 import { Box as BoxType } from '@/lib/types/box';
-import { MoreHorizontal, Pencil, Trash2, Calendar, Archive, FileText, MapPin } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
+import { Calendar, Archive, FileText, MapPin } from 'lucide-react';
+import { ActionDropdown } from '@/components/ui/action-dropdown';
 
 function getAvatarGradient(name: string) {
   let hash = 0;
@@ -42,8 +34,8 @@ export const columns: ColumnDef<BoxType>[] = [
     cell: ({ row, table }) => {
       const box = row.original;
       const barcode = box.barcode || 'Unknown Barcode';
-      const initials = getInitials(box.name || barcode);
-      const style = getAvatarGradient(box.name || barcode);
+      const initials = getInitials(box.description || barcode);
+      const style = getAvatarGradient(box.description || barcode);
       const meta = table.options.meta as any;
 
       return (
@@ -66,7 +58,7 @@ export const columns: ColumnDef<BoxType>[] = [
               {barcode}
             </span>
             <span className="text-[11px] text-slate-400 font-semibold mt-0.5">
-              {box.name || 'Unnamed Box'}
+              {box.description || 'No Description'}
             </span>
           </div>
         </div>
@@ -116,18 +108,20 @@ export const columns: ColumnDef<BoxType>[] = [
     ),
   },
   {
-    accessorKey: 'isActive',
+    accessorKey: 'status',
     header: () => <span className="text-xs font-bold tracking-wider text-slate-500 uppercase">Status</span>,
     cell: ({ row, table }) => {
       const box = row.original;
       const meta = table.options.meta as any;
-      const isActive = row.getValue('isActive') as boolean;
+      const status = row.getValue('status') as string;
+      const isActive = status === 'IN_WAREHOUSE';
 
       return (
         <button
           onClick={(e) => {
             e.stopPropagation();
-            meta?.onEdit?.({ ...box, isActive: !isActive }, true);
+            const nextStatus = isActive ? 'CHECKED_OUT' : 'IN_WAREHOUSE';
+            meta?.onEdit?.({ ...box, status: nextStatus }, true);
           }}
           className={`group flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs font-bold transition-all duration-300 border ${
             isActive
@@ -141,7 +135,7 @@ export const columns: ColumnDef<BoxType>[] = [
             )}
             <span className={`relative inline-flex rounded-full h-2 w-2 ${isActive ? 'bg-emerald-500' : 'bg-rose-500'}`} />
           </span>
-          {isActive ? 'Active' : 'Inactive'}
+          {isActive ? 'In Warehouse' : 'Checked Out'}
         </button>
       );
     },
@@ -167,38 +161,11 @@ export const columns: ColumnDef<BoxType>[] = [
       const meta = table.options.meta as any;
 
       return (
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="ghost" className="h-8 w-8 p-0 hover:bg-slate-100 rounded-xl transition-all" onClick={(e) => e.stopPropagation()}>
-              <span className="sr-only">Open menu</span>
-              <MoreHorizontal className="h-4.5 w-4.5 text-slate-500" />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            <DropdownMenuLabel>Settings</DropdownMenuLabel>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem
-              onClick={(e) => {
-                e.stopPropagation();
-                meta?.onEdit?.(box);
-              }}
-              className="flex items-center gap-2 px-2.5 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 rounded-lg cursor-pointer transition-colors"
-            >
-              <Pencil className="h-3.5 w-3.5 text-slate-400" />
-              Edit Details
-            </DropdownMenuItem>
-            <DropdownMenuItem
-              onClick={(e) => {
-                e.stopPropagation();
-                meta?.onDelete?.(box);
-              }}
-              className="flex items-center gap-2 px-2.5 py-2 text-xs font-semibold text-red-650 hover:bg-red-50 hover:text-red-700 rounded-lg cursor-pointer transition-colors"
-            >
-              <Trash2 className="h-3.5 w-3.5 text-red-500" />
-              Delete Box
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
+        <ActionDropdown
+          onEdit={() => meta?.onEdit?.(box)}
+          onDelete={() => meta?.onDelete?.(box)}
+          deleteLabel="Delete Box"
+        />
       );
     },
   },

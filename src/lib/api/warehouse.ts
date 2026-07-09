@@ -1,26 +1,5 @@
 import { Warehouse, WarehouseListResponse, CreateWarehouseRequest, UpdateWarehouseRequest } from '../types/warehouse';
-
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api/v1/admin';
-
-async function fetchWithAuth(endpoint: string, options?: RequestInit) {
-  const token = localStorage.getItem('access_token');
-  const headers = {
-    'Content-Type': 'application/json',
-    ...(token && { Authorization: `Bearer ${token}` }),
-    ...options?.headers,
-  };
-
-  const response = await fetch(`${API_BASE_URL}${endpoint}`, {
-    ...options,
-    headers,
-  });
-
-  if (!response.ok) {
-    throw new Error(`API error: ${response.status} ${response.statusText}`);
-  }
-
-  return response.json();
-}
+import { fetchWithAuth } from './auth';
 
 export async function getWarehouses(page: number = 1, pageSize: number = 20): Promise<WarehouseListResponse> {
   try {
@@ -37,8 +16,8 @@ export async function getWarehouses(page: number = 1, pageSize: number = 20): Pr
           city: 'New York',
           state: 'NY',
           country: 'USA',
-          zipCode: '10003',
-          phone: '+1 234-567-8902',
+          zipCode: 10003,
+          phone: '12345678902',
           siteId: '1',
           siteName: 'Downtown Site',
           companyId: '1',
@@ -54,7 +33,10 @@ export async function getWarehouses(page: number = 1, pageSize: number = 20): Pr
 
 export async function getWarehouse(id: string): Promise<Warehouse> {
   const response = await fetchWithAuth(`/warehouses/${id}`);
-  return response.data;
+  if (response.success && response.data) {
+    return response.data;
+  }
+  throw new Error('Failed to fetch warehouse');
 }
 
 export async function createWarehouse(data: CreateWarehouseRequest): Promise<Warehouse> {
@@ -62,7 +44,10 @@ export async function createWarehouse(data: CreateWarehouseRequest): Promise<War
     method: 'POST',
     body: JSON.stringify(data),
   });
-  return response.data;
+  if (response.success && response.data) {
+    return response.data;
+  }
+  throw new Error('Failed to create warehouse');
 }
 
 export async function updateWarehouse(id: string, data: UpdateWarehouseRequest): Promise<Warehouse> {
@@ -70,11 +55,17 @@ export async function updateWarehouse(id: string, data: UpdateWarehouseRequest):
     method: 'PUT',
     body: JSON.stringify(data),
   });
-  return response.data;
+  if (response.success && response.data) {
+    return response.data;
+  }
+  throw new Error('Failed to update warehouse');
 }
 
 export async function deleteWarehouse(id: string): Promise<void> {
-  await fetchWithAuth(`/warehouses/${id}`, {
+  const response = await fetchWithAuth(`/warehouses/${id}`, {
     method: 'DELETE',
   });
+  if (!response.success) {
+    throw new Error('Failed to delete warehouse');
+  }
 }

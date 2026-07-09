@@ -10,47 +10,7 @@ import { DataTable } from '@/components/ui/data-table';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { columns, Refile } from './columns';
-
-const mockData: Refile[] = [
-  {
-    id: '1',
-    refileCode: 'REF-2024-001',
-    fileRecordBarcode: 'FILE-001',
-    fileRecordTitle: 'Q1 Financial Report',
-    sourceBoxBarcode: 'BOX-001',
-    destinationBoxBarcode: 'BOX-002',
-    status: 'COMPLETED',
-    reason: 'Reorganization',
-    assignedTo: 'John Doe',
-    startedAt: '2024-01-15T09:00:00Z',
-    completedAt: '2024-01-15T09:10:00Z',
-    createdAt: '2024-01-15T08:55:00Z',
-  },
-  {
-    id: '2',
-    refileCode: 'REF-2024-002',
-    fileRecordBarcode: 'FILE-003',
-    fileRecordTitle: 'Q2 Budget',
-    sourceBoxBarcode: 'BOX-001',
-    destinationBoxBarcode: 'BOX-003',
-    status: 'IN_PROGRESS',
-    reason: 'Client request',
-    assignedTo: 'Jane Smith',
-    startedAt: '2024-01-15T10:00:00Z',
-    createdAt: '2024-01-15T09:50:00Z',
-  },
-  {
-    id: '3',
-    refileCode: 'REF-2024-003',
-    fileRecordBarcode: 'FILE-007',
-    fileRecordTitle: 'Legal Agreement 2022',
-    sourceBoxBarcode: 'BOX-005',
-    destinationBoxBarcode: 'BOX-006',
-    status: 'PENDING',
-    reason: 'Compliance requirement',
-    createdAt: '2024-01-15T11:00:00Z',
-  },
-];
+import { listRefileScans } from '@/lib/api/refile';
 
 export default function RefilePage() {
   const [page, setPage] = useState(1);
@@ -62,10 +22,7 @@ export default function RefilePage() {
 
   const { data, isLoading, error, refetch } = useQuery({
     queryKey: ['refiles', page],
-    queryFn: async () => {
-      await new Promise(resolve => setTimeout(resolve, 300));
-      return { data: mockData, meta: { page, pageSize: 20, total: mockData.length, totalPages: 1 } };
-    },
+    queryFn: () => listRefileScans(page, 20),
   });
 
   if (isLoading) {
@@ -94,10 +51,26 @@ export default function RefilePage() {
     );
   }
 
-  const items = data?.data || [];
+  const scans = data?.data || [];
   const meta = data?.meta;
 
-  const filtered = items.filter((item) => {
+  // Map scans to the expected Refile format
+  const items = scans.map((scan: any) => ({
+    id: scan.id,
+    refileCode: `REF-${scan.id.substring(0, 8).toUpperCase()}`,
+    fileRecordBarcode: scan.fileRecord?.barcode || 'N/A',
+    fileRecordTitle: scan.fileRecord?.title || 'Unknown',
+    sourceBoxBarcode: scan.expectedBox?.barcode || 'N/A',
+    destinationBoxBarcode: scan.scannedLocation?.barcode || 'N/A',
+    status: scan.action === 'REFILE_SUCCESS' ? 'COMPLETED' : 'REJECTED',
+    reason: scan.action === 'REFILE_SUCCESS' ? 'Successful refile' : 'Wrong box or location',
+    assignedTo: 'Unknown',
+    startedAt: scan.scannedAt,
+    completedAt: scan.scannedAt,
+    createdAt: scan.scannedAt,
+  }));
+
+  const filtered = items.filter((item: any) => {
     const matchesSearch = item.refileCode.toLowerCase().includes(searchTerm.toLowerCase()) ||
       item.fileRecordTitle.toLowerCase().includes(searchTerm.toLowerCase()) ||
       item.fileRecordBarcode.toLowerCase().includes(searchTerm.toLowerCase());
@@ -106,8 +79,8 @@ export default function RefilePage() {
   });
 
   const total = items.length;
-  const completed = items.filter(i => i.status === 'COMPLETED').length;
-  const active = items.filter(i => i.status === 'IN_PROGRESS' || i.status === 'PENDING').length;
+  const completed = items.filter((i: any) => i.status === 'COMPLETED').length;
+  const active = items.filter((i: any) => i.status === 'IN_PROGRESS' || i.status === 'PENDING').length;
 
   return (
     <div className="w-full space-y-8 px-4 sm:px-6 lg:px-8 pb-16">
@@ -210,7 +183,7 @@ export default function RefilePage() {
       </div>
 
       {/* Data Table */}
-      <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
+      <div className="bg-white rounded-2xl border border-slate-100 shadow-sm">
         {filtered.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-80 text-slate-400 p-6 space-y-3">
             <div className="p-4 bg-slate-50 rounded-full">

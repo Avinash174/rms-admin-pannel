@@ -10,6 +10,7 @@ import { DataTable } from '@/components/ui/data-table';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { columns, Transfer } from './columns';
+import { listTransfers } from '@/lib/api/custodyMove';
 
 const mockData: Transfer[] = [
   {
@@ -33,7 +34,7 @@ const mockData: Transfer[] = [
     boxName: 'Finance Records 2023',
     sourceLocation: 'LOC-004',
     destinationLocation: 'LOC-007',
-    status: 'IN_PROGRESS',
+    status: 'ACCEPTED',
     reason: 'Client request',
     assignedTo: 'Jane Smith',
     startedAt: '2024-01-15T11:00:00Z',
@@ -46,7 +47,7 @@ const mockData: Transfer[] = [
     boxName: 'Legal Archive 2021',
     sourceLocation: 'LOC-008',
     destinationLocation: 'LOC-013',
-    status: 'PENDING',
+    status: 'PENDING_ACCEPTANCE',
     reason: 'Site consolidation',
     createdAt: '2024-01-15T12:00:00Z',
   },
@@ -62,10 +63,7 @@ export default function TransferPage() {
 
   const { data, isLoading, error, refetch } = useQuery({
     queryKey: ['transfers', page],
-    queryFn: async () => {
-      await new Promise(resolve => setTimeout(resolve, 300));
-      return { data: mockData, meta: { page, pageSize: 20, total: mockData.length, totalPages: 1 } };
-    },
+    queryFn: () => listTransfers(page, 20),
   });
 
   if (isLoading) {
@@ -94,10 +92,26 @@ export default function TransferPage() {
     );
   }
 
-  const items = data?.data || [];
+  const transfers = data?.data || [];
   const meta = data?.meta;
 
-  const filtered = items.filter((item) => {
+  // Map transfers to the expected Transfer format
+  const items = transfers.map((transfer: any) => ({
+    id: transfer.id,
+    transferCode: `XFER-${transfer.id.substring(0, 8).toUpperCase()}`,
+    boxBarcode: transfer.box?.barcode || 'N/A',
+    boxName: transfer.box?.description || 'Unknown',
+    sourceLocation: transfer.fromWarehouse?.name || 'N/A',
+    destinationLocation: transfer.toWarehouse?.name || 'N/A',
+    status: transfer.status,
+    reason: null,
+    assignedTo: transfer.initiatedBy?.fullName || 'Unknown',
+    startedAt: transfer.createdAt,
+    completedAt: transfer.resolvedAt || undefined,
+    createdAt: transfer.createdAt,
+  }));
+
+  const filtered = items.filter((item: any) => {
     const matchesSearch = item.transferCode.toLowerCase().includes(searchTerm.toLowerCase()) ||
       (item.boxName && item.boxName.toLowerCase().includes(searchTerm.toLowerCase())) ||
       item.boxBarcode.toLowerCase().includes(searchTerm.toLowerCase());
@@ -106,8 +120,8 @@ export default function TransferPage() {
   });
 
   const total = items.length;
-  const completed = items.filter(i => i.status === 'COMPLETED').length;
-  const active = items.filter(i => i.status === 'IN_PROGRESS' || i.status === 'PENDING').length;
+  const completed = items.filter((i: any) => i.status === 'COMPLETED').length;
+  const active = items.filter((i: any) => i.status === 'ACCEPTED' || i.status === 'PENDING_ACCEPTANCE').length;
 
   return (
     <div className="w-full space-y-8 px-4 sm:px-6 lg:px-8 pb-16">
@@ -194,7 +208,7 @@ export default function TransferPage() {
 
         {/* Status Filter Pill Tabs */}
         <div className="flex bg-slate-100 p-1.5 rounded-xl w-full md:w-auto">
-          {(['ALL', 'PENDING', 'IN_PROGRESS', 'COMPLETED', 'FAILED'] as const).map((status) => (
+          {(['ALL', 'PENDING_ACCEPTANCE', 'ACCEPTED', 'COMPLETED', 'REJECTED'] as const).map((status) => (
             <button
               key={status}
               onClick={() => setStatusFilter(status)}
@@ -204,14 +218,14 @@ export default function TransferPage() {
                   : 'text-slate-500 hover:text-slate-800'
               }`}
             >
-              {status === 'ALL' ? 'All' : status === 'IN_PROGRESS' ? 'In Progress' : status.charAt(0) + status.slice(1).toLowerCase()}
+              {status === 'ALL' ? 'All' : status === 'PENDING_ACCEPTANCE' ? 'Pending' : status === 'ACCEPTED' ? 'Accepted' : status.charAt(0) + status.slice(1).toLowerCase()}
             </button>
           ))}
         </div>
       </div>
 
       {/* Data Table */}
-      <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
+      <div className="bg-white rounded-2xl border border-slate-100 shadow-sm">
         {filtered.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-80 text-slate-400 p-6 space-y-3">
             <div className="p-4 bg-slate-50 rounded-full">
@@ -256,8 +270,8 @@ export default function TransferPage() {
                 <div className="flex flex-col items-center text-center p-6 bg-gradient-to-b from-sky-50/30 to-cyan-50/10 rounded-2xl border border-slate-100">
                   <div className={`w-14 h-14 rounded-2xl flex items-center justify-center shadow-md mb-3 text-white ${
                     selectedItem.status === 'COMPLETED' ? 'bg-emerald-600' :
-                    selectedItem.status === 'IN_PROGRESS' ? 'bg-sky-600' :
-                    selectedItem.status === 'FAILED' ? 'bg-rose-600' : 'bg-amber-500'
+                    selectedItem.status === 'ACCEPTED' ? 'bg-sky-600' :
+                    selectedItem.status === 'REJECTED' ? 'bg-rose-600' : 'bg-amber-500'
                   }`}>
                     {selectedItem.status === 'COMPLETED' ? <CheckCircle className="w-6 h-6" /> : <Truck className="w-6 h-6" />}
                   </div>
@@ -266,8 +280,8 @@ export default function TransferPage() {
                   <span className="font-mono text-[10px] text-slate-400 mt-0.5">{selectedItem.boxBarcode}</span>
                   <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-xl text-xs font-bold border mt-3 ${
                     selectedItem.status === 'COMPLETED' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' :
-                    selectedItem.status === 'IN_PROGRESS' ? 'bg-blue-50 text-blue-700 border-blue-200' :
-                    selectedItem.status === 'FAILED' ? 'bg-rose-50 text-rose-700 border-rose-200' :
+                    selectedItem.status === 'ACCEPTED' ? 'bg-blue-50 text-blue-700 border-blue-200' :
+                    selectedItem.status === 'REJECTED' ? 'bg-rose-50 text-rose-700 border-rose-200' :
                     'bg-yellow-50 text-yellow-700 border-yellow-200'
                   }`}>
                     {selectedItem.status.replace('_', ' ')}

@@ -1,42 +1,35 @@
 export interface Box {
   id: string;
   barcode: string;
-  name?: string;
+  status: string;
   description?: string;
-  year?: number;
-  locationId: string;
+  currentLocationId?: string;
   locationName?: string;
   clientId: string;
   clientName?: string;
   departmentId?: string;
   departmentName?: string;
   companyId: string;
-  fileCount: number;
-  isActive: boolean;
+  fileCount?: number;
   createdAt: string;
   updatedAt: string;
 }
 
 export interface CreateBoxRequest {
   barcode: string;
-  name?: string;
   description?: string;
-  year?: number;
-  locationId: string;
   clientId: string;
   departmentId?: string;
-  isActive?: boolean;
+  currentLocationId?: string;
 }
 
 export interface UpdateBoxRequest {
   barcode?: string;
-  name?: string;
   description?: string;
-  year?: number;
-  locationId?: string;
   clientId?: string;
   departmentId?: string;
-  isActive?: boolean;
+  currentLocationId?: string;
+  status?: string;
 }
 
 export interface BoxListResponse {

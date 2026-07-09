@@ -1,15 +1,6 @@
 import { ColumnDef } from '@tanstack/react-table';
 import { Warehouse } from '@/lib/types/warehouse';
-import { MoreHorizontal, Pencil, Trash2 } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
+import { ActionDropdown } from '@/components/ui/action-dropdown';
 
 export const columns: ColumnDef<Warehouse>[] = [
   {
@@ -62,30 +53,16 @@ export const columns: ColumnDef<Warehouse>[] = [
   },
   {
     id: 'actions',
-    header: 'Actions',
-    cell: ({ row }) => {
+    header: () => <span className="text-xs font-bold tracking-wider text-slate-500 uppercase">Actions</span>,
+    cell: ({ row, table }) => {
       const warehouse = row.original;
+      const meta = table.options.meta as any;
       return (
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="ghost" className="h-8 w-8 p-0">
-              <span className="sr-only">Open menu</span>
-              <MoreHorizontal className="h-4 w-4" />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            <DropdownMenuLabel>Actions</DropdownMenuLabel>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem>
-              <Pencil className="mr-2 h-4 w-4" />
-              Edit
-            </DropdownMenuItem>
-            <DropdownMenuItem className="text-red-600">
-              <Trash2 className="mr-2 h-4 w-4" />
-              Delete
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
+        <ActionDropdown
+          onEdit={() => meta?.onEdit?.(warehouse)}
+          onDelete={() => meta?.onDelete?.(warehouse)}
+          deleteLabel="Delete Warehouse"
+        />
       );
     },
   },

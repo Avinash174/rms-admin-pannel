@@ -6,6 +6,7 @@ import { Plus, Loader2, AlertCircle, RefreshCw, X, User, CheckCircle2, Info, Sea
 import { DataTable } from '@/components/ui/data-table';
 import { columns } from './columns';
 import { getDepartments, createDepartment, updateDepartment, deleteDepartment } from '@/lib/api/department';
+import { getClients } from '@/lib/api/client';
 import { Department } from '@/lib/types/department';
 import { CreateDepartmentData, createDepartmentSchema } from '@/lib/validations/department';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -17,8 +18,15 @@ import { Switch } from '@/components/ui/switch';
 
 export default function DepartmentsPage() {
   const [page, setPage] = useState(1);
-  const [clientId] = useState('1'); // In real app, this would come from URL or context
-  
+  const [selectedClientId, setSelectedClientId] = useState<string>('');
+
+  const { data: clientsData } = useQuery({
+    queryKey: ['clients-all'],
+    queryFn: () => getClients(1, 100),
+  });
+  const clients = clientsData?.data || [];
+  const effectiveClientId = selectedClientId || (clients.length > 0 ? clients[0].id : '');
+
   // Drawer states
   const [isFormDrawerOpen, setIsFormDrawerOpen] = useState(false);
   const [formMode, setFormMode] = useState<'CREATE' | 'EDIT'>('CREATE');
@@ -34,12 +42,13 @@ export default function DepartmentsPage() {
   const queryClient = useQueryClient();
 
   const { data, isLoading, error, refetch } = useQuery({
-    queryKey: ['departments', clientId, page],
-    queryFn: () => getDepartments(clientId, page, 20),
+    queryKey: ['departments', effectiveClientId, page],
+    queryFn: () => getDepartments(effectiveClientId, page, 20),
+    enabled: !!effectiveClientId,
   });
 
   const createMutation = useMutation({
-    mutationFn: (data: CreateDepartmentData) => createDepartment(clientId, data),
+    mutationFn: (data: CreateDepartmentData) => createDepartment(effectiveClientId, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['departments'] });
       setIsFormDrawerOpen(false);
@@ -74,7 +83,7 @@ export default function DepartmentsPage() {
       name: '',
       code: '',
       description: '',
-      clientId: clientId,
+      clientId: effectiveClientId,
       isActive: true,
     },
   });
@@ -153,7 +162,7 @@ export default function DepartmentsPage() {
               name: '',
               code: '',
               description: '',
-              clientId: clientId,
+              clientId: effectiveClientId,
               isActive: true,
             });
             setIsFormDrawerOpen(true);
@@ -224,10 +233,26 @@ export default function DepartmentsPage() {
       </div>
 
       {/* Toolbar */}
-      <div className="flex flex-col md:flex-row gap-4 justify-between items-center bg-white p-4 rounded-2xl border border-slate-100 shadow-sm">
-        <div className="relative w-full md:w-80">
-          <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-          <Input value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} placeholder="Search by name or code..." className="pl-10 h-11 bg-slate-50 border-slate-200 focus:bg-white focus:ring-2 focus:ring-blue-500/10 focus:border-blue-500 transition-all rounded-xl text-sm" />
+      <div className="flex flex-col md:flex-row gap-4 justify-between items-center bg-white p-4 rounded-2xl border border-slate-100 shadow-sm w-full">
+        <div className="flex flex-col md:flex-row gap-4 w-full md:w-auto items-center">
+          <div className="relative w-full md:w-64">
+            <select
+              value={effectiveClientId}
+              onChange={(e) => setSelectedClientId(e.target.value)}
+              className="flex h-11 w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/10 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              <option value="" disabled>Select a client</option>
+              {clients.map((client) => (
+                <option key={client.id} value={client.id}>
+                  {client.name} ({client.code})
+                </option>
+              ))}
+            </select>
+          </div>
+          <div className="relative w-full md:w-80">
+            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+            <Input value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} placeholder="Search by name or code..." className="pl-10 h-11 bg-slate-50 border-slate-200 focus:bg-white focus:ring-2 focus:ring-blue-500/10 focus:border-blue-500 transition-all rounded-xl text-sm" />
+          </div>
         </div>
         <div className="flex bg-slate-100 p-1.5 rounded-xl w-full md:w-auto">
           {(['ALL', 'ACTIVE', 'INACTIVE'] as const).map((status) => (

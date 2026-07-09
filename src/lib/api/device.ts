@@ -1,30 +1,25 @@
 import { Device, DeviceListResponse, CreateDeviceRequest, UpdateDeviceRequest } from '../types/device';
+import { fetchWithAuth } from './auth';
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api/v1/admin';
-
-async function fetchWithAuth(endpoint: string, options?: RequestInit) {
-  const token = localStorage.getItem('access_token');
-  const headers = {
-    'Content-Type': 'application/json',
-    ...(token && { Authorization: `Bearer ${token}` }),
-    ...options?.headers,
+function mapDevice(d: any): Device {
+  if (!d) return d;
+  return {
+    ...d,
+    deviceId: d.serialNumber || 'N/A',
+    name: d.model ? `${d.model} (${d.serialNumber || 'N/A'})` : `Device ${d.serialNumber || 'N/A'}`,
+    type: 'SCANNER',
+    userName: d.assignedUser?.fullName || 'Unassigned',
+    userId: d.assignedUserId || '',
+    isActive: d.status === 'APPROVED',
   };
-
-  const response = await fetch(`${API_BASE_URL}${endpoint}`, {
-    ...options,
-    headers,
-  });
-
-  if (!response.ok) {
-    throw new Error(`API error: ${response.status} ${response.statusText}`);
-  }
-
-  return response.json();
 }
 
 export async function getDevices(page: number = 1, pageSize: number = 20): Promise<DeviceListResponse> {
   try {
     const response = await fetchWithAuth(`/devices?page=${page}&pageSize=${pageSize}`);
+    if (response && Array.isArray(response.data)) {
+      response.data = response.data.map(mapDevice);
+    }
     return response;
   } catch (error) {
     return {
@@ -54,23 +49,43 @@ export async function getDevices(page: number = 1, pageSize: number = 20): Promi
 
 export async function getDevice(id: string): Promise<Device> {
   const response = await fetchWithAuth(`/devices/${id}`);
-  return response.data;
+  return mapDevice(response.data);
 }
 
 export async function createDevice(data: CreateDeviceRequest): Promise<Device> {
+  const backendPayload = {
+    serialNumber: data.deviceId || data.serialNumber || '',
+    model: data.model || data.name || 'Unknown Model'
+  };
   const response = await fetchWithAuth('/devices', {
     method: 'POST',
-    body: JSON.stringify(data),
+    body: JSON.stringify(backendPayload),
   });
-  return response.data;
+  return mapDevice(response.data);
 }
 
 export async function updateDevice(id: string, data: UpdateDeviceRequest): Promise<Device> {
+  const backendPayload: any = {
+    serialNumber: data.serialNumber || (data as any).deviceId,
+    model: data.model,
+    status: (data as any).isActive !== undefined 
+      ? ((data as any).isActive ? 'APPROVED' : 'BLOCKED') 
+      : (data as any).status,
+    assignedUserId: (data as any).userId !== undefined 
+      ? ((data as any).userId === '' ? null : (data as any).userId)
+      : (data as any).assignedUserId
+  };
+  
+  // Clean undefined properties
+  Object.keys(backendPayload).forEach(key => {
+    if (backendPayload[key] === undefined) delete backendPayload[key];
+  });
+
   const response = await fetchWithAuth(`/devices/${id}`, {
     method: 'PUT',
-    body: JSON.stringify(data),
+    body: JSON.stringify(backendPayload),
   });
-  return response.data;
+  return mapDevice(response.data);
 }
 
 export async function deleteDevice(id: string): Promise<void> {

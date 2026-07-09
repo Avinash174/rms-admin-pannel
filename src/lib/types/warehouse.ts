@@ -6,9 +6,9 @@ export interface Warehouse {
   city?: string;
   state?: string;
   country?: string;
-  zipCode?: string;
+  zipCode?: number;
   phone?: string;
-  siteId: string;
+  siteId?: string;
   siteName?: string;
   companyId: string;
   isActive: boolean;
@@ -23,9 +23,9 @@ export interface CreateWarehouseRequest {
   city?: string;
   state?: string;
   country?: string;
-  zipCode?: string;
+  zipCode?: number;
   phone?: string;
-  siteId: string;
+  siteId?: string;
   isActive?: boolean;
 }
 
@@ -36,7 +36,7 @@ export interface UpdateWarehouseRequest {
   city?: string;
   state?: string;
   country?: string;
-  zipCode?: string;
+  zipCode?: number;
   phone?: string;
   siteId?: string;
   isActive?: boolean;

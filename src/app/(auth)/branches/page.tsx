@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { toast } from 'sonner';
 import { Plus, Loader2, AlertCircle, RefreshCw, X, MapPin, CheckCircle2, Info, Search } from 'lucide-react';
 import { DataTable } from '@/components/ui/data-table';
 import { columns } from './columns';
@@ -43,6 +44,10 @@ export default function BranchesPage() {
       queryClient.invalidateQueries({ queryKey: ['branches'] });
       setIsFormDrawerOpen(false);
       form.reset();
+      toast.success('Branch created successfully');
+    },
+    onError: (error: any) => {
+      toast.error(error.response?.data?.message || 'Failed to create branch');
     },
   });
 
@@ -53,6 +58,10 @@ export default function BranchesPage() {
       setIsFormDrawerOpen(false);
       setSelectedBranch(null);
       form.reset();
+      toast.success('Branch updated successfully');
+    },
+    onError: (error: any) => {
+      toast.error(error.response?.data?.message || 'Failed to update branch');
     },
   });
 
@@ -64,6 +73,10 @@ export default function BranchesPage() {
         setIsDetailsOpen(false);
         setSelectedBranchForDetail(null);
       }
+      toast.success('Branch deleted successfully');
+    },
+    onError: (error: any) => {
+      toast.error(error.response?.data?.message || 'Failed to delete branch');
     },
   });
 
@@ -76,7 +89,7 @@ export default function BranchesPage() {
       city: '',
       state: '',
       country: '',
-      zipCode: '',
+      zipCode: undefined,
       phone: '',
       isActive: true,
     },
@@ -159,7 +172,7 @@ export default function BranchesPage() {
               city: '',
               state: '',
               country: '',
-              zipCode: '',
+              zipCode: undefined,
               phone: '',
               isActive: true,
             });
@@ -244,7 +257,7 @@ export default function BranchesPage() {
       </div>
 
       {/* Table Container */}
-      <div className="bg-white rounded-[14px] border border-slate-200 shadow-sm overflow-hidden">
+      <div className="bg-white rounded-[14px] border border-slate-200 shadow-sm">
         {filteredBranches.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-80 text-slate-400 p-6 space-y-3">
             <div className="p-4 bg-slate-50 rounded-full">
@@ -272,7 +285,7 @@ export default function BranchesPage() {
                   city: branch.city || '',
                   state: branch.state || '',
                   country: branch.country || '',
-                  zipCode: branch.zipCode || '',
+                  zipCode: branch.zipCode || undefined,
                   phone: branch.phone || '',
                   isActive: branch.isActive,
                 });
@@ -346,7 +359,7 @@ export default function BranchesPage() {
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="zipCode">Zip Code</Label>
-                    <Input id="zipCode" placeholder="60601" className="h-11 rounded-xl border-slate-200" {...form.register('zipCode')} />
+                    <Input id="zipCode" placeholder="60601" className="h-11 rounded-xl border-slate-200" {...form.register('zipCode', { setValueAs: (v) => v === '' ? undefined : Number(v) })} />
                   </div>
                 </div>
 
