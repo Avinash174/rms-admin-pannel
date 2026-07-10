@@ -25,6 +25,10 @@ export default function WarehousesPage() {
   const [formMode, setFormMode] = useState<'CREATE' | 'EDIT'>('CREATE');
   const [selectedWarehouse, setSelectedWarehouse] = useState<Warehouse | null>(null);
 
+  // Details panel state
+  const [selectedWarehouseForDetail, setSelectedWarehouseForDetail] = useState<Warehouse | null>(null);
+  const [isDetailsOpen, setIsDetailsOpen] = useState(false);
+
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<'ALL' | 'ACTIVE' | 'INACTIVE'>('ALL');
   
@@ -291,6 +295,10 @@ export default function WarehousesPage() {
               setIsFormDrawerOpen(true);
             }}
             onDelete={handleDelete}
+            onCustomAction={(warehouse) => {
+              setSelectedWarehouseForDetail(warehouse);
+              setIsDetailsOpen(true);
+            }}
           />
         )}
       </div>
@@ -475,6 +483,124 @@ export default function WarehousesPage() {
               </div>
 
             </form>
+          </div>
+        </div>
+      </div>
+
+      {/* SLIDE-OVER DRAWER: Warehouse Details Panel */}
+      <div className={`fixed inset-0 z-50 overflow-hidden transition-opacity duration-300 ${isDetailsOpen ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'}`}>
+        <div className="absolute inset-0 bg-slate-900/40 backdrop-blur-xs transition-opacity duration-300" onClick={() => setIsDetailsOpen(false)} />
+        <div className="absolute inset-y-0 right-0 max-w-full flex pl-10">
+          <div className={`w-screen max-w-md bg-white shadow-2xl flex flex-col transform transition-transform duration-300 ease-in-out ${isDetailsOpen ? 'translate-x-0' : 'translate-x-full'}`}>
+            
+            {/* Drawer Header */}
+            <div className="px-6 py-5 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
+              <div className="flex items-center gap-2">
+                <Building className="w-5 h-5 text-blue-600" />
+                <h3 className="text-lg font-bold text-slate-900">Warehouse Insights</h3>
+              </div>
+              <Button 
+                onClick={() => setIsDetailsOpen(false)} 
+                variant="ghost" 
+                className="h-9 w-9 p-0 hover:bg-slate-100 rounded-full transition-colors"
+              >
+                <X className="w-5 h-5 text-slate-400" />
+              </Button>
+            </div>
+
+            {/* Drawer Content */}
+            {selectedWarehouseForDetail && (
+              <div className="flex-1 overflow-y-auto p-6 space-y-6">
+                
+                {/* Brand Showcase */}
+                <div className="flex flex-col items-center text-center p-6 bg-gradient-to-b from-blue-50/30 to-indigo-50/10 rounded-2xl border border-slate-100 shadow-xs">
+                  <div className="w-16 h-16 rounded-2xl bg-blue-600 text-white flex items-center justify-center text-xl font-black shadow-md border-4 border-white mb-3">
+                    {selectedWarehouseForDetail.name.slice(0, 2).toUpperCase()}
+                  </div>
+                  <h4 className="text-lg font-extrabold text-slate-900 leading-tight">{selectedWarehouseForDetail.name}</h4>
+                  <div className="flex items-center gap-1.5 mt-2">
+                    <span className="px-2.5 py-0.5 rounded-lg bg-slate-100 text-slate-600 text-xs font-bold uppercase tracking-wider font-mono border border-slate-200">
+                      {selectedWarehouseForDetail.code}
+                    </span>
+                    <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-bold ${
+                      selectedWarehouseForDetail.isActive 
+                        ? 'bg-emerald-50 text-emerald-700' 
+                        : 'bg-rose-50 text-rose-700'
+                    }`}>
+                      {selectedWarehouseForDetail.isActive ? 'Active' : 'Suspended'}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Information Details */}
+                <div className="space-y-4">
+                  <h5 className="text-[11px] font-bold text-slate-400 uppercase tracking-widest">General Information</h5>
+                  
+                  <div className="grid grid-cols-1 gap-3.5 bg-slate-50/50 p-4 rounded-xl border border-slate-100">
+                    <div className="flex justify-between items-center text-xs">
+                      <span className="text-slate-500 font-semibold">Warehouse ID</span>
+                      <span className="font-mono text-slate-800 font-bold select-all">{selectedWarehouseForDetail.id}</span>
+                    </div>
+                    
+                    <div className="flex justify-between items-center text-xs">
+                      <span className="text-slate-500 font-semibold">Associated Site</span>
+                      <span className="text-slate-800 font-bold">{selectedWarehouseForDetail.siteName || 'Unassigned'}</span>
+                    </div>
+
+                    <div className="flex justify-between items-center text-xs">
+                      <span className="text-slate-500 font-semibold">Contact Phone</span>
+                      <span className="text-slate-800 font-bold">{selectedWarehouseForDetail.phone || 'N/A'}</span>
+                    </div>
+
+                    <div className="flex justify-between items-center text-xs">
+                      <span className="text-slate-500 font-semibold">Created At</span>
+                      <span className="text-slate-800 font-bold">{new Date(selectedWarehouseForDetail.createdAt).toLocaleDateString()}</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Location Details */}
+                <div className="space-y-4">
+                  <h5 className="text-[11px] font-bold text-slate-400 uppercase tracking-widest">Location Address</h5>
+                  <div className="bg-slate-50/50 p-4 rounded-xl border border-slate-100 space-y-3.5 text-xs">
+                    <div className="flex justify-between items-start">
+                      <span className="text-slate-500 font-semibold">Street Address</span>
+                      <span className="text-slate-800 font-bold max-w-[200px] text-right">{selectedWarehouseForDetail.address || 'N/A'}</span>
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <span className="text-slate-500 font-semibold">City</span>
+                      <span className="text-slate-800 font-bold">{selectedWarehouseForDetail.city || 'N/A'}</span>
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <span className="text-slate-500 font-semibold">State/Region</span>
+                      <span className="text-slate-800 font-bold">{selectedWarehouseForDetail.state || 'N/A'}</span>
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <span className="text-slate-500 font-semibold">Country</span>
+                      <span className="text-slate-800 font-bold">{selectedWarehouseForDetail.country || 'N/A'}</span>
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <span className="text-slate-500 font-semibold">Zip Code</span>
+                      <span className="text-slate-800 font-bold">{selectedWarehouseForDetail.zipCode || 'N/A'}</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Storage Quick View Actions */}
+                <div className="pt-2">
+                  <Button 
+                    onClick={() => {
+                      setIsDetailsOpen(false);
+                      window.location.href = `/warehouses/${selectedWarehouseForDetail.id}/rooms`;
+                    }}
+                    className="w-full bg-slate-900 hover:bg-slate-850 text-white rounded-xl h-11 flex items-center justify-center font-semibold text-xs tracking-wider uppercase transition-colors"
+                  >
+                    Manage Spatial Rooms
+                  </Button>
+                </div>
+
+              </div>
+            )}
           </div>
         </div>
       </div>

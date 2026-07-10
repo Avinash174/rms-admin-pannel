@@ -76,24 +76,24 @@ export const columns: ColumnDef<User>[] = [
     cell: ({ row, table }) => {
       const user = row.original;
       const meta = table.options.meta as any;
-      const status = row.getValue('status') as 'ACTIVE' | 'INACTIVE' | 'SUSPENDED';
+      const status = row.getValue('status') as 'ACTIVE' | 'SUSPENDED' | 'INVITED';
 
       const statusConfigs = {
         ACTIVE: 'bg-emerald-50 text-emerald-700 border-emerald-200/60 hover:bg-emerald-100 dot-emerald-500',
-        INACTIVE: 'bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100 dot-slate-400',
         SUSPENDED: 'bg-rose-50 text-rose-700 border-rose-200/60 hover:bg-rose-100 dot-rose-500',
+        INVITED: 'bg-blue-50 text-blue-700 border-blue-200/60 hover:bg-blue-100 dot-blue-500',
       };
 
       const nextStatusMap = {
-        ACTIVE: 'INACTIVE' as const,
-        INACTIVE: 'ACTIVE' as const,
+        ACTIVE: 'SUSPENDED' as const,
         SUSPENDED: 'ACTIVE' as const,
+        INVITED: 'ACTIVE' as const,
       };
 
       const dotColors = {
         ACTIVE: 'bg-emerald-500',
-        INACTIVE: 'bg-slate-400',
         SUSPENDED: 'bg-rose-500',
+        INVITED: 'bg-blue-500',
       };
 
       return (
@@ -103,7 +103,7 @@ export const columns: ColumnDef<User>[] = [
             meta?.onEdit?.({ ...user, status: nextStatus }, true);
           }}
           className={`group flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold transition-all duration-300 border ${
-            statusConfigs[status] || statusConfigs.INACTIVE
+            statusConfigs[status] || statusConfigs.SUSPENDED
           }`}
         >
           <span className={`w-1.5 h-1.5 rounded-full transition-transform duration-300 group-hover:scale-125 ${dotColors[status] || 'bg-slate-400'}`} />

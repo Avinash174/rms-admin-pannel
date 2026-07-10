@@ -1,8 +1,6 @@
 import { ColumnDef } from '@tanstack/react-table';
 import { Company } from '@/lib/types/company';
-import { Building2, Calendar, Ban, CheckCircle2 } from 'lucide-react';
-import { ActionDropdown } from '@/components/ui/action-dropdown';
-import { DropdownMenuItem } from '@/components/ui/dropdown-menu';
+import { Building2, Calendar } from 'lucide-react';
 
 // Highly curated, vibrant gradient configurations based on initials
 function getAvatarGradient(name: string) {
@@ -117,43 +115,6 @@ export const columns: ColumnDef<Company>[] = [
           <Calendar className="w-3.5 h-3.5 text-slate-400" />
           {date.toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' })}
         </div>
-      );
-    },
-  },
-  {
-    id: 'actions',
-    header: () => <span className="text-xs font-bold tracking-wider text-slate-500 uppercase">Actions</span>,
-    cell: ({ row, table }) => {
-      const company = row.original;
-      const meta = table.options.meta as any;
-      const isActive = company.isActive;
-
-      return (
-        <ActionDropdown
-          onEdit={() => meta?.onEdit?.(company)}
-          onDelete={() => meta?.onDelete?.(company)}
-          deleteLabel="Delete Company"
-        >
-          <DropdownMenuItem
-            onClick={(e) => {
-              e.stopPropagation();
-              meta?.onEdit?.({ ...company, isActive: !isActive }, true);
-            }}
-            className="flex items-center gap-3 px-3 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50 hover:text-slate-900 rounded-lg cursor-pointer transition-colors"
-          >
-            {isActive ? (
-              <>
-                <Ban className="h-4 w-4 text-slate-400 stroke-[2]" />
-                Suspend Company
-              </>
-            ) : (
-              <>
-                <CheckCircle2 className="h-4 w-4 text-slate-400 stroke-[2]" />
-                Activate Company
-              </>
-            )}
-          </DropdownMenuItem>
-        </ActionDropdown>
       );
     },
   },

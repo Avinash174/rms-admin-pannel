@@ -34,7 +34,7 @@ import {
 export default function UsersPage() {
   const [page, setPage] = useState(1);
   const [searchTerm, setSearchTerm] = useState('');
-  const [statusFilter, setStatusFilter] = useState<'ALL' | 'ACTIVE' | 'INACTIVE' | 'SUSPENDED'>('ALL');
+  const [statusFilter, setStatusFilter] = useState<'ALL' | 'ACTIVE' | 'SUSPENDED' | 'INVITED'>('ALL');
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [isPasswordDialogOpen, setIsPasswordDialogOpen] = useState(false);
@@ -306,7 +306,7 @@ export default function UsersPage() {
 
         {/* Status Filter Tab-like buttons */}
         <div className="flex bg-slate-100 p-1 rounded-xl w-full md:w-auto">
-          {(['ALL', 'ACTIVE', 'INACTIVE', 'SUSPENDED'] as const).map((status) => (
+          {(['ALL', 'ACTIVE', 'SUSPENDED', 'INVITED'] as const).map((status) => (
             <button
               key={status}
               onClick={() => setStatusFilter(status)}
@@ -531,8 +531,8 @@ export default function UsersPage() {
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="ACTIVE">Active</SelectItem>
-                    <SelectItem value="INACTIVE">Inactive</SelectItem>
                     <SelectItem value="SUSPENDED">Suspended</SelectItem>
+                    <SelectItem value="INVITED">Invited</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
