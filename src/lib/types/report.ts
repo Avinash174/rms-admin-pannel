@@ -18,6 +18,8 @@ export interface ReportJob {
 
 export interface GenerateReportRequest {
   type: ReportType;
+  name?: string;
+  description?: string;
 }
 
 export interface JobStatus {

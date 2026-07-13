@@ -56,3 +56,12 @@ export async function getLocationByBarcode(barcode: string): Promise<Location> {
   const response = await fetchWithAuth(`/locations/barcode/${barcode}`);
   return response.data;
 }
+
+export async function getAllLocations(): Promise<{ data: Location[] }> {
+  try {
+    const response = await fetchWithAuth('/locations');
+    return response;
+  } catch (error) {
+    return { data: [] };
+  }
+}

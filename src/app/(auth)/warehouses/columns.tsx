@@ -75,12 +75,13 @@ export const columns: ColumnDef<Warehouse>[] = [
     ),
   },
   {
-    accessorKey: 'siteName',
+    id: 'siteName',
+    accessorFn: (row) => row.site?.name,
     header: () => <span className="text-xs font-bold tracking-wider text-slate-500 uppercase">Site Assignment</span>,
     cell: ({ row }) => (
       <div className="flex items-center gap-1.5 text-xs text-slate-700 font-semibold">
         <MapPin className="w-3.5 h-3.5 text-slate-400" />
-        {row.getValue('siteName') || 'Unassigned'}
+        {row.original.site?.name || 'Unassigned'}
       </div>
     ),
   },

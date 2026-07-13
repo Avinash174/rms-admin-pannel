@@ -84,10 +84,22 @@ export default function AuditLogsPage() {
   const meta = data?.meta;
 
   const filteredLogs = logs.filter((log) => {
-    const matchesSearch = (log.userName?.toLowerCase().includes(searchTerm.toLowerCase()) || false) ||
+    const matchesSearch = !searchTerm ||
+      (log.userName?.toLowerCase().includes(searchTerm.toLowerCase()) || false) ||
       (log.entity?.toLowerCase().includes(searchTerm.toLowerCase()) || false) ||
       (log.entityId?.toLowerCase().includes(searchTerm.toLowerCase()) || false);
-    const matchesAction = actionFilter === 'ALL' || log.action === actionFilter;
+    let matchesAction = actionFilter === 'ALL';
+    if (!matchesAction) {
+      if (actionFilter === 'CREATE') {
+        matchesAction = log.action.endsWith('_CREATED') || log.action.includes('CREATE') || log.action === 'FRESH_BOX_MOVE';
+      } else if (actionFilter === 'UPDATE') {
+        matchesAction = log.action.endsWith('_UPDATED') || log.action.includes('UPDATE') || log.action === 'LOCATION_OVERRIDE' || log.action === 'MERGE' || log.action === 'TRANSFER_INITIATE' || log.action === 'TRANSFER_ACCEPT';
+      } else if (actionFilter === 'DELETE') {
+        matchesAction = log.action.endsWith('_DELETED') || log.action.includes('DELETE') || log.action === 'DESTROYED';
+      } else {
+        matchesAction = log.action === actionFilter;
+      }
+    }
     const matchesStatus = statusFilter === 'ALL' || log.status === statusFilter;
     return matchesSearch && matchesAction && matchesStatus;
   });

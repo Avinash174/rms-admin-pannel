@@ -5,6 +5,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { Plus, Loader2, AlertCircle, RefreshCw, X, MapPin, CheckCircle2, Info, Search } from 'lucide-react';
 import { DataTable } from '@/components/ui/data-table';
+import { ConfirmDialog } from '@/components/ui/confirm-dialog';
 import { columns } from './columns';
 import { getLocations, createLocation, updateLocation, deleteLocation } from '@/lib/api/location';
 import { Location } from '@/lib/types/location';
@@ -31,6 +32,17 @@ export default function LocationsPage() {
 
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<'ALL' | 'ACTIVE' | 'INACTIVE'>('ALL');
+  const [confirmDelete, setConfirmDelete] = useState<{
+    isOpen: boolean;
+    title: string;
+    description: string;
+    onConfirm: () => void;
+  }>({
+    isOpen: false,
+    title: '',
+    description: '',
+    onConfirm: () => {},
+  });
 
   const queryClient = useQueryClient();
 
@@ -100,9 +112,14 @@ export default function LocationsPage() {
   };
 
   const handleDelete = (location: Location) => {
-    if (confirm(`Are you sure you want to delete location barcode ${location.barcode}?`)) {
-      deleteMutation.mutate(location.id);
-    }
+    setConfirmDelete({
+      isOpen: true,
+      title: 'Delete Location',
+      description: `Are you sure you want to delete location barcode ${location.barcode}? This action cannot be undone.`,
+      onConfirm: () => {
+        deleteMutation.mutate(location.id);
+      },
+    });
   };
 
   if (isLoading) {
@@ -392,12 +409,51 @@ export default function LocationsPage() {
                   </div>
                 </div>
 
+                {/* Quick actions panel */}
+                <div className="pt-6 border-t border-slate-100 space-y-3">
+                  <Button
+                    onClick={() => {
+                      setSelectedLocation(selectedLocationForDetail);
+                      setFormMode('EDIT');
+                      form.reset({
+                        barcode: selectedLocationForDetail.barcode,
+                        name: selectedLocationForDetail.name || '',
+                        shelfId: selectedLocationForDetail.shelfId,
+                        isActive: selectedLocationForDetail.isActive,
+                      });
+                      setIsDetailsOpen(false);
+                      setIsFormDrawerOpen(true);
+                    }}
+                    className="w-full bg-slate-900 hover:bg-slate-800 text-white rounded-xl h-11 text-xs font-bold"
+                  >
+                    Edit Location
+                  </Button>
+                  <Button
+                    onClick={() => handleDelete(selectedLocationForDetail)}
+                    variant="outline"
+                    className="w-full text-red-650 hover:bg-red-50 text-red-650 hover:text-red-700 rounded-xl h-11 text-xs font-bold border-red-200"
+                  >
+                    Delete Location
+                  </Button>
+                </div>
+
               </div>
             )}
           </div>
         </div>
       </div>
 
+      <ConfirmDialog
+        isOpen={confirmDelete.isOpen}
+        onClose={() => setConfirmDelete((prev) => ({ ...prev, isOpen: false }))}
+        onConfirm={() => {
+          confirmDelete.onConfirm();
+          setConfirmDelete((prev) => ({ ...prev, isOpen: false }));
+        }}
+        title={confirmDelete.title}
+        description={confirmDelete.description}
+        isLoading={deleteMutation.isPending}
+      />
     </div>
   );
 }

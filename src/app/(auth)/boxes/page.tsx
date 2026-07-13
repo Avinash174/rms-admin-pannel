@@ -5,6 +5,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { Plus, Loader2, AlertCircle, RefreshCw, X, Archive, CheckCircle2, Info, FileText, Search } from 'lucide-react';
 import { DataTable } from '@/components/ui/data-table';
+import { ConfirmDialog } from '@/components/ui/confirm-dialog';
 import { columns } from './columns';
 import { getBoxes, createBox, updateBox, deleteBox } from '@/lib/api/box';
 import { Box as BoxType } from '@/lib/types/box';
@@ -15,6 +16,16 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
+import { getClients } from '@/lib/api/client';
+import { getDepartments } from '@/lib/api/department';
+import { getAllLocations } from '@/lib/api/location';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 
 export default function BoxesPage() {
   const [page, setPage] = useState(1);
@@ -28,8 +39,18 @@ export default function BoxesPage() {
   const [selectedBoxForDetail, setSelectedBoxForDetail] = useState<BoxType | null>(null);
   const [isDetailsOpen, setIsDetailsOpen] = useState(false);
 
-  // Filter state
   const [searchTerm, setSearchTerm] = useState('');
+  const [confirmDelete, setConfirmDelete] = useState<{
+    isOpen: boolean;
+    title: string;
+    description: string;
+    onConfirm: () => void;
+  }>({
+    isOpen: false,
+    title: '',
+    description: '',
+    onConfirm: () => {},
+  });
   const [statusFilter, setStatusFilter] = useState<'ALL' | 'ACTIVE' | 'INACTIVE'>('ALL');
 
   const queryClient = useQueryClient();
@@ -95,12 +116,34 @@ export default function BoxesPage() {
     },
   });
 
+  const selectedClientId = form.watch('clientId');
+
+  const { data: clientsData } = useQuery({
+    queryKey: ['clients-all'],
+    queryFn: () => getClients(1, 100),
+  });
+
+  const { data: departmentsData } = useQuery({
+    queryKey: ['departments-for-client', selectedClientId],
+    queryFn: () => getDepartments(selectedClientId, 1, 100),
+    enabled: !!selectedClientId,
+  });
+
+  const { data: locationsData } = useQuery({
+    queryKey: ['locations-all'],
+    queryFn: () => getAllLocations(),
+  });
+
+  const clients = clientsData?.data || [];
+  const departments = departmentsData?.data || [];
+  const locations = locationsData?.data || [];
+
   const handleFormSubmit = (data: CreateBoxData) => {
     const { isActive, name, ...rest } = data;
     const apiData = {
       ...rest,
       description: data.description || name || '',
-      status: isActive ? 'IN_WAREHOUSE' as const : 'CHECKED_OUT' as const,
+      status: isActive ? 'ACTIVE' as const : 'IN_TRANSIT' as const,
     };
 
     if (formMode === 'CREATE') {
@@ -111,9 +154,14 @@ export default function BoxesPage() {
   };
 
   const handleDelete = (box: BoxType) => {
-    if (confirm(`Are you sure you want to delete box ${box.barcode}?`)) {
-      deleteMutation.mutate(box.id);
-    }
+    setConfirmDelete({
+      isOpen: true,
+      title: 'Delete Box',
+      description: `Are you sure you want to delete box ${box.barcode}? This action cannot be undone.`,
+      onConfirm: () => {
+        deleteMutation.mutate(box.id);
+      },
+    });
   };
 
   if (isLoading) {
@@ -146,14 +194,14 @@ export default function BoxesPage() {
   const meta = data?.meta;
 
   const totalCount = boxes.length;
-  const activeCount = boxes.filter(b => b.status === 'IN_WAREHOUSE').length;
+  const activeCount = boxes.filter(b => b.status === 'ACTIVE').length;
   const inactiveCount = totalCount - activeCount;
 
   const filteredBoxes = boxes.filter((b) => {
     const matchesSearch = !searchTerm ||
       b.barcode.toLowerCase().includes(searchTerm.toLowerCase()) ||
       (b.description && b.description.toLowerCase().includes(searchTerm.toLowerCase()));
-    const isActive = b.status === 'IN_WAREHOUSE';
+    const isActive = b.status === 'ACTIVE';
     const matchesStatus = statusFilter === 'ALL' ||
       (statusFilter === 'ACTIVE' && isActive) ||
       (statusFilter === 'INACTIVE' && !isActive);
@@ -310,7 +358,7 @@ export default function BoxesPage() {
                   locationId: box.currentLocationId || '',
                   clientId: box.clientId,
                   departmentId: box.departmentId || '',
-                  isActive: box.status === 'IN_WAREHOUSE',
+                  isActive: box.status === 'ACTIVE',
                 });
                 setIsFormDrawerOpen(true);
               }
@@ -366,21 +414,69 @@ export default function BoxesPage() {
                     {form.formState.errors.year && <p className="text-xs text-red-500">{form.formState.errors.year.message}</p>}
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="locationId">Location ID</Label>
-                    <Input id="locationId" placeholder="1" className="h-11 rounded-xl border-slate-200" {...form.register('locationId')} />
+                    <Label htmlFor="locationId">Storage Location</Label>
+                    <Select 
+                      value={form.watch('locationId') || 'none'} 
+                      onValueChange={(val) => form.setValue('locationId', val === 'none' ? '' : val)}
+                    >
+                      <SelectTrigger className="h-11 rounded-xl border-slate-200">
+                        <SelectValue placeholder="Select location" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="none">None / Unassigned</SelectItem>
+                        {locations.map((loc: any) => (
+                          <SelectItem key={loc.id} value={loc.id}>
+                            {loc.barcode} ({loc.name})
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                     {form.formState.errors.locationId && <p className="text-xs text-red-500">{form.formState.errors.locationId.message}</p>}
                   </div>
                 </div>
 
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <Label htmlFor="clientId">Client ID</Label>
-                    <Input id="clientId" placeholder="1" className="h-11 rounded-xl border-slate-200" {...form.register('clientId')} />
+                    <Label htmlFor="clientId">Client</Label>
+                    <Select 
+                      value={form.watch('clientId') || undefined} 
+                      onValueChange={(val) => {
+                        form.setValue('clientId', val);
+                        form.setValue('departmentId', ''); // Reset department
+                      }}
+                    >
+                      <SelectTrigger className="h-11 rounded-xl border-slate-200">
+                        <SelectValue placeholder="Select client" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {clients.map((c: any) => (
+                          <SelectItem key={c.id} value={c.id}>
+                            {c.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                     {form.formState.errors.clientId && <p className="text-xs text-red-500">{form.formState.errors.clientId.message}</p>}
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="departmentId">Department ID (optional)</Label>
-                    <Input id="departmentId" placeholder="1" className="h-11 rounded-xl border-slate-200" {...form.register('departmentId')} />
+                    <Label htmlFor="departmentId">Department (optional)</Label>
+                    <Select 
+                      value={form.watch('departmentId') || 'none'} 
+                      onValueChange={(val) => form.setValue('departmentId', val === 'none' ? '' : val)}
+                      disabled={!selectedClientId}
+                    >
+                      <SelectTrigger className="h-11 rounded-xl border-slate-200">
+                        <SelectValue placeholder={selectedClientId ? "Select department" : "Select client first"} />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="none">None</SelectItem>
+                        {departments.map((d: any) => (
+                          <SelectItem key={d.id} value={d.id}>
+                            {d.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                   </div>
                 </div>
 
@@ -446,13 +542,13 @@ export default function BoxesPage() {
                   </div>
                   <h4 className="text-base font-extrabold text-slate-900">{selectedBoxForDetail.description || 'No Description'}</h4>
                   <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-xl text-xs font-bold border mt-3 ${
-                    selectedBoxForDetail.status === 'IN_WAREHOUSE' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-rose-50 text-rose-700 border-rose-200'
+                    selectedBoxForDetail.status === 'ACTIVE' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-rose-50 text-rose-700 border-rose-200'
                   }`}>
-                    {selectedBoxForDetail.status === 'IN_WAREHOUSE' ? 'In Warehouse' : 'Checked Out'}
+                    {selectedBoxForDetail.status === 'ACTIVE' ? 'In Warehouse' : 'Checked Out'}
                   </span>
                 </div>
 
-                <div className="space-y-4">
+                 <div className="space-y-4">
                   <h5 className="text-xs font-bold text-slate-400 uppercase tracking-widest">Metadata Info</h5>
                   <div className="divide-y divide-slate-100 border border-slate-100 rounded-2xl overflow-hidden bg-white shadow-xs">
                     <div className="flex justify-between items-center px-4 py-3">
@@ -469,7 +565,7 @@ export default function BoxesPage() {
                     </div>
                     <div className="flex justify-between items-center px-4 py-3">
                       <span className="text-xs font-semibold text-slate-500">File Count</span>
-                      <span className="text-xs font-semibold text-slate-750 flex items-center gap-1">
+                      <span className="text-xs font-semibold text-slate-705 flex items-center gap-1">
                         <FileText className="w-3.5 h-3.5 text-slate-450" />
                         {selectedBoxForDetail.fileCount || 0} files
                       </span>
@@ -481,12 +577,55 @@ export default function BoxesPage() {
                   </div>
                 </div>
 
+                {/* Quick actions panel */}
+                <div className="pt-6 border-t border-slate-100 space-y-3">
+                  <Button
+                    onClick={() => {
+                      setSelectedBox(selectedBoxForDetail);
+                      setFormMode('EDIT');
+                      form.reset({
+                        barcode: selectedBoxForDetail.barcode,
+                        name: selectedBoxForDetail.description || '',
+                        description: selectedBoxForDetail.description || '',
+                        year: new Date().getFullYear(),
+                        locationId: selectedBoxForDetail.currentLocationId || '',
+                        clientId: selectedBoxForDetail.clientId,
+                        departmentId: selectedBoxForDetail.departmentId || '',
+                        isActive: selectedBoxForDetail.status === 'ACTIVE',
+                      });
+                      setIsDetailsOpen(false);
+                      setIsFormDrawerOpen(true);
+                    }}
+                    className="w-full bg-slate-900 hover:bg-slate-800 text-white rounded-xl h-11 text-xs font-bold"
+                  >
+                    Edit Box
+                  </Button>
+                  <Button
+                    onClick={() => handleDelete(selectedBoxForDetail)}
+                    variant="outline"
+                    className="w-full text-red-650 hover:bg-red-50 text-red-650 hover:text-red-700 rounded-xl h-11 text-xs font-bold border-red-200"
+                  >
+                    Delete Box
+                  </Button>
+                </div>
+
               </div>
             )}
           </div>
         </div>
       </div>
 
+      <ConfirmDialog
+        isOpen={confirmDelete.isOpen}
+        onClose={() => setConfirmDelete((prev) => ({ ...prev, isOpen: false }))}
+        onConfirm={() => {
+          confirmDelete.onConfirm();
+          setConfirmDelete((prev) => ({ ...prev, isOpen: false }));
+        }}
+        title={confirmDelete.title}
+        description={confirmDelete.description}
+        isLoading={deleteMutation.isPending}
+      />
     </div>
   );
 }

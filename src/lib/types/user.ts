@@ -10,6 +10,7 @@ export interface User {
   warehouseName?: string;
   status: 'ACTIVE' | 'INACTIVE' | 'SUSPENDED';
   companyId: string;
+  employeeCode: string;
   createdAt: string;
   updatedAt: string;
 }

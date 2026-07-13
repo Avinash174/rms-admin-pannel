@@ -1,8 +1,6 @@
 import { ColumnDef } from '@tanstack/react-table';
 import { User } from '@/lib/types/user';
-import { Key, User2 } from 'lucide-react';
-import { ActionDropdown } from '@/components/ui/action-dropdown';
-import { DropdownMenuItem } from '@/components/ui/dropdown-menu';
+import { User2 } from 'lucide-react';
 
 function getAvatarColors(name: string) {
   let hash = 0;
@@ -26,22 +24,26 @@ export const columns: ColumnDef<User>[] = [
   {
     accessorKey: 'firstName',
     header: 'User',
-    cell: ({ row }) => {
+    cell: ({ row, table }) => {
       const user = row.original;
       const fullName = `${user.firstName || ''} ${user.lastName || ''}`.trim() || 'Unknown User';
       const initials = getInitials(user.firstName, user.lastName);
       const colors = getAvatarColors(fullName);
+      const meta = table.options.meta as any;
 
       return (
-        <div className="flex items-center gap-3 py-1">
+        <div 
+          className="flex items-center gap-3 py-1 cursor-pointer group"
+          onClick={() => meta?.onCustomAction?.(user)}
+        >
           <div
-            className="flex items-center justify-center w-10 h-10 rounded-full text-sm font-semibold tracking-wider shadow-sm transition-all duration-300 hover:scale-105"
+            className="flex items-center justify-center w-10 h-10 rounded-full text-sm font-semibold tracking-wider shadow-sm transition-all duration-300 group-hover:scale-105"
             style={{ backgroundColor: colors.bg, color: colors.text }}
           >
             {initials || <User2 className="w-5 h-5" />}
           </div>
           <div className="flex flex-col">
-            <span className="font-semibold text-slate-800 text-sm leading-tight hover:text-blue-600 transition-colors">
+            <span className="font-semibold text-slate-800 text-sm leading-tight group-hover:text-blue-600 transition-colors">
               {fullName}
             </span>
             <span className="text-xs text-slate-400 mt-0.5">{user.email}</span>
@@ -121,33 +123,6 @@ export const columns: ColumnDef<User>[] = [
         <div className="text-sm text-slate-500 font-medium">
           {date.toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' })}
         </div>
-      );
-    },
-  },
-  {
-    id: 'actions',
-    header: () => <span className="text-xs font-bold tracking-wider text-slate-500 uppercase">Actions</span>,
-    cell: ({ row, table }) => {
-      const user = row.original;
-      const meta = table.options.meta as any;
-
-      return (
-        <ActionDropdown
-          onEdit={() => meta?.onEdit?.(user)}
-          onDelete={() => meta?.onDelete?.(user)}
-          deleteLabel="Delete User"
-        >
-          <DropdownMenuItem
-            onClick={(e) => {
-              e.stopPropagation();
-              meta?.onCustomAction?.(user);
-            }}
-            className="flex items-center gap-3 px-3 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50 hover:text-slate-900 rounded-lg cursor-pointer transition-colors"
-          >
-            <Key className="h-4 w-4 text-slate-400 stroke-[2]" />
-            Reset Password
-          </DropdownMenuItem>
-        </ActionDropdown>
       );
     },
   },

@@ -3,8 +3,9 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
-import { Plus, Loader2, AlertCircle, RefreshCw, Key, Search, Users, UserCheck, UserX, Info, Sparkles } from 'lucide-react';
+import { Plus, Loader2, AlertCircle, RefreshCw, Key, Search, Users, UserCheck, UserX, Info, Sparkles, X } from 'lucide-react';
 import { DataTable } from '@/components/ui/data-table';
+import { ConfirmDialog } from '@/components/ui/confirm-dialog';
 import { columns } from './columns';
 import { getUsers, createUser, updateUser, deleteUser, resetUserPassword } from '@/lib/api/user';
 import { getRoles } from '@/lib/api/role';
@@ -35,10 +36,23 @@ export default function UsersPage() {
   const [page, setPage] = useState(1);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<'ALL' | 'ACTIVE' | 'SUSPENDED' | 'INVITED'>('ALL');
+  const [confirmDelete, setConfirmDelete] = useState<{
+    isOpen: boolean;
+    title: string;
+    description: string;
+    onConfirm: () => void;
+  }>({
+    isOpen: false,
+    title: '',
+    description: '',
+    onConfirm: () => {},
+  });
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [isPasswordDialogOpen, setIsPasswordDialogOpen] = useState(false);
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
+  const [isDetailsOpen, setIsDetailsOpen] = useState(false);
+  const [selectedUserForDetail, setSelectedUserForDetail] = useState<User | null>(null);
   const queryClient = useQueryClient();
 
   const { data, isLoading, error, refetch } = useQuery({
@@ -82,6 +96,10 @@ export default function UsersPage() {
     mutationFn: deleteUser,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['users'] });
+      if (selectedUserForDetail?.id) {
+        setIsDetailsOpen(false);
+        setSelectedUserForDetail(null);
+      }
       toast.success('User deleted successfully');
     },
     onError: (error: any) => {
@@ -138,9 +156,14 @@ export default function UsersPage() {
   };
 
   const handleDelete = (user: User) => {
-    if (confirm(`Are you sure you want to delete ${user.firstName} ${user.lastName}?`)) {
-      deleteMutation.mutate(user.id);
-    }
+    setConfirmDelete({
+      isOpen: true,
+      title: 'Delete User',
+      description: `Are you sure you want to delete user ${user.firstName} ${user.lastName}? This action cannot be undone.`,
+      onConfirm: () => {
+        deleteMutation.mutate(user.id);
+      },
+    });
   };
 
   const handlePasswordReset = (user: User) => {
@@ -359,7 +382,10 @@ export default function UsersPage() {
                 setIsEditDialogOpen(true);
               }
             }}
-            onCustomAction={handlePasswordReset}
+            onCustomAction={(user) => {
+              setSelectedUserForDetail(user);
+              setIsDetailsOpen(true);
+            }}
             onDelete={handleDelete}
           />
         )}
@@ -583,6 +609,136 @@ export default function UsersPage() {
           </form>
         </DialogContent>
       </Dialog>
+      <ConfirmDialog
+        isOpen={confirmDelete.isOpen}
+        onClose={() => setConfirmDelete((prev) => ({ ...prev, isOpen: false }))}
+        onConfirm={() => {
+          confirmDelete.onConfirm();
+          setConfirmDelete((prev) => ({ ...prev, isOpen: false }));
+        }}
+        title={confirmDelete.title}
+        description={confirmDelete.description}
+        isLoading={deleteMutation.isPending}
+      />
+
+      {/* SLIDE-OVER DRAWER: User Details */}
+      <div className={`fixed inset-0 z-50 overflow-hidden transition-opacity duration-300 ${isDetailsOpen ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'}`}>
+        <div className="absolute inset-0 bg-slate-900/40 backdrop-blur-xs transition-opacity duration-300" onClick={() => setIsDetailsOpen(false)} />
+        <div className="absolute inset-y-0 left-0 max-w-full flex pr-10">
+          <div className={`w-screen max-w-md bg-white shadow-2xl flex flex-col transform transition-transform duration-300 ease-in-out ${isDetailsOpen ? 'translate-x-0' : '-translate-x-full'}`}>
+            
+            <div className="px-6 py-5 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
+              <div className="flex items-center gap-2">
+                <Users className="w-5 h-5 text-blue-600" />
+                <h3 className="text-lg font-bold text-slate-900">User Details</h3>
+              </div>
+              <Button onClick={() => setIsDetailsOpen(false)} variant="ghost" className="h-9 w-9 p-0 hover:bg-slate-100 rounded-full">
+                <X className="w-5 h-5 text-slate-400" />
+              </Button>
+            </div>
+
+            {selectedUserForDetail && (
+              <div className="flex-1 overflow-y-auto p-6 space-y-6">
+                
+                <div className="flex flex-col items-center text-center p-6 bg-gradient-to-b from-blue-50/30 to-indigo-50/10 rounded-2xl border border-slate-100">
+                  <div className="w-16 h-16 rounded-full bg-blue-600 text-white flex items-center justify-center font-bold text-lg shadow-md mb-3">
+                    {`${selectedUserForDetail.firstName?.[0] || ''}${selectedUserForDetail.lastName?.[0] || ''}`.toUpperCase()}
+                  </div>
+                  <h4 className="text-base font-extrabold text-slate-900">
+                    {selectedUserForDetail.firstName} {selectedUserForDetail.lastName}
+                  </h4>
+                  <span className="text-xs text-slate-400 mt-1 font-mono">
+                    {selectedUserForDetail.employeeCode || 'No Employee Code'}
+                  </span>
+                  
+                  <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-xl text-xs font-bold border mt-3 ${
+                    selectedUserForDetail.status === 'ACTIVE' 
+                      ? 'bg-emerald-50 text-emerald-700 border-emerald-200' 
+                      : selectedUserForDetail.status === 'SUSPENDED'
+                      ? 'bg-rose-50 text-rose-700 border-rose-200'
+                      : 'bg-blue-50 text-blue-700 border-blue-200'
+                  }`}>
+                    {selectedUserForDetail.status}
+                  </span>
+                </div>
+
+                <div className="space-y-4">
+                  <h5 className="text-xs font-bold text-slate-400 uppercase tracking-widest">Account Info</h5>
+                  <div className="divide-y divide-slate-100 border border-slate-100 rounded-2xl overflow-hidden bg-white shadow-xs">
+                    <div className="flex justify-between items-center px-4 py-3">
+                      <span className="text-xs font-semibold text-slate-500">Email</span>
+                      <span className="text-xs font-semibold text-slate-700">{selectedUserForDetail.email}</span>
+                    </div>
+                    <div className="flex justify-between items-center px-4 py-3">
+                      <span className="text-xs font-semibold text-slate-500">Phone</span>
+                      <span className="text-xs font-semibold text-slate-700">{selectedUserForDetail.phone || '-'}</span>
+                    </div>
+                    <div className="flex justify-between items-center px-4 py-3">
+                      <span className="text-xs font-semibold text-slate-500">Role</span>
+                      <span className="text-xs font-semibold text-slate-700 uppercase">{selectedUserForDetail.roleName || 'Operator'}</span>
+                    </div>
+                    <div className="flex justify-between items-center px-4 py-3">
+                      <span className="text-xs font-semibold text-slate-500">Warehouse Assignment</span>
+                      <span className="text-xs font-semibold text-slate-700">{selectedUserForDetail.warehouseName || 'Global Access'}</span>
+                    </div>
+                    <div className="flex justify-between items-center px-4 py-3">
+                      <span className="text-xs font-semibold text-slate-500">Created At</span>
+                      <span className="text-xs font-semibold text-slate-700">
+                        {new Date(selectedUserForDetail.createdAt).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' })}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Quick actions panel */}
+                <div className="pt-6 border-t border-slate-100 space-y-3">
+                  <Button
+                    onClick={() => {
+                      setSelectedUser(selectedUserForDetail);
+                      createForm.reset({
+                        email: selectedUserForDetail.email,
+                        firstName: selectedUserForDetail.firstName,
+                        lastName: selectedUserForDetail.lastName,
+                        phone: selectedUserForDetail.phone || '',
+                        roleId: selectedUserForDetail.roleId || '',
+                        warehouseId: selectedUserForDetail.warehouseId || '',
+                        password: '',
+                      });
+                      setIsDetailsOpen(false);
+                      setIsEditDialogOpen(true);
+                    }}
+                    className="w-full bg-slate-900 hover:bg-slate-800 text-white rounded-xl h-11 text-xs font-bold"
+                  >
+                    Edit User
+                  </Button>
+                  <Button
+                    onClick={() => {
+                      setSelectedUser(selectedUserForDetail);
+                      setIsDetailsOpen(false);
+                      setIsPasswordDialogOpen(true);
+                    }}
+                    variant="outline"
+                    className="w-full text-slate-700 hover:bg-slate-50 border-slate-200 rounded-xl h-11 text-xs font-bold"
+                  >
+                    Reset Password
+                  </Button>
+                  <Button
+                    onClick={() => {
+                      handleDelete(selectedUserForDetail);
+                      setIsDetailsOpen(false);
+                    }}
+                    variant="outline"
+                    className="w-full text-red-650 hover:bg-red-50 text-red-650 hover:text-red-700 rounded-xl h-11 text-xs font-bold border-red-200"
+                  >
+                    Delete Account
+                  </Button>
+                </div>
+
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
     </div>
   );
 }

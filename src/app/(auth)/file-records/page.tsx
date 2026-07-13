@@ -9,6 +9,7 @@ import {
   ArrowRight, ShieldCheck, KeyRound, Tag, Box, Users, Building2, Briefcase
 } from 'lucide-react';
 import { DataTable } from '@/components/ui/data-table';
+import { ConfirmDialog } from '@/components/ui/confirm-dialog';
 import { columns } from './columns';
 import { getFileRecords, createFileRecord, updateFileRecord, deleteFileRecord } from '@/lib/api/fileRecord';
 import { FileRecord } from '@/lib/types/fileRecord';
@@ -19,11 +20,32 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
+import { getClients } from '@/lib/api/client';
+import { getDepartments } from '@/lib/api/department';
+import { getBoxes } from '@/lib/api/box';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 
 export default function FileRecordsPage() {
   const [page, setPage] = useState(1);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<'ALL' | 'ACTIVE' | 'INACTIVE'>('ALL');
+  const [confirmDelete, setConfirmDelete] = useState<{
+    isOpen: boolean;
+    title: string;
+    description: string;
+    onConfirm: () => void;
+  }>({
+    isOpen: false,
+    title: '',
+    description: '',
+    onConfirm: () => {},
+  });
   
   // Drawer states
   const [isFormDrawerOpen, setIsFormDrawerOpen] = useState(false);
@@ -96,6 +118,28 @@ export default function FileRecordsPage() {
     },
   });
 
+  const selectedClientId = createForm.watch('clientId');
+
+  const { data: clientsData } = useQuery({
+    queryKey: ['clients-all'],
+    queryFn: () => getClients(1, 100),
+  });
+
+  const { data: departmentsData } = useQuery({
+    queryKey: ['departments-for-client', selectedClientId],
+    queryFn: () => getDepartments(selectedClientId, 1, 100),
+    enabled: !!selectedClientId,
+  });
+
+  const { data: boxesData } = useQuery({
+    queryKey: ['boxes-all-select'],
+    queryFn: () => getBoxes(1, 100),
+  });
+
+  const clients = clientsData?.data || [];
+  const departments = departmentsData?.data || [];
+  const boxes = boxesData?.data || [];
+
   const handleFormSubmit = (data: CreateFileRecordData) => {
     const { isActive, ...rest } = data;
     const apiData = {
@@ -111,9 +155,14 @@ export default function FileRecordsPage() {
   };
 
   const handleDelete = (fileRecord: FileRecord) => {
-    if (confirm(`Are you sure you want to delete file record ${fileRecord.barcode}?`)) {
-      deleteMutation.mutate(fileRecord.id);
-    }
+    setConfirmDelete({
+      isOpen: true,
+      title: 'Delete File Record',
+      description: `Are you sure you want to delete file record ${fileRecord.barcode}? This action cannot be undone.`,
+      onConfirm: () => {
+        deleteMutation.mutate(fileRecord.id);
+      },
+    });
   };
 
   if (isLoading) {
@@ -418,13 +467,22 @@ export default function FileRecordsPage() {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="boxId" className="text-xs font-bold text-slate-655 uppercase tracking-wider">Box ID</Label>
-                <Input
-                  id="boxId"
-                  {...createForm.register('boxId')}
-                  placeholder="Target Box UUID"
-                  className="h-11 rounded-xl border-slate-200 focus:ring-2 focus:ring-blue-500/10 focus:border-blue-500 font-mono text-xs transition-all"
-                />
+                <Label htmlFor="boxId" className="text-xs font-bold text-slate-655 uppercase tracking-wider">Target Box</Label>
+                <Select 
+                  value={createForm.watch('boxId') || undefined} 
+                  onValueChange={(val) => createForm.setValue('boxId', val)}
+                >
+                  <SelectTrigger className="h-11 rounded-xl border-slate-200 focus:ring-2 focus:ring-blue-500/10 focus:border-blue-500 text-xs transition-all">
+                    <SelectValue placeholder="Select box" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {boxes.map((box: any) => (
+                      <SelectItem key={box.id} value={box.id}>
+                        {box.barcode} {box.description ? `(${box.description})` : ''}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
                 {createForm.formState.errors.boxId && (
                   <p className="text-xs font-semibold text-rose-500">{createForm.formState.errors.boxId.message}</p>
                 )}
@@ -432,26 +490,49 @@ export default function FileRecordsPage() {
 
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="clientId" className="text-xs font-bold text-slate-655 uppercase tracking-wider">Client ID</Label>
-                  <Input
-                    id="clientId"
-                    {...createForm.register('clientId')}
-                    placeholder="Client UUID"
-                    className="h-11 rounded-xl border-slate-200 focus:ring-2 focus:ring-blue-500/10 focus:border-blue-500 font-mono text-xs transition-all"
-                  />
+                  <Label htmlFor="clientId" className="text-xs font-bold text-slate-655 uppercase tracking-wider">Client</Label>
+                  <Select 
+                    value={createForm.watch('clientId') || undefined} 
+                    onValueChange={(val) => {
+                      createForm.setValue('clientId', val);
+                      createForm.setValue('departmentId', ''); // Reset department
+                    }}
+                  >
+                    <SelectTrigger className="h-11 rounded-xl border-slate-200 focus:ring-2 focus:ring-blue-500/10 focus:border-blue-500 text-xs transition-all">
+                      <SelectValue placeholder="Select client" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {clients.map((c: any) => (
+                        <SelectItem key={c.id} value={c.id}>
+                          {c.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                   {createForm.formState.errors.clientId && (
                     <p className="text-xs font-semibold text-rose-500">{createForm.formState.errors.clientId.message}</p>
                   )}
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="departmentId" className="text-xs font-bold text-slate-655 uppercase tracking-wider">Department ID</Label>
-                  <Input
-                    id="departmentId"
-                    {...createForm.register('departmentId')}
-                    placeholder="Dept UUID (optional)"
-                    className="h-11 rounded-xl border-slate-200 focus:ring-2 focus:ring-blue-500/10 focus:border-blue-500 font-mono text-xs transition-all"
-                  />
+                  <Label htmlFor="departmentId" className="text-xs font-bold text-slate-655 uppercase tracking-wider">Department (optional)</Label>
+                  <Select 
+                    value={createForm.watch('departmentId') || 'none'} 
+                    onValueChange={(val) => createForm.setValue('departmentId', val === 'none' ? '' : val)}
+                    disabled={!selectedClientId}
+                  >
+                    <SelectTrigger className="h-11 rounded-xl border-slate-200 focus:ring-2 focus:ring-blue-500/10 focus:border-blue-500 text-xs transition-all">
+                      <SelectValue placeholder={selectedClientId ? "Select department" : "Select client first"} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">None</SelectItem>
+                      {departments.map((d: any) => (
+                        <SelectItem key={d.id} value={d.id}>
+                          {d.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
               </div>
 
@@ -652,6 +733,17 @@ export default function FileRecordsPage() {
         </div>
       </div>
 
+      <ConfirmDialog
+        isOpen={confirmDelete.isOpen}
+        onClose={() => setConfirmDelete((prev) => ({ ...prev, isOpen: false }))}
+        onConfirm={() => {
+          confirmDelete.onConfirm();
+          setConfirmDelete((prev) => ({ ...prev, isOpen: false }));
+        }}
+        title={confirmDelete.title}
+        description={confirmDelete.description}
+        isLoading={deleteMutation.isPending}
+      />
     </div>
   );
 }

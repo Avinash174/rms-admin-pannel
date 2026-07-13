@@ -2,6 +2,7 @@ import { ColumnDef } from '@tanstack/react-table';
 import { Package, FileText, Users, Calendar, Download, RefreshCw, AlertCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { ReportJob } from '@/lib/types/report';
+import { downloadReport } from '@/lib/api/report';
 
 export const columns: ColumnDef<ReportJob>[] = [
   {
@@ -36,23 +37,26 @@ export const columns: ColumnDef<ReportJob>[] = [
     cell: ({ row }) => {
       const type = row.getValue('type') as string;
       const styles = {
-        INVENTORY: 'bg-blue-50 text-blue-700 border-blue-100',
-        ACTIVITY: 'bg-emerald-50 text-emerald-700 border-emerald-100',
-        AUDIT: 'bg-purple-50 text-purple-700 border-purple-100',
-        PERFORMANCE: 'bg-amber-50 text-amber-700 border-amber-100',
+        BOX_INVENTORY: 'bg-blue-50 text-blue-700 border-blue-100',
+        USER_WORKLOAD: 'bg-emerald-50 text-emerald-700 border-emerald-100',
+        CUSTODY_HISTORY: 'bg-purple-50 text-purple-700 border-purple-100',
       };
       const icons = {
-        INVENTORY: <Package className="w-3.5 h-3.5 text-blue-500" />,
-        ACTIVITY: <FileText className="w-3.5 h-3.5 text-emerald-500" />,
-        AUDIT: <Users className="w-3.5 h-3.5 text-purple-500" />,
-        PERFORMANCE: <Calendar className="w-3.5 h-3.5 text-amber-500" />,
+        BOX_INVENTORY: <Package className="w-3.5 h-3.5 text-blue-500" />,
+        USER_WORKLOAD: <FileText className="w-3.5 h-3.5 text-emerald-500" />,
+        CUSTODY_HISTORY: <Users className="w-3.5 h-3.5 text-purple-500" />,
+      };
+      const labels = {
+        BOX_INVENTORY: 'Inventory Summary',
+        USER_WORKLOAD: 'Activity Stats',
+        CUSTODY_HISTORY: 'Audit Logs History',
       };
       return (
         <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-xs font-bold border ${
-          styles[type as keyof typeof styles] || styles.INVENTORY
+          styles[type as keyof typeof styles] || 'bg-slate-50 text-slate-700 border-slate-100'
         }`}>
-          {icons[type as keyof typeof icons]}
-          {type}
+          {icons[type as keyof typeof icons] || <FileText className="w-3.5 h-3.5 text-slate-500" />}
+          {labels[type as keyof typeof labels] || type}
         </span>
       );
     },
@@ -116,11 +120,26 @@ export const columns: ColumnDef<ReportJob>[] = [
       const report = row.original;
       return (
         <div>
-          {report.status === 'READY' && report.fileUrl ? (
+          {report.status === 'READY' ? (
             <Button 
               variant="outline" 
               className="h-8 rounded-xl px-3 text-xs font-bold border-slate-200 hover:bg-slate-50 text-slate-700 transition-colors"
-              onClick={() => alert(`Downloading: ${report.name}`)}
+              onClick={async () => {
+                try {
+                  const blob = await downloadReport(report.id);
+                  const url = window.URL.createObjectURL(blob);
+                  const a = document.createElement('a');
+                  a.href = url;
+                  a.download = `${report.name || 'report'}-${report.id}.csv`;
+                  document.body.appendChild(a);
+                  a.click();
+                  a.remove();
+                  window.URL.revokeObjectURL(url);
+                } catch (err) {
+                  console.error(err);
+                  alert('Failed to download report data');
+                }
+              }}
             >
               <Download className="w-3.5 h-3.5 mr-1 text-slate-550" />
               Download

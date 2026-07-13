@@ -10,6 +10,11 @@ export interface Warehouse {
   phone?: string;
   siteId?: string;
   siteName?: string;
+  site?: {
+    id: string;
+    name: string;
+    code: string;
+  };
   companyId: string;
   isActive: boolean;
   createdAt: string;

@@ -1,7 +1,6 @@
 import { ColumnDef } from '@tanstack/react-table';
 import { Box as BoxType } from '@/lib/types/box';
 import { Calendar, Archive, FileText, MapPin } from 'lucide-react';
-import { ActionDropdown } from '@/components/ui/action-dropdown';
 
 function getAvatarGradient(name: string) {
   let hash = 0;
@@ -114,13 +113,13 @@ export const columns: ColumnDef<BoxType>[] = [
       const box = row.original;
       const meta = table.options.meta as any;
       const status = row.getValue('status') as string;
-      const isActive = status === 'IN_WAREHOUSE';
+      const isActive = status === 'ACTIVE';
 
       return (
         <button
           onClick={(e) => {
             e.stopPropagation();
-            const nextStatus = isActive ? 'CHECKED_OUT' : 'IN_WAREHOUSE';
+            const nextStatus = isActive ? 'IN_TRANSIT' : 'ACTIVE';
             meta?.onEdit?.({ ...box, status: nextStatus }, true);
           }}
           className={`group flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs font-bold transition-all duration-300 border ${
@@ -150,22 +149,6 @@ export const columns: ColumnDef<BoxType>[] = [
           <Calendar className="w-3.5 h-3.5 text-slate-400" />
           {date.toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' })}
         </div>
-      );
-    },
-  },
-  {
-    id: 'actions',
-    header: () => <span className="text-xs font-bold tracking-wider text-slate-500 uppercase">Actions</span>,
-    cell: ({ row, table }) => {
-      const box = row.original;
-      const meta = table.options.meta as any;
-
-      return (
-        <ActionDropdown
-          onEdit={() => meta?.onEdit?.(box)}
-          onDelete={() => meta?.onDelete?.(box)}
-          deleteLabel="Delete Box"
-        />
       );
     },
   },

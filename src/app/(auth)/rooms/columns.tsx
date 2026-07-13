@@ -1,7 +1,6 @@
 import { ColumnDef } from '@tanstack/react-table';
 import { Room } from '@/lib/types/room';
 import { Calendar, FileBox } from 'lucide-react';
-import { ActionDropdown } from '@/components/ui/action-dropdown';
 
 function getAvatarGradient(name: string) {
   let hash = 0;
@@ -133,22 +132,6 @@ export const columns: ColumnDef<Room>[] = [
           <Calendar className="w-3.5 h-3.5 text-slate-400" />
           {date.toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' })}
         </div>
-      );
-    },
-  },
-  {
-    id: 'actions',
-    header: () => <span className="text-xs font-bold tracking-wider text-slate-500 uppercase">Actions</span>,
-    cell: ({ row, table }) => {
-      const room = row.original;
-      const meta = table.options.meta as any;
-
-      return (
-        <ActionDropdown
-          onEdit={() => meta?.onEdit?.(room)}
-          onDelete={() => meta?.onDelete?.(room)}
-          deleteLabel="Delete Room"
-        />
       );
     },
   },

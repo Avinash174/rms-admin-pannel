@@ -1,9 +1,23 @@
 import { Box, BoxListResponse, CreateBoxRequest, UpdateBoxRequest } from '../types/box';
 import { fetchWithAuth } from './auth';
 
+function mapRawBoxToBox(box: any): Box {
+  if (!box) return box;
+  return {
+    ...box,
+    clientName: box.client?.name || box.clientName || undefined,
+    departmentName: box.department?.name || box.departmentName || undefined,
+    locationName: box.currentLocation?.barcode || box.currentLocation?.name || box.locationName || undefined,
+    fileCount: box._count?.fileRecords ?? box.fileCount ?? 0,
+  };
+}
+
 export async function getBoxes(page: number = 1, pageSize: number = 20): Promise<BoxListResponse> {
   try {
     const response = await fetchWithAuth(`/boxes?page=${page}&pageSize=${pageSize}`);
+    if (response && Array.isArray(response.data)) {
+      response.data = response.data.map(mapRawBoxToBox);
+    }
     return response;
   } catch (error) {
     return {
@@ -32,7 +46,7 @@ export async function getBoxes(page: number = 1, pageSize: number = 20): Promise
 
 export async function getBox(id: string): Promise<Box> {
   const response = await fetchWithAuth(`/boxes/${id}`);
-  return response.data;
+  return mapRawBoxToBox(response.data);
 }
 
 export async function createBox(data: CreateBoxRequest): Promise<Box> {
@@ -40,7 +54,7 @@ export async function createBox(data: CreateBoxRequest): Promise<Box> {
     method: 'POST',
     body: JSON.stringify(data),
   });
-  return response.data;
+  return mapRawBoxToBox(response.data);
 }
 
 export async function updateBox(id: string, data: UpdateBoxRequest): Promise<Box> {
@@ -48,7 +62,7 @@ export async function updateBox(id: string, data: UpdateBoxRequest): Promise<Box
     method: 'PUT',
     body: JSON.stringify(data),
   });
-  return response.data;
+  return mapRawBoxToBox(response.data);
 }
 
 export async function deleteBox(id: string): Promise<void> {
@@ -59,5 +73,5 @@ export async function deleteBox(id: string): Promise<void> {
 
 export async function getBoxByBarcode(barcode: string): Promise<Box> {
   const response = await fetchWithAuth(`/boxes/barcode/${barcode}`);
-  return response.data;
+  return mapRawBoxToBox(response.data);
 }

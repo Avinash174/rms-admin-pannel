@@ -9,6 +9,7 @@ import {
   ShieldAlert, ShieldCheck, KeyRound, Check, Edit2, Search, Trash2
 } from 'lucide-react';
 import { getRoles, createRole, updateRole, deleteRole, getPermissions, assignPermissions } from '@/lib/api/role';
+import { ConfirmDialog } from '@/components/ui/confirm-dialog';
 import { Role, Permission } from '@/lib/types/role';
 import { useForm } from 'react-hook-form';
 import { Button } from '@/components/ui/button';
@@ -25,6 +26,17 @@ export default function RolesPage() {
   const [isDetailsOpen, setIsDetailsOpen] = useState(false);
   const [activeRolePermissions, setActiveRolePermissions] = useState<string[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
+  const [confirmDelete, setConfirmDelete] = useState<{
+    isOpen: boolean;
+    title: string;
+    description: string;
+    onConfirm: () => void;
+  }>({
+    isOpen: false,
+    title: '',
+    description: '',
+    onConfirm: () => {},
+  });
 
   const queryClient = useQueryClient();
 
@@ -88,9 +100,14 @@ export default function RolesPage() {
   });
 
   const handleDeleteRole = (role: Role) => {
-    if (confirm(`Are you sure you want to delete role "${role.label}"?`)) {
-      deleteMutation.mutate(role.id);
-    }
+    setConfirmDelete({
+      isOpen: true,
+      title: 'Delete Role',
+      description: `Are you sure you want to delete role "${role.label}"? This action cannot be undone.`,
+      onConfirm: () => {
+        deleteMutation.mutate(role.id);
+      },
+    });
   };
 
   const { register, handleSubmit, reset: resetForm, formState: { errors } } = useForm({
@@ -512,6 +529,17 @@ export default function RolesPage() {
         </div>
       </div>
 
+      <ConfirmDialog
+        isOpen={confirmDelete.isOpen}
+        onClose={() => setConfirmDelete((prev) => ({ ...prev, isOpen: false }))}
+        onConfirm={() => {
+          confirmDelete.onConfirm();
+          setConfirmDelete((prev) => ({ ...prev, isOpen: false }));
+        }}
+        title={confirmDelete.title}
+        description={confirmDelete.description}
+        isLoading={deleteMutation.isPending}
+      />
     </div>
   );
 }

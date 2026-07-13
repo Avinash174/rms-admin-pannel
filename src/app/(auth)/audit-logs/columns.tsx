@@ -36,11 +36,22 @@ export const columns: ColumnDef<AuditLog>[] = [
         DELETE: 'bg-rose-50 text-rose-700 border-rose-100',
         READ: 'bg-slate-50 text-slate-700 border-slate-100',
       };
+
+      // Map action to style category
+      let category = 'READ';
+      if (action.endsWith('_CREATED') || action.includes('CREATE') || action === 'FRESH_BOX_MOVE') {
+        category = 'CREATE';
+      } else if (action.endsWith('_UPDATED') || action.includes('UPDATE') || action === 'LOCATION_OVERRIDE' || action === 'MERGE' || action === 'TRANSFER_INITIATE' || action === 'TRANSFER_ACCEPT') {
+        category = 'UPDATE';
+      } else if (action.endsWith('_DELETED') || action.includes('DELETE') || action === 'DESTROYED') {
+        category = 'DELETE';
+      }
+
       return (
         <span className={`inline-flex items-center px-2.5 py-0.5 rounded-lg text-xs font-bold uppercase tracking-wider border ${
-          styles[action as keyof typeof styles] || styles.READ
+          styles[category as keyof typeof styles] || styles.READ
         }`}>
-          {action}
+          {action.replace(/_/g, ' ')}
         </span>
       );
     },

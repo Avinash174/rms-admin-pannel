@@ -9,6 +9,7 @@ import {
   Activity, ArrowRight, ShieldCheck, KeyRound, Globe, Tag
 } from 'lucide-react';
 import { DataTable } from '@/components/ui/data-table';
+import { ConfirmDialog } from '@/components/ui/confirm-dialog';
 import { columns } from './columns';
 import { getCompanies, createCompany, updateCompany, deleteCompany } from '@/lib/api/company';
 import { Company } from '@/lib/types/company';
@@ -24,6 +25,17 @@ export default function CompaniesPage() {
   const [page, setPage] = useState(1);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<'ALL' | 'ACTIVE' | 'INACTIVE'>('ALL');
+  const [confirmDelete, setConfirmDelete] = useState<{
+    isOpen: boolean;
+    title: string;
+    description: string;
+    onConfirm: () => void;
+  }>({
+    isOpen: false,
+    title: '',
+    description: '',
+    onConfirm: () => {},
+  });
   
   // Drawer states
   const [isFormDrawerOpen, setIsFormDrawerOpen] = useState(false);
@@ -100,9 +112,14 @@ export default function CompaniesPage() {
   };
 
   const handleDelete = (company: Company) => {
-    if (confirm(`Are you sure you want to delete ${company.name}?`)) {
-      deleteMutation.mutate(company.id);
-    }
+    setConfirmDelete({
+      isOpen: true,
+      title: 'Delete Company',
+      description: `Are you sure you want to delete ${company.name}? This action cannot be undone.`,
+      onConfirm: () => {
+        deleteMutation.mutate(company.id);
+      },
+    });
   };
 
   if (isLoading) {
@@ -574,6 +591,17 @@ export default function CompaniesPage() {
         </div>
       </div>
 
+      <ConfirmDialog
+        isOpen={confirmDelete.isOpen}
+        onClose={() => setConfirmDelete((prev) => ({ ...prev, isOpen: false }))}
+        onConfirm={() => {
+          confirmDelete.onConfirm();
+          setConfirmDelete((prev) => ({ ...prev, isOpen: false }));
+        }}
+        title={confirmDelete.title}
+        description={confirmDelete.description}
+        isLoading={deleteMutation.isPending}
+      />
     </div>
   );
 }

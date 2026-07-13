@@ -5,6 +5,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { Plus, Loader2, AlertCircle, RefreshCw, X, MapPin, CheckCircle2, Info, Search } from 'lucide-react';
 import { DataTable } from '@/components/ui/data-table';
+import { ConfirmDialog } from '@/components/ui/confirm-dialog';
 import { columns } from './columns';
 import { getBranches, createBranch, updateBranch, deleteBranch } from '@/lib/api/branch';
 import { Branch } from '@/lib/types/branch';
@@ -30,6 +31,17 @@ export default function BranchesPage() {
 
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<'ALL' | 'ACTIVE' | 'INACTIVE'>('ALL');
+  const [confirmDelete, setConfirmDelete] = useState<{
+    isOpen: boolean;
+    title: string;
+    description: string;
+    onConfirm: () => void;
+  }>({
+    isOpen: false,
+    title: '',
+    description: '',
+    onConfirm: () => {},
+  });
 
   const queryClient = useQueryClient();
 
@@ -104,9 +116,14 @@ export default function BranchesPage() {
   };
 
   const handleDelete = (branch: Branch) => {
-    if (confirm(`Are you sure you want to delete ${branch.name}?`)) {
-      deleteMutation.mutate(branch.id);
-    }
+    setConfirmDelete({
+      isOpen: true,
+      title: 'Delete Branch',
+      description: `Are you sure you want to delete branch ${branch.name}? This action cannot be undone.`,
+      onConfirm: () => {
+        deleteMutation.mutate(branch.id);
+      },
+    });
   };
 
   if (isLoading) {
@@ -431,7 +448,7 @@ export default function BranchesPage() {
                   </span>
                 </div>
 
-                <div className="space-y-4">
+                 <div className="space-y-4">
                   <h5 className="text-xs font-bold text-slate-400 uppercase tracking-widest">Metadata Info</h5>
                   <div className="divide-y divide-slate-100 border border-slate-100 rounded-2xl overflow-hidden bg-white shadow-xs">
                     <div className="flex justify-between items-center px-4 py-3">
@@ -453,12 +470,56 @@ export default function BranchesPage() {
                   </div>
                 </div>
 
+                {/* Quick actions panel */}
+                <div className="pt-6 border-t border-slate-100 space-y-3">
+                  <Button
+                    onClick={() => {
+                      setSelectedBranch(selectedBranchForDetail);
+                      setFormMode('EDIT');
+                      form.reset({
+                        name: selectedBranchForDetail.name,
+                        code: selectedBranchForDetail.code,
+                        address: selectedBranchForDetail.address || '',
+                        city: selectedBranchForDetail.city || '',
+                        state: selectedBranchForDetail.state || '',
+                        country: selectedBranchForDetail.country || '',
+                        zipCode: selectedBranchForDetail.zipCode || undefined,
+                        phone: selectedBranchForDetail.phone || '',
+                        isActive: selectedBranchForDetail.isActive,
+                      });
+                      setIsDetailsOpen(false);
+                      setIsFormDrawerOpen(true);
+                    }}
+                    className="w-full bg-slate-900 hover:bg-slate-800 text-white rounded-xl h-11 text-xs font-bold"
+                  >
+                    Edit Branch
+                  </Button>
+                  <Button
+                    onClick={() => handleDelete(selectedBranchForDetail)}
+                    variant="outline"
+                    className="w-full text-red-650 hover:bg-red-50 text-red-650 hover:text-red-700 rounded-xl h-11 text-xs font-bold border-red-200"
+                  >
+                    Delete Branch
+                  </Button>
+                </div>
+
               </div>
             )}
           </div>
         </div>
       </div>
 
+      <ConfirmDialog
+        isOpen={confirmDelete.isOpen}
+        onClose={() => setConfirmDelete((prev) => ({ ...prev, isOpen: false }))}
+        onConfirm={() => {
+          confirmDelete.onConfirm();
+          setConfirmDelete((prev) => ({ ...prev, isOpen: false }));
+        }}
+        title={confirmDelete.title}
+        description={confirmDelete.description}
+        isLoading={deleteMutation.isPending}
+      />
     </div>
   );
 }

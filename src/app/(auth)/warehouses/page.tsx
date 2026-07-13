@@ -5,6 +5,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { Plus, Loader2, AlertCircle, RefreshCw, X, Building, MapPin, Phone, CheckCircle2, Info, Search } from 'lucide-react';
 import { DataTable } from '@/components/ui/data-table';
+import { ConfirmDialog } from '@/components/ui/confirm-dialog';
 import { columns } from './columns';
 import { getWarehouses, createWarehouse, updateWarehouse, deleteWarehouse } from '@/lib/api/warehouse';
 import { getSites } from '@/lib/api/site';
@@ -31,6 +32,17 @@ export default function WarehousesPage() {
 
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<'ALL' | 'ACTIVE' | 'INACTIVE'>('ALL');
+  const [confirmDelete, setConfirmDelete] = useState<{
+    isOpen: boolean;
+    title: string;
+    description: string;
+    onConfirm: () => void;
+  }>({
+    isOpen: false,
+    title: '',
+    description: '',
+    onConfirm: () => {},
+  });
   
   const queryClient = useQueryClient();
 
@@ -151,9 +163,14 @@ export default function WarehousesPage() {
   };
 
   const handleDelete = (warehouse: Warehouse) => {
-    if (confirm(`Are you sure you want to delete ${warehouse.name}?`)) {
-      deleteMutation.mutate(warehouse.id);
-    }
+    setConfirmDelete({
+      isOpen: true,
+      title: 'Delete Warehouse',
+      description: `Are you sure you want to delete warehouse ${warehouse.name}? This action cannot be undone.`,
+      onConfirm: () => {
+        deleteMutation.mutate(warehouse.id);
+      },
+    });
   };
 
   return (
@@ -544,7 +561,7 @@ export default function WarehousesPage() {
                     
                     <div className="flex justify-between items-center text-xs">
                       <span className="text-slate-500 font-semibold">Associated Site</span>
-                      <span className="text-slate-800 font-bold">{selectedWarehouseForDetail.siteName || 'Unassigned'}</span>
+                      <span className="text-slate-800 font-bold">{selectedWarehouseForDetail.site?.name || 'Unassigned'}</span>
                     </div>
 
                     <div className="flex justify-between items-center text-xs">
@@ -587,7 +604,7 @@ export default function WarehousesPage() {
                 </div>
 
                 {/* Storage Quick View Actions */}
-                <div className="pt-2">
+                <div className="pt-2 space-y-3">
                   <Button 
                     onClick={() => {
                       setIsDetailsOpen(false);
@@ -597,6 +614,36 @@ export default function WarehousesPage() {
                   >
                     Manage Spatial Rooms
                   </Button>
+                  <Button
+                    onClick={() => {
+                      setSelectedWarehouse(selectedWarehouseForDetail);
+                      setFormMode('EDIT');
+                      form.reset({
+                        name: selectedWarehouseForDetail.name,
+                        code: selectedWarehouseForDetail.code,
+                        address: selectedWarehouseForDetail.address || '',
+                        city: selectedWarehouseForDetail.city || '',
+                        state: selectedWarehouseForDetail.state || '',
+                        country: selectedWarehouseForDetail.country || '',
+                        zipCode: selectedWarehouseForDetail.zipCode || undefined,
+                        phone: selectedWarehouseForDetail.phone || '',
+                        siteId: selectedWarehouseForDetail.siteId || '',
+                        isActive: selectedWarehouseForDetail.isActive,
+                      });
+                      setIsDetailsOpen(false);
+                      setIsFormDrawerOpen(true);
+                    }}
+                    className="w-full bg-blue-600 hover:bg-blue-700 text-white rounded-xl h-11 text-xs font-bold"
+                  >
+                    Edit Warehouse
+                  </Button>
+                  <Button
+                    onClick={() => handleDelete(selectedWarehouseForDetail)}
+                    variant="outline"
+                    className="w-full text-red-650 hover:bg-red-50 text-red-650 hover:text-red-700 rounded-xl h-11 text-xs font-bold border-red-200"
+                  >
+                    Delete Warehouse
+                  </Button>
                 </div>
 
               </div>
@@ -605,6 +652,17 @@ export default function WarehousesPage() {
         </div>
       </div>
 
+      <ConfirmDialog
+        isOpen={confirmDelete.isOpen}
+        onClose={() => setConfirmDelete((prev) => ({ ...prev, isOpen: false }))}
+        onConfirm={() => {
+          confirmDelete.onConfirm();
+          setConfirmDelete((prev) => ({ ...prev, isOpen: false }));
+        }}
+        title={confirmDelete.title}
+        description={confirmDelete.description}
+        isLoading={deleteMutation.isPending}
+      />
     </div>
   );
 }
