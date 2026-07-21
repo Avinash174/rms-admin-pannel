@@ -2,33 +2,7 @@ import { Warehouse, WarehouseListResponse, CreateWarehouseRequest, UpdateWarehou
 import { fetchWithAuth } from './auth';
 
 export async function getWarehouses(page: number = 1, pageSize: number = 20): Promise<WarehouseListResponse> {
-  try {
-    const response = await fetchWithAuth(`/warehouses?page=${page}&pageSize=${pageSize}`);
-    return response;
-  } catch (error) {
-    return {
-      data: [
-        {
-          id: '1',
-          name: 'Main Warehouse',
-          code: 'MW',
-          address: '789 Industrial Blvd',
-          city: 'New York',
-          state: 'NY',
-          country: 'USA',
-          zipCode: 10003,
-          phone: '12345678902',
-          siteId: '1',
-          siteName: 'Downtown Site',
-          companyId: '1',
-          isActive: true,
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
-        },
-      ],
-      meta: { page, pageSize, total: 1, totalPages: 1 },
-    };
-  }
+  return fetchWithAuth(`/warehouses?page=${page}&pageSize=${pageSize}`);
 }
 
 export async function getWarehouse(id: string): Promise<Warehouse> {

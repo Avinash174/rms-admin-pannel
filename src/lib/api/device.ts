@@ -15,36 +15,11 @@ function mapDevice(d: any): Device {
 }
 
 export async function getDevices(page: number = 1, pageSize: number = 20): Promise<DeviceListResponse> {
-  try {
-    const response = await fetchWithAuth(`/devices?page=${page}&pageSize=${pageSize}`);
-    if (response && Array.isArray(response.data)) {
-      response.data = response.data.map(mapDevice);
-    }
-    return response;
-  } catch (error) {
-    return {
-      data: [
-        {
-          id: '1',
-          deviceId: 'DEV-001',
-          name: 'Scanner Device 1',
-          type: 'SCANNER',
-          model: 'Honeywell CT60',
-          serialNumber: 'SN-123456',
-          osVersion: 'Android 13',
-          appVersion: '1.0.0',
-          userId: '1',
-          userName: 'John Doe',
-          lastSyncedAt: new Date().toISOString(),
-          isActive: true,
-          companyId: '1',
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
-        },
-      ],
-      meta: { page, pageSize, total: 1, totalPages: 1 },
-    };
+  const response = await fetchWithAuth(`/devices?page=${page}&pageSize=${pageSize}`);
+  if (response && Array.isArray(response.data)) {
+    response.data = response.data.map(mapDevice);
   }
+  return response;
 }
 
 export async function getDevice(id: string): Promise<Device> {

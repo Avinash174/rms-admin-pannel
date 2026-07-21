@@ -2,27 +2,7 @@ import { Location, LocationListResponse, CreateLocationRequest, UpdateLocationRe
 import { fetchWithAuth } from './auth';
 
 export async function getLocations(shelfId: string, page: number = 1, pageSize: number = 20): Promise<LocationListResponse> {
-  try {
-    const response = await fetchWithAuth(`/shelves/${shelfId}/locations?page=${page}&pageSize=${pageSize}`);
-    return response;
-  } catch (error) {
-    return {
-      data: [
-        {
-          id: '1',
-          barcode: 'LOC-001',
-          name: 'Location 1',
-          shelfId: shelfId,
-          shelfName: 'Shelf 1',
-          companyId: '1',
-          isActive: true,
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
-        },
-      ],
-      meta: { page, pageSize, total: 1, totalPages: 1 },
-    };
-  }
+  return fetchWithAuth(`/shelves/${shelfId}/locations?page=${page}&pageSize=${pageSize}`);
 }
 
 export async function getLocation(id: string): Promise<Location> {
@@ -58,10 +38,5 @@ export async function getLocationByBarcode(barcode: string): Promise<Location> {
 }
 
 export async function getAllLocations(): Promise<{ data: Location[] }> {
-  try {
-    const response = await fetchWithAuth('/locations');
-    return response;
-  } catch (error) {
-    return { data: [] };
-  }
+  return fetchWithAuth('/locations');
 }

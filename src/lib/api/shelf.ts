@@ -2,28 +2,7 @@ import { Shelf, ShelfListResponse, CreateShelfRequest, UpdateShelfRequest } from
 import { fetchWithAuth } from './auth';
 
 export async function getShelves(rackId: string, page: number = 1, pageSize: number = 20): Promise<ShelfListResponse> {
-  try {
-    const response = await fetchWithAuth(`/racks/${rackId}/shelves?page=${page}&pageSize=${pageSize}`);
-    return response;
-  } catch (error) {
-    return {
-      data: [
-        {
-          id: '1',
-          name: 'Shelf 1',
-          code: 'S1',
-          description: 'First shelf in Rack A1',
-          rackId: rackId,
-          rackName: 'Rack A1',
-          companyId: '1',
-          isActive: true,
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
-        },
-      ],
-      meta: { page, pageSize, total: 1, totalPages: 1 },
-    };
-  }
+  return fetchWithAuth(`/racks/${rackId}/shelves?page=${page}&pageSize=${pageSize}`);
 }
 
 export async function getShelf(id: string): Promise<Shelf> {

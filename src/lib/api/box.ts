@@ -13,35 +13,11 @@ function mapRawBoxToBox(box: any): Box {
 }
 
 export async function getBoxes(page: number = 1, pageSize: number = 20): Promise<BoxListResponse> {
-  try {
-    const response = await fetchWithAuth(`/boxes?page=${page}&pageSize=${pageSize}`);
-    if (response && Array.isArray(response.data)) {
-      response.data = response.data.map(mapRawBoxToBox);
-    }
-    return response;
-  } catch (error) {
-    return {
-      data: [
-        {
-          id: '1',
-          barcode: 'BOX-001',
-          status: 'ACTIVE',
-          description: 'Annual finance documents',
-          currentLocationId: '1',
-          locationName: 'LOC-001',
-          clientId: '1',
-          clientName: 'Acme Corporation',
-          departmentId: '1',
-          departmentName: 'Finance',
-          companyId: '1',
-          fileCount: 25,
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
-        },
-      ],
-      meta: { page, pageSize, total: 1, totalPages: 1 },
-    };
+  const response = await fetchWithAuth(`/boxes?page=${page}&pageSize=${pageSize}`);
+  if (response && Array.isArray(response.data)) {
+    response.data = response.data.map(mapRawBoxToBox);
   }
+  return response;
 }
 
 export async function getBox(id: string): Promise<Box> {

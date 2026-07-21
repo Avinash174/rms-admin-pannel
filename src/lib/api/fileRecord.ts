@@ -2,30 +2,10 @@ import { FileRecord, FileRecordListResponse, CreateFileRecordRequest, UpdateFile
 import { fetchWithAuth } from './auth';
 
 export async function getFileRecords(boxId?: string, page: number = 1, pageSize: number = 20): Promise<FileRecordListResponse> {
-  try {
-    const url = boxId
-      ? `/boxes/${boxId}/file-records?page=${page}&pageSize=${pageSize}`
-      : `/file-records?page=${page}&pageSize=${pageSize}`;
-    const response = await fetchWithAuth(url);
-    return response;
-  } catch (error) {
-    return {
-      data: [
-        {
-          id: '1',
-          barcode: 'FILE-001',
-          title: 'Q1 Financial Report',
-          status: 'ACTIVE',
-          boxId: '1',
-          boxBarcode: 'BOX-001',
-          companyId: '1',
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
-        },
-      ],
-      meta: { page, pageSize, total: 1, totalPages: 1 },
-    };
-  }
+  const url = boxId
+    ? `/boxes/${boxId}/file-records?page=${page}&pageSize=${pageSize}`
+    : `/file-records?page=${page}&pageSize=${pageSize}`;
+  return fetchWithAuth(url);
 }
 
 export async function getFileRecord(id: string): Promise<FileRecord> {

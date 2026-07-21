@@ -2,28 +2,7 @@ import { Department, DepartmentListResponse, CreateDepartmentRequest, UpdateDepa
 import { fetchWithAuth } from './auth';
 
 export async function getDepartments(clientId: string, page: number = 1, pageSize: number = 20): Promise<DepartmentListResponse> {
-  try {
-    const response = await fetchWithAuth(`/clients/${clientId}/departments?page=${page}&pageSize=${pageSize}`);
-    return response;
-  } catch (error) {
-    return {
-      data: [
-        {
-          id: '1',
-          name: 'Finance',
-          code: 'FIN',
-          description: 'Finance department',
-          clientId: clientId,
-          clientName: 'Acme Corporation',
-          companyId: '1',
-          isActive: true,
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
-        },
-      ],
-      meta: { page, pageSize, total: 1, totalPages: 1 },
-    };
-  }
+  return fetchWithAuth(`/clients/${clientId}/departments?page=${page}&pageSize=${pageSize}`);
 }
 
 export async function getDepartment(id: string): Promise<Department> {

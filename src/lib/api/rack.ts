@@ -2,28 +2,7 @@ import { Rack, RackListResponse, CreateRackRequest, UpdateRackRequest } from '..
 import { fetchWithAuth } from './auth';
 
 export async function getRacks(roomId: string, page: number = 1, pageSize: number = 20): Promise<RackListResponse> {
-  try {
-    const response = await fetchWithAuth(`/rooms/${roomId}/racks?page=${page}&pageSize=${pageSize}`);
-    return response;
-  } catch (error) {
-    return {
-      data: [
-        {
-          id: '1',
-          name: 'Rack A1',
-          code: 'RA1',
-          description: 'First rack in Room A',
-          roomId: roomId,
-          roomName: 'Room A',
-          companyId: '1',
-          isActive: true,
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
-        },
-      ],
-      meta: { page, pageSize, total: 1, totalPages: 1 },
-    };
-  }
+  return fetchWithAuth(`/rooms/${roomId}/racks?page=${page}&pageSize=${pageSize}`);
 }
 
 export async function getRack(id: string): Promise<Rack> {

@@ -2,28 +2,7 @@ import { Room, RoomListResponse, CreateRoomRequest, UpdateRoomRequest } from '..
 import { fetchWithAuth } from './auth';
 
 export async function getRooms(warehouseId: string, page: number = 1, pageSize: number = 20): Promise<RoomListResponse> {
-  try {
-    const response = await fetchWithAuth(`/warehouses/${warehouseId}/rooms?page=${page}&pageSize=${pageSize}`);
-    return response;
-  } catch (error) {
-    return {
-      data: [
-        {
-          id: '1',
-          name: 'Room A',
-          code: 'RA',
-          description: 'Main storage room',
-          warehouseId: warehouseId,
-          warehouseName: 'Main Warehouse',
-          companyId: '1',
-          isActive: true,
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
-        },
-      ],
-      meta: { page, pageSize, total: 1, totalPages: 1 },
-    };
-  }
+  return fetchWithAuth(`/warehouses/${warehouseId}/rooms?page=${page}&pageSize=${pageSize}`);
 }
 
 export async function getRoom(id: string): Promise<Room> {

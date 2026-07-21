@@ -2,31 +2,7 @@ import { Branch, BranchListResponse, CreateBranchRequest, UpdateBranchRequest } 
 import { fetchWithAuth } from './auth';
 
 export async function getBranches(page: number = 1, pageSize: number = 20): Promise<BranchListResponse> {
-  try {
-    const response = await fetchWithAuth(`/branches?page=${page}&pageSize=${pageSize}`);
-    return response;
-  } catch (error) {
-    return {
-      data: [
-        {
-          id: '1',
-          name: 'Main Branch',
-          code: 'MB',
-          address: '123 Main St',
-          city: 'New York',
-          state: 'NY',
-          country: 'USA',
-          zipCode: 10001,
-          phone: '12345678900',
-          companyId: '1',
-          isActive: true,
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
-        },
-      ],
-      meta: { page, pageSize, total: 1, totalPages: 1 },
-    };
-  }
+  return fetchWithAuth(`/branches?page=${page}&pageSize=${pageSize}`);
 }
 
 export async function getBranch(id: string): Promise<Branch> {
