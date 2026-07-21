@@ -108,6 +108,7 @@ export default function BoxesPage() {
       barcode: '',
       name: '',
       description: '',
+      capacity: 25,
       year: new Date().getFullYear(),
       locationId: '',
       clientId: '',
@@ -225,6 +226,7 @@ export default function BoxesPage() {
               barcode: '',
               name: '',
               description: '',
+              capacity: 25,
               year: new Date().getFullYear(),
               locationId: '',
               clientId: '',
@@ -354,6 +356,7 @@ export default function BoxesPage() {
                   barcode: box.barcode,
                   name: box.description || '',
                   description: box.description || '',
+                  capacity: box.capacity ?? 25,
                   year: new Date().getFullYear(),
                   locationId: box.currentLocationId || '',
                   clientId: box.clientId,
@@ -413,6 +416,14 @@ export default function BoxesPage() {
                     <Input id="year" type="number" placeholder="2026" className="h-11 rounded-xl border-slate-200" {...form.register('year', { valueAsNumber: true })} />
                     {form.formState.errors.year && <p className="text-xs text-red-500">{form.formState.errors.year.message}</p>}
                   </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="capacity">File Capacity</Label>
+                    <Input id="capacity" type="number" placeholder="25" className="h-11 rounded-xl border-slate-200" {...form.register('capacity', { valueAsNumber: true })} />
+                    {form.formState.errors.capacity && <p className="text-xs text-red-500">{form.formState.errors.capacity.message}</p>}
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label htmlFor="locationId">Storage Location</Label>
                     <Select 
@@ -564,10 +575,14 @@ export default function BoxesPage() {
                       <span className="text-xs font-semibold text-slate-700">{selectedBoxForDetail.locationName || '-'}</span>
                     </div>
                     <div className="flex justify-between items-center px-4 py-3">
-                      <span className="text-xs font-semibold text-slate-500">File Count</span>
-                      <span className="text-xs font-semibold text-slate-705 flex items-center gap-1">
+                      <span className="text-xs font-semibold text-slate-500">Capacity</span>
+                      <span className={`text-xs font-semibold flex items-center gap-1 ${
+                        selectedBoxForDetail.capacity != null && (selectedBoxForDetail.fileCount || 0) > selectedBoxForDetail.capacity
+                          ? 'text-rose-600'
+                          : 'text-slate-705'
+                      }`}>
                         <FileText className="w-3.5 h-3.5 text-slate-450" />
-                        {selectedBoxForDetail.fileCount || 0} files
+                        {selectedBoxForDetail.fileCount || 0} / {selectedBoxForDetail.capacity ?? '—'} files
                       </span>
                     </div>
                     <div className="flex justify-between px-4 py-3">
@@ -587,6 +602,7 @@ export default function BoxesPage() {
                         barcode: selectedBoxForDetail.barcode,
                         name: selectedBoxForDetail.description || '',
                         description: selectedBoxForDetail.description || '',
+                        capacity: selectedBoxForDetail.capacity ?? 25,
                         year: new Date().getFullYear(),
                         locationId: selectedBoxForDetail.currentLocationId || '',
                         clientId: selectedBoxForDetail.clientId,

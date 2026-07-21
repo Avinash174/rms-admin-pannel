@@ -23,7 +23,7 @@ import {
   Tooltip,
   ResponsiveContainer,
 } from "recharts";
-import { getDashboardData } from "@/lib/api/dashboard";
+import { getDashboardData, getScanActivity } from "@/lib/api/dashboard";
 import { format } from "date-fns";
 
 const CHART_RANGES = [
@@ -37,15 +37,28 @@ type ChartRange = typeof CHART_RANGES[number]['days'];
 export default function DashboardPage() {
   const [chartRange, setChartRange] = useState<ChartRange>(7);
 
-  const { 
-    data: dashboardData, 
-    isLoading, 
-    error, 
-    refetch 
+  const {
+    data: dashboardData,
+    isLoading,
+    error,
+    refetch
   } = useQuery({
     queryKey: ['dashboard'],
     queryFn: getDashboardData,
     refetchInterval: 5 * 60 * 1000, // Refetch every 5 minutes
+  });
+
+  // Scan Activity has its own range-scoped query — the combined dashboard
+  // payload above is always fetched for a fixed 7-day window (days=7), so
+  // slicing it client-side for 30D/90D just re-sliced the same 7 days and
+  // the range buttons appeared to do nothing. Refetch from the backend with
+  // the actual selected range instead.
+  const {
+    data: scanActivityData,
+    isFetching: isScanActivityFetching,
+  } = useQuery({
+    queryKey: ['scan-activity', chartRange],
+    queryFn: () => getScanActivity(chartRange),
   });
 
   if (isLoading) {
@@ -79,9 +92,9 @@ export default function DashboardPage() {
     return null;
   }
 
-  const { metrics, scanActivity, recentActivity } = dashboardData;
+  const { metrics, recentActivity } = dashboardData;
 
-  const filteredScanActivity = scanActivity.slice(-chartRange);
+  const filteredScanActivity = scanActivityData ?? [];
 
   return (
     <div className="w-full space-y-6 lg:space-y-8 px-4 sm:px-6 lg:px-0">
@@ -136,7 +149,10 @@ export default function DashboardPage() {
         <div className="lg:col-span-2 bg-white rounded-[14px] border border-slate-200 shadow-sm p-4 sm:p-6">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4 sm:mb-6">
             <div>
-              <h2 className="text-base sm:text-lg font-semibold text-slate-900">Scan Activity</h2>
+              <h2 className="text-base sm:text-lg font-semibold text-slate-900 flex items-center gap-2">
+                Scan Activity
+                {isScanActivityFetching && <Loader2 className="w-3.5 h-3.5 animate-spin text-slate-400" />}
+              </h2>
               <p className="text-xs text-slate-400 mt-0.5">Scanner workflow events over time</p>
             </div>
 

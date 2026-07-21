@@ -169,7 +169,8 @@ export default function SitesPage() {
   const filteredSites = sites.filter((s) => {
     const matchesSearch = !searchTerm ||
       s.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      s.code.toLowerCase().includes(searchTerm.toLowerCase());
+      s.code.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (s.branch?.name && s.branch.name.toLowerCase().includes(searchTerm.toLowerCase()));
     const matchesStatus = statusFilter === 'ALL' ||
       (statusFilter === 'ACTIVE' && s.isActive) ||
       (statusFilter === 'INACTIVE' && !s.isActive);
@@ -471,6 +472,10 @@ export default function SitesPage() {
                  <div className="space-y-4">
                   <h5 className="text-xs font-bold text-slate-400 uppercase tracking-widest">Metadata Info</h5>
                   <div className="divide-y divide-slate-100 border border-slate-100 rounded-2xl overflow-hidden bg-white shadow-xs">
+                    <div className="flex justify-between items-center px-4 py-3">
+                      <span className="text-xs font-semibold text-slate-500">Branch</span>
+                      <span className="text-xs font-semibold text-slate-700">{selectedSiteForDetail.branch?.name || '-'}</span>
+                    </div>
                     <div className="flex justify-between items-center px-4 py-3">
                       <span className="text-xs font-semibold text-slate-500">Address</span>
                       <span className="text-xs font-semibold text-slate-700">{selectedSiteForDetail.address || '-'}</span>

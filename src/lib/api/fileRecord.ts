@@ -3,7 +3,7 @@ import { fetchWithAuth } from './auth';
 
 export async function getFileRecords(boxId?: string, page: number = 1, pageSize: number = 20): Promise<FileRecordListResponse> {
   const url = boxId
-    ? `/boxes/${boxId}/file-records?page=${page}&pageSize=${pageSize}`
+    ? `/file-records?boxId=${boxId}&page=${page}&pageSize=${pageSize}`
     : `/file-records?page=${page}&pageSize=${pageSize}`;
   return fetchWithAuth(url);
 }

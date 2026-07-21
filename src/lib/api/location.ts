@@ -1,8 +1,10 @@
 import { Location, LocationListResponse, CreateLocationRequest, UpdateLocationRequest } from '../types/location';
 import { fetchWithAuth } from './auth';
 
+// Backend route is flat (`/locations?shelfId=...`), not nested under `/shelves/:id/locations`,
+// and does not support pagination — it returns the full array with no `meta`.
 export async function getLocations(shelfId: string, page: number = 1, pageSize: number = 20): Promise<LocationListResponse> {
-  return fetchWithAuth(`/shelves/${shelfId}/locations?page=${page}&pageSize=${pageSize}`);
+  return fetchWithAuth(`/locations?shelfId=${shelfId}`);
 }
 
 export async function getLocation(id: string): Promise<Location> {
@@ -11,9 +13,9 @@ export async function getLocation(id: string): Promise<Location> {
 }
 
 export async function createLocation(shelfId: string, data: CreateLocationRequest): Promise<Location> {
-  const response = await fetchWithAuth(`/shelves/${shelfId}/locations`, {
+  const response = await fetchWithAuth('/locations', {
     method: 'POST',
-    body: JSON.stringify(data),
+    body: JSON.stringify({ ...data, shelfId }),
   });
   return response.data;
 }

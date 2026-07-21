@@ -9,6 +9,11 @@ export interface Site {
   phone?: string;
   branchId: string;
   branchName?: string;
+  branch?: {
+    id: string;
+    name: string;
+    code: string;
+  };
   companyId: string;
   isActive: boolean;
   createdAt: string;

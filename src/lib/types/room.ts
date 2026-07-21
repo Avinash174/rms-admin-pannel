@@ -5,6 +5,11 @@ export interface Room {
   description?: string;
   warehouseId: string;
   warehouseName?: string;
+  warehouse?: {
+    id: string;
+    name: string;
+    code: string;
+  };
   companyId: string;
   isActive: boolean;
   createdAt: string;

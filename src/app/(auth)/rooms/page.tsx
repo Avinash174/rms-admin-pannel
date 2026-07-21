@@ -60,7 +60,7 @@ export default function RoomsPage() {
   });
 
   const createMutation = useMutation({
-    mutationFn: (data: CreateRoomData) => createRoom(effectiveWarehouseId, data),
+    mutationFn: (data: CreateRoomData) => createRoom(data.warehouseId, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['rooms'] });
       setIsFormDrawerOpen(false);
@@ -155,7 +155,9 @@ export default function RoomsPage() {
   const filteredRooms = rooms.filter((r) => {
     const matchesSearch = !searchTerm ||
       r.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      r.code.toLowerCase().includes(searchTerm.toLowerCase());
+      r.code.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (r.description && r.description.toLowerCase().includes(searchTerm.toLowerCase())) ||
+      (r.warehouse?.name && r.warehouse.name.toLowerCase().includes(searchTerm.toLowerCase()));
     const matchesStatus = statusFilter === 'ALL' ||
       (statusFilter === 'ACTIVE' && r.isActive) ||
       (statusFilter === 'INACTIVE' && !r.isActive);
@@ -355,6 +357,23 @@ export default function RoomsPage() {
                 </div>
 
                 <div className="space-y-2">
+                  <Label htmlFor="warehouseId">Warehouse Assignment</Label>
+                  <select
+                    id="warehouseId"
+                    className="flex h-11 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/10 disabled:cursor-not-allowed disabled:opacity-50"
+                    {...form.register('warehouseId')}
+                  >
+                    <option value="" disabled>Select a Warehouse...</option>
+                    {warehouses.map((wh) => (
+                      <option key={wh.id} value={wh.id}>
+                        {wh.name} ({wh.code})
+                      </option>
+                    ))}
+                  </select>
+                  {form.formState.errors.warehouseId && <p className="text-xs text-red-500">{form.formState.errors.warehouseId.message}</p>}
+                </div>
+
+                <div className="space-y-2">
                   <Label htmlFor="description">Description</Label>
                   <Input id="description" placeholder="Specify physical attributes..." className="h-11 rounded-xl border-slate-200" {...form.register('description')} />
                 </div>
@@ -427,7 +446,7 @@ export default function RoomsPage() {
                   <div className="divide-y divide-slate-100 border border-slate-100 rounded-2xl overflow-hidden bg-white shadow-xs">
                     <div className="flex justify-between items-center px-4 py-3">
                       <span className="text-xs font-semibold text-slate-500">Warehouse Name</span>
-                      <span className="text-xs font-semibold text-slate-700">{selectedRoomForDetail.warehouseName || '-'}</span>
+                      <span className="text-xs font-semibold text-slate-700">{selectedRoomForDetail.warehouse?.name || '-'}</span>
                     </div>
                     <div className="flex justify-between px-4 py-3">
                       <span className="text-xs font-semibold text-slate-500">Description</span>

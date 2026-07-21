@@ -98,13 +98,19 @@ export const columns: ColumnDef<BoxType>[] = [
   },
   {
     accessorKey: 'fileCount',
-    header: () => <span className="text-xs font-bold tracking-wider text-slate-500 uppercase">File Count</span>,
-    cell: ({ row }) => (
-      <div className="flex items-center gap-1.5 text-xs text-slate-650 font-semibold">
-        <FileText className="w-4 h-4 text-slate-400" />
-        {row.getValue('fileCount')} files
-      </div>
-    ),
+    header: () => <span className="text-xs font-bold tracking-wider text-slate-500 uppercase">Capacity</span>,
+    cell: ({ row }) => {
+      const box = row.original;
+      const occupied = box.fileCount || 0;
+      const capacity = box.capacity;
+      const overCapacity = capacity != null && occupied > capacity;
+      return (
+        <div className={`flex items-center gap-1.5 text-xs font-semibold ${overCapacity ? 'text-rose-600' : 'text-slate-650'}`}>
+          <FileText className="w-4 h-4 text-slate-400" />
+          {occupied} / {capacity ?? '—'} files
+        </div>
+      );
+    },
   },
   {
     accessorKey: 'status',

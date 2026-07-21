@@ -3,6 +3,7 @@ export interface Box {
   barcode: string;
   status: string;
   description?: string;
+  capacity?: number | null;
   currentLocationId?: string;
   locationName?: string;
   clientId: string;
@@ -18,6 +19,7 @@ export interface Box {
 export interface CreateBoxRequest {
   barcode: string;
   description?: string;
+  capacity?: number | null;
   clientId: string;
   departmentId?: string;
   currentLocationId?: string;
@@ -26,6 +28,7 @@ export interface CreateBoxRequest {
 export interface UpdateBoxRequest {
   barcode?: string;
   description?: string;
+  capacity?: number | null;
   clientId?: string;
   departmentId?: string;
   currentLocationId?: string;

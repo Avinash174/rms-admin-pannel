@@ -74,13 +74,16 @@ export const columns: ColumnDef<Room>[] = [
     ),
   },
   {
-    accessorKey: 'warehouseName',
+    accessorKey: 'warehouse.name',
     header: () => <span className="text-xs font-bold tracking-wider text-slate-500 uppercase">Warehouse</span>,
-    cell: ({ row }) => (
-      <div className="text-xs text-slate-800 font-semibold">
-        {row.getValue('warehouseName') || '-'}
-      </div>
-    ),
+    cell: ({ row }) => {
+      const room = row.original;
+      return (
+        <div className="text-xs text-slate-800 font-semibold">
+          {room.warehouse?.name || '-'}
+        </div>
+      );
+    },
   },
   {
     accessorKey: 'description',

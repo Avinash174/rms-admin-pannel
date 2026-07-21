@@ -74,13 +74,16 @@ export const columns: ColumnDef<Site>[] = [
     ),
   },
   {
-    accessorKey: 'branchName',
+    accessorKey: 'branch.name',
     header: () => <span className="text-xs font-bold tracking-wider text-slate-500 uppercase">Branch</span>,
-    cell: ({ row }) => (
-      <div className="text-xs text-slate-800 font-semibold">
-        {row.getValue('branchName') || '-'}
-      </div>
-    ),
+    cell: ({ row }) => {
+      const site = row.original;
+      return (
+        <div className="text-xs text-slate-800 font-semibold">
+          {site.branch?.name || '-'}
+        </div>
+      );
+    },
   },
   {
     accessorKey: 'location',
