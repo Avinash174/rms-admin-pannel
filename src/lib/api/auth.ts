@@ -202,6 +202,7 @@ export async function fetchWithAuth(endpoint: string, options?: RequestInit): Pr
   });
 
   let response = await fetch(url, {
+    cache: 'no-store',
     ...options,
     headers,
   });
@@ -224,6 +225,7 @@ export async function fetchWithAuth(endpoint: string, options?: RequestInit): Pr
                 Authorization: 'Bearer ' + newToken,
               };
               const retryResponse = await fetch(url, {
+                cache: 'no-store',
                 ...options,
                 headers: retryHeaders,
               });

@@ -62,7 +62,7 @@ export async function generateReport(data: GenerateReportRequest): Promise<Repor
 }
 
 export async function getJobStatus(jobId: string): Promise<JobStatus> {
-  const response = await fetchWithAuth(`/reports/jobs/${jobId}/status`);
+  const response = await fetchWithAuth(`/reports/jobs/${jobId}`);
   if (response.success && response.data) {
     return response.data;
   }
