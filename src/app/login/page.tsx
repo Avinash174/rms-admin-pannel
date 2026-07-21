@@ -33,7 +33,7 @@ export default function LoginPage() {
       router.push('/dashboard');
     } catch (err: any) {
       if (err.message === 'Failed to fetch' || err.name === 'TypeError') {
-        setError('Cannot connect to the backend server. Please make sure the backend service is running on port 3001.');
+        setError('Cannot connect to the backend server. Please make sure the backend service is running on port 4000.');
       } else {
         setError(err.message || 'Login failed. Please check your credentials.');
       }
