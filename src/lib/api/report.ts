@@ -71,7 +71,7 @@ export async function getJobStatus(jobId: string): Promise<JobStatus> {
 
 export async function downloadReport(jobId: string): Promise<Blob> {
   const accessToken = typeof window !== 'undefined' ? localStorage.getItem('access_token') : null;
-  const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api/v1';
+  const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api/v1';
   const response = await fetch(`${baseUrl}/reports/jobs/${jobId}/download`, {
     headers: {
       ...(accessToken && { Authorization: `Bearer ${accessToken}` }),
