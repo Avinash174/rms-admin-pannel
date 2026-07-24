@@ -223,6 +223,10 @@ export default function UsersPage() {
   const activeCount = users.filter(u => u.status === 'ACTIVE').length;
   const suspendedCount = users.filter(u => u.status === 'SUSPENDED').length;
 
+  // Active state for the Edit modal's segmented status control (UI only).
+  const editStatus = ((createForm.watch as any)('status') as string) || selectedUser?.status || 'ACTIVE';
+  const editInitials = `${selectedUser?.firstName?.[0] || ''}${selectedUser?.lastName?.[0] || ''}`.toUpperCase();
+
   return (
     <div className="w-full space-y-8 px-4 sm:px-6 lg:px-0 pb-12">
       {/* Page Header */}
@@ -500,78 +504,118 @@ export default function UsersPage() {
 
       {/* Edit Dialog */}
       <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
-        <DialogContent className="sm:max-w-[500px] rounded-2xl border-none shadow-2xl p-6 bg-white">
-          <DialogHeader>
-            <DialogTitle>Edit User</DialogTitle>
-            <DialogDescription>
-              Update user information. Click save when you're done.
-            </DialogDescription>
-          </DialogHeader>
-          <form onSubmit={createForm.handleSubmit(handleEditSubmit)} className="space-y-4 pt-4">
-            <div className="grid gap-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div className="grid gap-2">
-                  <Label htmlFor="edit-firstName">First Name</Label>
+        <DialogContent className="sm:max-w-[500px] rounded-2xl border-none shadow-2xl bg-white">
+          {/* Gradient profile banner (inner card) */}
+          <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-blue-600 via-blue-600 to-indigo-600 px-5 pt-5 pb-14 mt-1">
+            <div className="absolute inset-0 opacity-20 bg-[radial-gradient(circle_at_top_right,white,transparent_60%)]" />
+            <div className="relative space-y-1">
+              <h2 className="text-white text-lg font-bold tracking-tight">Edit Profile</h2>
+              <p className="text-blue-100/90 text-xs">Update account information and access status.</p>
+            </div>
+          </div>
+
+          {/* Avatar + identity, overlapping the banner */}
+          <div className="-mt-10">
+            <div className="flex items-end gap-4">
+              <div className="w-[68px] h-[68px] rounded-2xl bg-white p-1 shadow-lg ring-1 ring-slate-100 shrink-0">
+                <div className="w-full h-full rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 text-white flex items-center justify-center text-xl font-extrabold">
+                  {editInitials || <Users className="w-6 h-6" />}
+                </div>
+              </div>
+              <div className="pb-1 min-w-0">
+                <h4 className="text-base font-extrabold text-slate-900 truncate">
+                  {selectedUser?.firstName} {selectedUser?.lastName}
+                </h4>
+                <p className="text-xs text-slate-400 font-mono truncate">
+                  {selectedUser?.employeeCode || 'No employee code'}
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <form onSubmit={createForm.handleSubmit(handleEditSubmit)} className="pt-6 space-y-5">
+            {/* Identity section */}
+            <div className="space-y-3">
+              <h5 className="text-[11px] font-bold text-slate-400 uppercase tracking-widest">Identity</h5>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="grid gap-1.5">
+                  <Label htmlFor="edit-firstName" className="text-xs text-slate-500">First Name</Label>
                   <Input
                     id="edit-firstName"
                     {...createForm.register('firstName')}
                     placeholder="First Name"
-                    className="h-10 rounded-xl"
+                    className="h-10 rounded-xl border-slate-200 focus:ring-2 focus:ring-blue-500/25"
                   />
                 </div>
-                <div className="grid gap-2">
-                  <Label htmlFor="edit-lastName">Last Name</Label>
+                <div className="grid gap-1.5">
+                  <Label htmlFor="edit-lastName" className="text-xs text-slate-500">Last Name</Label>
                   <Input
                     id="edit-lastName"
                     {...createForm.register('lastName')}
                     placeholder="Last Name"
-                    className="h-10 rounded-xl"
+                    className="h-10 rounded-xl border-slate-200 focus:ring-2 focus:ring-blue-500/25"
                   />
                 </div>
               </div>
-              <div className="grid gap-2">
-                <Label htmlFor="edit-email">Email</Label>
-                <Input
-                  id="edit-email"
-                  type="email"
-                  {...createForm.register('email')}
-                  placeholder="Email"
-                  className="h-10 rounded-xl bg-slate-50 text-slate-400 cursor-not-allowed border-slate-150"
-                  disabled
-                />
+              <div className="grid gap-1.5">
+                <Label htmlFor="edit-email" className="text-xs text-slate-500">Email</Label>
+                <div className="relative">
+                  <Input
+                    id="edit-email"
+                    type="email"
+                    {...createForm.register('email')}
+                    placeholder="Email"
+                    className="h-10 rounded-xl bg-slate-50 text-slate-400 cursor-not-allowed border-slate-200 pr-10"
+                    disabled
+                  />
+                  <Key className="absolute right-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-300" />
+                </div>
               </div>
-              <div className="grid gap-2">
-                <Label htmlFor="edit-phone">Phone</Label>
+              <div className="grid gap-1.5">
+                <Label htmlFor="edit-phone" className="text-xs text-slate-500">Phone</Label>
                 <Input
                   id="edit-phone"
                   {...createForm.register('phone')}
                   placeholder="Phone"
-                  className="h-10 rounded-xl"
+                  className="h-10 rounded-xl border-slate-200 focus:ring-2 focus:ring-blue-500/25"
                 />
               </div>
-              <div className="grid gap-2">
-                <Label htmlFor="edit-status">Status</Label>
-                <Select onValueChange={(value) => (createForm.setValue as any)('status', value)}>
-                  <SelectTrigger className="h-10 rounded-xl">
-                    <SelectValue placeholder={selectedUser?.status} />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="ACTIVE">Active</SelectItem>
-                    <SelectItem value="SUSPENDED">Suspended</SelectItem>
-                    <SelectItem value="INVITED">Invited</SelectItem>
-                  </SelectContent>
-                </Select>
+            </div>
+
+            {/* Access / status section */}
+            <div className="space-y-3">
+              <h5 className="text-[11px] font-bold text-slate-400 uppercase tracking-widest">Access Status</h5>
+              <div className="grid grid-cols-3 gap-2">
+                {([
+                  { value: 'ACTIVE', label: 'Active', active: 'bg-emerald-500 text-white border-emerald-500 shadow-sm shadow-emerald-500/30' },
+                  { value: 'SUSPENDED', label: 'Suspended', active: 'bg-rose-500 text-white border-rose-500 shadow-sm shadow-rose-500/30' },
+                  { value: 'INVITED', label: 'Invited', active: 'bg-blue-500 text-white border-blue-500 shadow-sm shadow-blue-500/30' },
+                ] as const).map((opt) => (
+                  <button
+                    key={opt.value}
+                    type="button"
+                    onClick={() => (createForm.setValue as any)('status', opt.value)}
+                    className={`h-10 rounded-xl border text-xs font-semibold transition-all ${
+                      editStatus === opt.value
+                        ? opt.active
+                        : 'bg-white text-slate-500 border-slate-200 hover:border-slate-300 hover:bg-slate-50'
+                    }`}
+                  >
+                    {opt.label}
+                  </button>
+                ))}
               </div>
             </div>
-            <DialogFooter>
+
+            <div className="flex items-center justify-end gap-2 pt-2">
               <Button type="button" variant="outline" onClick={() => setIsEditDialogOpen(false)} className="rounded-xl h-10">
                 Cancel
               </Button>
-              <Button type="submit" disabled={updateMutation.isPending} className="bg-blue-600 hover:bg-blue-700 text-white rounded-xl h-10 px-6">
+              <Button type="submit" disabled={updateMutation.isPending} className="bg-blue-600 hover:bg-blue-700 text-white rounded-xl h-10 px-6 shadow-md hover:shadow-blue-500/25">
                 {updateMutation.isPending && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
-                Save
+                Save Changes
               </Button>
-            </DialogFooter>
+            </div>
           </form>
         </DialogContent>
       </Dialog>
