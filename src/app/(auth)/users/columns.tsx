@@ -20,19 +20,29 @@ function getInitials(firstName: string, lastName: string) {
   return (f + l).toUpperCase() || '?';
 }
 
+const ROLE_BADGE_STYLES: Record<string, string> = {
+  SUPER_ADMIN: 'bg-purple-50 text-purple-700 border-purple-200',
+  COMPANY_ADMIN: 'bg-blue-50 text-blue-700 border-blue-200',
+  WAREHOUSE_MANAGER: 'bg-indigo-50 text-indigo-700 border-indigo-200',
+  SUPERVISOR: 'bg-cyan-50 text-cyan-700 border-cyan-200',
+  OPERATOR: 'bg-emerald-50 text-emerald-700 border-emerald-200',
+  VIEWER: 'bg-slate-50 text-slate-600 border-slate-200',
+};
+
 export const columns: ColumnDef<User>[] = [
   {
     accessorKey: 'firstName',
     header: 'User',
     cell: ({ row, table }) => {
       const user = row.original;
-      const fullName = `${user.firstName || ''} ${user.lastName || ''}`.trim() || 'Unknown User';
+      const fullName =
+        user.fullName || `${user.firstName || ''} ${user.lastName || ''}`.trim() || 'Unknown User';
       const initials = getInitials(user.firstName, user.lastName);
       const colors = getAvatarColors(fullName);
       const meta = table.options.meta as any;
 
       return (
-        <div 
+        <div
           className="flex items-center gap-3 py-1 cursor-pointer group"
           onClick={() => meta?.onCustomAction?.(user)}
         >
@@ -46,7 +56,10 @@ export const columns: ColumnDef<User>[] = [
             <span className="font-semibold text-slate-800 text-sm leading-tight group-hover:text-blue-600 transition-colors">
               {fullName}
             </span>
-            <span className="text-xs text-slate-400 mt-0.5">{user.email}</span>
+            <span className="text-xs text-slate-400 mt-0.5 font-mono">
+              @{user.username || user.employeeCode}
+            </span>
+            <span className="text-xs text-slate-400">{user.email}</span>
           </div>
         </div>
       );
@@ -56,20 +69,36 @@ export const columns: ColumnDef<User>[] = [
     accessorKey: 'roleName',
     header: 'Role',
     cell: ({ row }) => {
-      const role = (row.getValue('roleName') as string) || 'Operator';
+      const user = row.original;
+      const roleKey = user.roleKey || '';
+      const roleLabel = (row.getValue('roleName') as string) || roleKey || 'Operator';
+      const style = ROLE_BADGE_STYLES[roleKey] || ROLE_BADGE_STYLES.VIEWER;
+
       return (
-        <div className="inline-flex items-center px-2.5 py-0.5 rounded-lg bg-slate-50 border border-slate-200 text-slate-600 text-xs font-semibold uppercase tracking-wide">
-          {role}
+        <div
+          className={`inline-flex items-center px-2.5 py-0.5 rounded-lg border text-xs font-semibold uppercase tracking-wide ${style}`}
+        >
+          {roleLabel}
         </div>
       );
     },
   },
   {
-    accessorKey: 'warehouseName',
-    header: 'Warehouse / Assignment',
+    accessorKey: 'warehousesCount',
+    header: 'Warehouses',
     cell: ({ row }) => {
-      const name = row.getValue('warehouseName') as string;
-      return <div className="text-sm font-medium text-slate-600">{name || 'Global Access'}</div>;
+      const count = row.original.warehousesCount ?? 0;
+      return (
+        <div className="text-sm font-semibold text-slate-700">
+          {count > 0 ? (
+            <span className="inline-flex items-center px-2 py-0.5 rounded-lg bg-slate-100 text-slate-700 text-xs font-bold">
+              {count}
+            </span>
+          ) : (
+            <span className="text-xs text-slate-400">—</span>
+          )}
+        </div>
+      );
     },
   },
   {
@@ -78,37 +107,25 @@ export const columns: ColumnDef<User>[] = [
     cell: ({ row, table }) => {
       const user = row.original;
       const meta = table.options.meta as any;
-      const status = row.getValue('status') as 'ACTIVE' | 'SUSPENDED' | 'INVITED';
-
-      const statusConfigs = {
-        ACTIVE: 'bg-emerald-50 text-emerald-700 border-emerald-200/60 hover:bg-emerald-100 dot-emerald-500',
-        SUSPENDED: 'bg-rose-50 text-rose-700 border-rose-200/60 hover:bg-rose-100 dot-rose-500',
-        INVITED: 'bg-blue-50 text-blue-700 border-blue-200/60 hover:bg-blue-100 dot-blue-500',
-      };
-
-      const nextStatusMap = {
-        ACTIVE: 'SUSPENDED' as const,
-        SUSPENDED: 'ACTIVE' as const,
-        INVITED: 'ACTIVE' as const,
-      };
-
-      const dotColors = {
-        ACTIVE: 'bg-emerald-500',
-        SUSPENDED: 'bg-rose-500',
-        INVITED: 'bg-blue-500',
-      };
+      const isActive = user.isActive ?? user.status === 'ACTIVE';
+      const status = isActive ? 'ACTIVE' : 'INACTIVE';
 
       return (
         <button
           onClick={() => {
-            const nextStatus = nextStatusMap[status];
-            meta?.onEdit?.({ ...user, status: nextStatus }, true);
+            meta?.onEdit?.({ ...user, isActive: !isActive }, true);
           }}
           className={`group flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold transition-all duration-300 border ${
-            statusConfigs[status] || statusConfigs.SUSPENDED
+            isActive
+              ? 'bg-emerald-50 text-emerald-700 border-emerald-200/60 hover:bg-emerald-100'
+              : 'bg-rose-50 text-rose-700 border-rose-200/60 hover:bg-rose-100'
           }`}
         >
-          <span className={`w-1.5 h-1.5 rounded-full transition-transform duration-300 group-hover:scale-125 ${dotColors[status] || 'bg-slate-400'}`} />
+          <span
+            className={`w-1.5 h-1.5 rounded-full transition-transform duration-300 group-hover:scale-125 ${
+              isActive ? 'bg-emerald-500' : 'bg-rose-500'
+            }`}
+          />
           <span className="capitalize">{status.toLowerCase()}</span>
         </button>
       );

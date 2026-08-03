@@ -16,10 +16,14 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
+import { HierarchyFilters, useEffectiveHierarchyIds } from '@/components/masters/hierarchy-filters';
 
 export default function RacksPage() {
   const [page, setPage] = useState(1);
-  const [roomId] = useState('1'); // In real app, this would come from URL or context
+  const [warehouseId, setWarehouseId] = useState('');
+  const [roomId, setRoomId] = useState('');
+  const [rackId, setRackId] = useState('');
+  const { effectiveRoomId } = useEffectiveHierarchyIds(warehouseId, roomId, rackId, '', 'room');
   
   // Drawer states
   const [isFormDrawerOpen, setIsFormDrawerOpen] = useState(false);
@@ -47,12 +51,13 @@ export default function RacksPage() {
   const queryClient = useQueryClient();
 
   const { data, isLoading, error, refetch } = useQuery({
-    queryKey: ['racks', roomId, page],
-    queryFn: () => getRacks(roomId, page, 20),
+    queryKey: ['racks', effectiveRoomId, page],
+    queryFn: () => getRacks(effectiveRoomId, page, 20),
+    enabled: !!effectiveRoomId,
   });
 
   const createMutation = useMutation({
-    mutationFn: (data: CreateRackData) => createRack(roomId, data),
+    mutationFn: (data: CreateRackData) => createRack(effectiveRoomId, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['racks'] });
       setIsFormDrawerOpen(false);
@@ -183,7 +188,7 @@ export default function RacksPage() {
               name: '',
               code: '',
               description: '',
-              roomId: roomId,
+              roomId: effectiveRoomId,
               isActive: true,
             });
             setIsFormDrawerOpen(true);
@@ -194,6 +199,16 @@ export default function RacksPage() {
           Add Rack
         </Button>
       </div>
+
+      <HierarchyFilters
+        depth="room"
+        warehouseId={warehouseId}
+        roomId={roomId}
+        rackId={rackId}
+        onWarehouseChange={setWarehouseId}
+        onRoomChange={setRoomId}
+        onRackChange={setRackId}
+      />
 
       {/* Metrics Section */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">

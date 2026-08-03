@@ -7,8 +7,17 @@ import { Plus, Loader2, AlertCircle, RefreshCw, Key, Search, Users, UserCheck, U
 import { DataTable } from '@/components/ui/data-table';
 import { ConfirmDialog } from '@/components/ui/confirm-dialog';
 import { columns } from './columns';
-import { getUsers, createUser, updateUser, deleteUser, resetUserPassword } from '@/lib/api/user';
-import { getRoles } from '@/lib/api/role';
+import {
+  getUsers,
+  createUser,
+  updateUser,
+  deactivateUser,
+  resetUserPassword,
+  updateUserAssignments,
+} from '@/lib/api/user';
+import { getWarehouses } from '@/lib/api/warehouse';
+import { useAuth } from '@/contexts/auth-context';
+import { RoleNameKey } from '@/lib/types/user';
 import { User } from '@/lib/types/user';
 import { CreateUserData, createUserSchema } from '@/lib/validations/user';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -32,10 +41,23 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 
+const MOBILE_ROLES: RoleNameKey[] = ['WAREHOUSE_MANAGER', 'SUPERVISOR', 'OPERATOR'];
+
+const ALL_ROLES: { value: RoleNameKey; label: string }[] = [
+  { value: 'SUPER_ADMIN', label: 'Super Admin' },
+  { value: 'COMPANY_ADMIN', label: 'Company Admin' },
+  { value: 'WAREHOUSE_MANAGER', label: 'Warehouse Manager' },
+  { value: 'SUPERVISOR', label: 'Supervisor' },
+  { value: 'OPERATOR', label: 'Operator' },
+  { value: 'VIEWER', label: 'Viewer' },
+];
+
 export default function UsersPage() {
+  const { user: authUser } = useAuth();
   const [page, setPage] = useState(1);
   const [searchTerm, setSearchTerm] = useState('');
-  const [statusFilter, setStatusFilter] = useState<'ALL' | 'ACTIVE' | 'SUSPENDED' | 'INVITED'>('ALL');
+  const [roleFilter, setRoleFilter] = useState<string>('ALL');
+  const [statusFilter, setStatusFilter] = useState<'ALL' | 'ACTIVE' | 'INACTIVE'>('ALL');
   const [confirmDelete, setConfirmDelete] = useState<{
     isOpen: boolean;
     title: string;
@@ -56,15 +78,26 @@ export default function UsersPage() {
   const queryClient = useQueryClient();
 
   const { data, isLoading, error, refetch } = useQuery({
-    queryKey: ['users', page],
-    queryFn: () => getUsers(page, 20),
+    queryKey: ['users', page, searchTerm, roleFilter, statusFilter],
+    queryFn: () =>
+      getUsers(page, 20, {
+        search: searchTerm || undefined,
+        role: roleFilter !== 'ALL' ? roleFilter : undefined,
+        isActive:
+          statusFilter === 'ALL' ? undefined : statusFilter === 'ACTIVE',
+      }),
   });
 
-  const { data: rolesData } = useQuery({
-    queryKey: ['roles-all'],
-    queryFn: getRoles,
+  const { data: warehousesData } = useQuery({
+    queryKey: ['warehouses-all'],
+    queryFn: () => getWarehouses(1, 100),
   });
-  const roles = rolesData?.data || [];
+  const warehouses = warehousesData?.data || [];
+
+  const assignableRoles =
+    authUser?.roleName === 'SUPER_ADMIN'
+      ? ALL_ROLES
+      : ALL_ROLES.filter((r) => r.value !== 'SUPER_ADMIN');
 
   const createMutation = useMutation({
     mutationFn: createUser,
@@ -92,18 +125,26 @@ export default function UsersPage() {
     },
   });
 
-  const deleteMutation = useMutation({
-    mutationFn: deleteUser,
+  const deactivateMutation = useMutation({
+    mutationFn: deactivateUser,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['users'] });
       if (selectedUserForDetail?.id) {
         setIsDetailsOpen(false);
         setSelectedUserForDetail(null);
       }
-      toast.success('User deleted successfully');
+      toast.success('User deactivated successfully');
     },
     onError: (error: any) => {
-      toast.error(error.response?.data?.message || 'Failed to delete user');
+      toast.error(error.message || 'Failed to deactivate user');
+    },
+  });
+
+  const assignmentsMutation = useMutation({
+    mutationFn: ({ id, warehouseIds }: { id: string; warehouseIds: string[] }) =>
+      updateUserAssignments(id, warehouseIds),
+    onError: (error: any) => {
+      toast.error(error.message || 'Failed to update warehouse assignments');
     },
   });
 
@@ -123,47 +164,79 @@ export default function UsersPage() {
   const createForm = useForm<CreateUserData>({
     resolver: zodResolver(createUserSchema),
     defaultValues: {
+      username: '',
       email: '',
       firstName: '',
       lastName: '',
       phone: '',
-      roleId: '',
-      warehouseId: '',
+      role: 'OPERATOR',
+      warehouseIds: [],
       password: '',
     },
   });
 
+  const selectedRole = createForm.watch('role');
+  const selectedWarehouseIds = createForm.watch('warehouseIds') || [];
+  const showWarehousePicker = MOBILE_ROLES.includes(selectedRole);
+
   const handleCreateSubmit = (data: CreateUserData) => {
-    const { firstName, lastName, ...rest } = data;
-    const employeeCode = 'EMP-' + Math.floor(100000 + Math.random() * 900000);
-    const apiData = {
-      ...rest,
-      fullName: `${firstName} ${lastName}`.trim(),
-      employeeCode,
-    };
-    createMutation.mutate(apiData as any);
+    createMutation.mutate({
+      username: data.username,
+      email: data.email,
+      firstName: data.firstName,
+      lastName: data.lastName,
+      phone: data.phone,
+      role: data.role,
+      password: data.password,
+      warehouseIds: data.warehouseIds || [],
+    });
   };
 
-  const handleEditSubmit = (data: any) => {
-    if (selectedUser) {
-      const { firstName, lastName, email, password, ...rest } = data;
-      const apiData = {
-        ...rest,
-        fullName: `${firstName} ${lastName}`.trim(),
-      };
-      updateMutation.mutate({ id: selectedUser.id, data: apiData });
-    }
-  };
-
-  const handleDelete = (user: User) => {
-    setConfirmDelete({
-      isOpen: true,
-      title: 'Delete User',
-      description: `Are you sure you want to delete user ${user.firstName} ${user.lastName}? This action cannot be undone.`,
-      onConfirm: () => {
-        deleteMutation.mutate(user.id);
+  const handleEditSubmit = async (data: CreateUserData) => {
+    if (!selectedUser) return;
+    const { firstName, lastName, phone, role } = data;
+    await updateMutation.mutateAsync({
+      id: selectedUser.id,
+      data: {
+        firstName,
+        lastName,
+        phone: phone || null,
+        role,
       },
     });
+    if (role && MOBILE_ROLES.includes(role)) {
+      await assignmentsMutation.mutateAsync({
+        id: selectedUser.id,
+        warehouseIds: data.warehouseIds || [],
+      });
+    }
+    queryClient.invalidateQueries({ queryKey: ['users'] });
+    setIsEditDialogOpen(false);
+    setSelectedUser(null);
+    toast.success('User updated successfully');
+  };
+
+  const handleDeactivate = (user: User) => {
+    setConfirmDelete({
+      isOpen: true,
+      title: 'Deactivate User',
+      description: `Deactivate ${user.fullName || user.firstName}? They will no longer be able to sign in.`,
+      onConfirm: () => {
+        deactivateMutation.mutate(user.id);
+      },
+    });
+  };
+
+  const toggleWarehouse = (warehouseId: string) => {
+    const current = createForm.getValues('warehouseIds') || [];
+    if (current.includes(warehouseId)) {
+      createForm.setValue(
+        'warehouseIds',
+        current.filter((id) => id !== warehouseId)
+      );
+    } else {
+      createForm.setValue('warehouseIds', [...current, warehouseId]);
+    }
   };
 
   const handlePasswordReset = (user: User) => {
@@ -208,23 +281,11 @@ export default function UsersPage() {
   const users = data?.data || [];
   const meta = data?.meta;
 
-  // Local filtering for responsive UI
-  const filteredUsers = users.filter((user: User) => {
-    const fullName = `${user.firstName || ''} ${user.lastName || ''}`.toLowerCase();
-    const matchesSearch = fullName.includes(searchTerm.toLowerCase()) ||
-      user.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (user.phone && user.phone.includes(searchTerm));
-    const matchesStatus = statusFilter === 'ALL' || user.status === statusFilter;
-    return matchesSearch && matchesStatus;
-  });
-
-  // Calculate metrics
   const totalCount = meta?.total || users.length;
-  const activeCount = users.filter(u => u.status === 'ACTIVE').length;
-  const suspendedCount = users.filter(u => u.status === 'SUSPENDED').length;
+  const activeCount = users.filter((u) => u.isActive ?? u.status === 'ACTIVE').length;
+  const inactiveCount = totalCount - activeCount;
 
-  // Active state for the Edit modal's segmented status control (UI only).
-  const editStatus = ((createForm.watch as any)('status') as string) || selectedUser?.status || 'ACTIVE';
+  const editIsActive = selectedUser?.isActive ?? selectedUser?.status === 'ACTIVE';
   const editInitials = `${selectedUser?.firstName?.[0] || ''}${selectedUser?.lastName?.[0] || ''}`.toUpperCase();
 
   return (
@@ -243,12 +304,13 @@ export default function UsersPage() {
         <Button
           onClick={() => {
             createForm.reset({
+              username: '',
               email: '',
               firstName: '',
               lastName: '',
               phone: '',
-              roleId: '',
-              warehouseId: '',
+              role: 'OPERATOR',
+              warehouseIds: [],
               password: '',
             });
             setIsCreateDialogOpen(true);
@@ -305,38 +367,61 @@ export default function UsersPage() {
           <div className="absolute top-0 right-0 w-28 h-28 bg-gradient-to-bl from-rose-50 to-red-50/30 rounded-bl-full -z-0 opacity-80 transition-transform duration-500 group-hover:scale-105" />
           <div className="relative z-10 flex items-center justify-between">
             <div className="space-y-2">
-              <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">Suspended Users</p>
-              <h3 className="text-3xl font-extrabold text-slate-900 tracking-tight">{suspendedCount}</h3>
+              <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">Inactive Users</p>
+              <h3 className="text-3xl font-extrabold text-slate-900 tracking-tight">{inactiveCount}</h3>
             </div>
             <div className="p-3.5 bg-rose-50 text-rose-600 rounded-2xl border border-rose-100/50 shadow-sm">
               <UserX className="w-6 h-6 stroke-[2]" />
             </div>
           </div>
           <div className="mt-5 text-xs text-slate-400 flex items-center gap-1.5 border-t border-slate-50 pt-4">
-            <Info className="w-4 h-4 text-rose-500" /> Account locks active
+            <Info className="w-4 h-4 text-rose-500" /> Deactivated accounts
           </div>
         </div>
       </div>
 
-      {/* Toolbar Controls */}
       <div className="flex flex-col md:flex-row gap-4 justify-between items-center bg-white p-4 rounded-2xl border border-slate-100 shadow-sm">
-        {/* Search */}
         <div className="relative w-full md:w-80">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
           <Input
             value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            placeholder="Search name, email, phone..."
+            onChange={(e) => {
+              setSearchTerm(e.target.value);
+              setPage(1);
+            }}
+            placeholder="Search name, email, username..."
             className="pl-10 h-10 bg-slate-50 border-slate-200 focus:bg-white focus:ring-2 focus:ring-blue-500/25 transition-all rounded-xl"
           />
         </div>
 
-        {/* Status Filter Tab-like buttons */}
+        <Select
+          value={roleFilter}
+          onValueChange={(value) => {
+            setRoleFilter(value);
+            setPage(1);
+          }}
+        >
+          <SelectTrigger className="w-full md:w-48 h-10 rounded-xl">
+            <SelectValue placeholder="Filter by role" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="ALL">All roles</SelectItem>
+            {ALL_ROLES.map((role) => (
+              <SelectItem key={role.value} value={role.value}>
+                {role.label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+
         <div className="flex bg-slate-100 p-1 rounded-xl w-full md:w-auto">
-          {(['ALL', 'ACTIVE', 'SUSPENDED', 'INVITED'] as const).map((status) => (
+          {(['ALL', 'ACTIVE', 'INACTIVE'] as const).map((status) => (
             <button
               key={status}
-              onClick={() => setStatusFilter(status)}
+              onClick={() => {
+                setStatusFilter(status);
+                setPage(1);
+              }}
               className={`flex-1 md:flex-none px-4 py-1.5 text-xs font-semibold tracking-wide rounded-lg transition-all capitalize ${
                 statusFilter === status
                   ? 'bg-white text-blue-600 shadow-sm'
@@ -351,12 +436,16 @@ export default function UsersPage() {
 
       {/* Data Table */}
       <div className="bg-white rounded-2xl border border-slate-100 shadow-sm">
-        {filteredUsers.length === 0 ? (
+        {users.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-72 text-slate-400 p-6 space-y-2">
             <Users className="w-12 h-12 text-slate-300 stroke-[1.5]" />
-            <p className="text-sm font-medium">No users found matching your search</p>
+            <p className="text-sm font-medium">No users found matching your filters</p>
             <Button
-              onClick={() => { setSearchTerm(''); setStatusFilter('ALL'); }}
+              onClick={() => {
+                setSearchTerm('');
+                setStatusFilter('ALL');
+                setRoleFilter('ALL');
+              }}
               variant="ghost"
               className="text-blue-600 text-xs font-semibold hover:bg-slate-50"
             >
@@ -366,21 +455,22 @@ export default function UsersPage() {
         ) : (
           <DataTable
             columns={columns}
-            data={filteredUsers}
+            data={users}
             meta={meta}
             onPageChange={setPage}
             onEdit={(user, isToggle) => {
               if (isToggle) {
-                updateMutation.mutate({ id: user.id, data: { status: user.status } });
+                updateMutation.mutate({ id: user.id, data: { isActive: user.isActive } });
               } else {
                 setSelectedUser(user);
                 createForm.reset({
+                  username: user.username || user.employeeCode,
                   email: user.email,
                   firstName: user.firstName,
                   lastName: user.lastName,
                   phone: user.phone || '',
-                  roleId: user.roleId || '',
-                  warehouseId: user.warehouseId || '',
+                  role: (user.roleKey || 'OPERATOR') as RoleNameKey,
+                  warehouseIds: user.warehouseIds || [],
                   password: '',
                 });
                 setIsEditDialogOpen(true);
@@ -390,7 +480,7 @@ export default function UsersPage() {
               setSelectedUserForDetail(user);
               setIsDetailsOpen(true);
             }}
-            onDelete={handleDelete}
+            onDelete={handleDeactivate}
           />
         )}
       </div>
@@ -406,6 +496,18 @@ export default function UsersPage() {
           </DialogHeader>
           <form onSubmit={createForm.handleSubmit(handleCreateSubmit)} className="space-y-4 pt-4">
             <div className="grid gap-4">
+              <div className="grid gap-2">
+                <Label htmlFor="username">Username</Label>
+                <Input
+                  id="username"
+                  {...createForm.register('username')}
+                  placeholder="jdoe"
+                  className="h-10 rounded-xl font-mono"
+                />
+                {createForm.formState.errors.username && (
+                  <p className="text-xs font-semibold text-rose-500">{createForm.formState.errors.username.message}</p>
+                )}
+              </div>
               <div className="grid grid-cols-2 gap-4">
                 <div className="grid gap-2">
                   <Label htmlFor="firstName">First Name</Label>
@@ -458,23 +560,53 @@ export default function UsersPage() {
                 )}
               </div>
               <div className="grid gap-2">
-                <Label htmlFor="roleId">Role</Label>
-                <Select onValueChange={(value) => createForm.setValue('roleId', value)}>
+                <Label htmlFor="role">Role</Label>
+                <Select
+                  value={createForm.watch('role')}
+                  onValueChange={(value: RoleNameKey) => {
+                    createForm.setValue('role', value);
+                    if (!MOBILE_ROLES.includes(value)) {
+                      createForm.setValue('warehouseIds', []);
+                    }
+                  }}
+                >
                   <SelectTrigger className="h-10 rounded-xl">
                     <SelectValue placeholder="Select role" />
                   </SelectTrigger>
                   <SelectContent>
-                    {roles.map((role) => (
-                      <SelectItem key={role.id} value={role.id}>
+                    {assignableRoles.map((role) => (
+                      <SelectItem key={role.value} value={role.value}>
                         {role.label}
                       </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
-                {createForm.formState.errors.roleId && (
-                  <p className="text-xs font-semibold text-rose-500">{createForm.formState.errors.roleId.message}</p>
+                {createForm.formState.errors.role && (
+                  <p className="text-xs font-semibold text-rose-500">{createForm.formState.errors.role.message}</p>
                 )}
               </div>
+              {showWarehousePicker && (
+                <div className="grid gap-2">
+                  <Label>Warehouses</Label>
+                  <div className="max-h-36 overflow-y-auto border border-slate-200 rounded-xl p-3 space-y-2">
+                    {warehouses.length === 0 ? (
+                      <p className="text-xs text-slate-400">No warehouses available</p>
+                    ) : (
+                      warehouses.map((wh) => (
+                        <label key={wh.id} className="flex items-center gap-2 text-sm cursor-pointer">
+                          <input
+                            type="checkbox"
+                            checked={selectedWarehouseIds.includes(wh.id)}
+                            onChange={() => toggleWarehouse(wh.id)}
+                            className="rounded border-slate-300"
+                          />
+                          <span>{wh.code} — {wh.name}</span>
+                        </label>
+                      ))
+                    )}
+                  </div>
+                </div>
+              )}
               <div className="grid gap-2">
                 <Label htmlFor="password">Password</Label>
                 <Input
@@ -584,19 +716,60 @@ export default function UsersPage() {
 
             {/* Access / status section */}
             <div className="space-y-3">
-              <h5 className="text-[11px] font-bold text-slate-400 uppercase tracking-widest">Access Status</h5>
-              <div className="grid grid-cols-3 gap-2">
+              <h5 className="text-[11px] font-bold text-slate-400 uppercase tracking-widest">Role & Warehouses</h5>
+              <div className="grid gap-2">
+                <Label className="text-xs text-slate-500">Role</Label>
+                <Select
+                  value={createForm.watch('role')}
+                  onValueChange={(value: RoleNameKey) => {
+                    createForm.setValue('role', value);
+                    if (!MOBILE_ROLES.includes(value)) {
+                      createForm.setValue('warehouseIds', []);
+                    }
+                  }}
+                >
+                  <SelectTrigger className="h-10 rounded-xl">
+                    <SelectValue placeholder="Select role" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {assignableRoles.map((role) => (
+                      <SelectItem key={role.value} value={role.value}>
+                        {role.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              {MOBILE_ROLES.includes(createForm.watch('role')) && (
+                <div className="grid gap-2">
+                  <Label className="text-xs text-slate-500">Warehouses</Label>
+                  <div className="max-h-36 overflow-y-auto border border-slate-200 rounded-xl p-3 space-y-2">
+                    {warehouses.map((wh) => (
+                      <label key={wh.id} className="flex items-center gap-2 text-sm cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={(createForm.watch('warehouseIds') || []).includes(wh.id)}
+                          onChange={() => toggleWarehouse(wh.id)}
+                          className="rounded border-slate-300"
+                        />
+                        <span>{wh.code} — {wh.name}</span>
+                      </label>
+                    ))}
+                  </div>
+                </div>
+              )}
+              <h5 className="text-[11px] font-bold text-slate-400 uppercase tracking-widest pt-2">Access Status</h5>
+              <div className="grid grid-cols-2 gap-2">
                 {([
-                  { value: 'ACTIVE', label: 'Active', active: 'bg-emerald-500 text-white border-emerald-500 shadow-sm shadow-emerald-500/30' },
-                  { value: 'SUSPENDED', label: 'Suspended', active: 'bg-rose-500 text-white border-rose-500 shadow-sm shadow-rose-500/30' },
-                  { value: 'INVITED', label: 'Invited', active: 'bg-blue-500 text-white border-blue-500 shadow-sm shadow-blue-500/30' },
+                  { value: true, label: 'Active', active: 'bg-emerald-500 text-white border-emerald-500 shadow-sm shadow-emerald-500/30' },
+                  { value: false, label: 'Inactive', active: 'bg-rose-500 text-white border-rose-500 shadow-sm shadow-rose-500/30' },
                 ] as const).map((opt) => (
                   <button
-                    key={opt.value}
+                    key={String(opt.value)}
                     type="button"
-                    onClick={() => (createForm.setValue as any)('status', opt.value)}
+                    onClick={() => selectedUser && updateMutation.mutate({ id: selectedUser.id, data: { isActive: opt.value } })}
                     className={`h-10 rounded-xl border text-xs font-semibold transition-all ${
-                      editStatus === opt.value
+                      editIsActive === opt.value
                         ? opt.active
                         : 'bg-white text-slate-500 border-slate-200 hover:border-slate-300 hover:bg-slate-50'
                     }`}
@@ -662,7 +835,7 @@ export default function UsersPage() {
         }}
         title={confirmDelete.title}
         description={confirmDelete.description}
-        isLoading={deleteMutation.isPending}
+        isLoading={deactivateMutation.isPending}
       />
 
       {/* SLIDE-OVER DRAWER: User Details */}
@@ -696,19 +869,21 @@ export default function UsersPage() {
                   </span>
                   
                   <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-xl text-xs font-bold border mt-3 ${
-                    selectedUserForDetail.status === 'ACTIVE' 
-                      ? 'bg-emerald-50 text-emerald-700 border-emerald-200' 
-                      : selectedUserForDetail.status === 'SUSPENDED'
-                      ? 'bg-rose-50 text-rose-700 border-rose-200'
-                      : 'bg-blue-50 text-blue-700 border-blue-200'
+                    (selectedUserForDetail.isActive ?? selectedUserForDetail.status === 'ACTIVE')
+                      ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                      : 'bg-rose-50 text-rose-700 border-rose-200'
                   }`}>
-                    {selectedUserForDetail.status}
+                    {(selectedUserForDetail.isActive ?? selectedUserForDetail.status === 'ACTIVE') ? 'ACTIVE' : 'INACTIVE'}
                   </span>
                 </div>
 
                 <div className="space-y-4">
                   <h5 className="text-xs font-bold text-slate-400 uppercase tracking-widest">Account Info</h5>
                   <div className="divide-y divide-slate-100 border border-slate-100 rounded-2xl overflow-hidden bg-white shadow-xs">
+                    <div className="flex justify-between items-center px-4 py-3">
+                      <span className="text-xs font-semibold text-slate-500">Username</span>
+                      <span className="text-xs font-semibold text-slate-700 font-mono">{selectedUserForDetail.username || selectedUserForDetail.employeeCode}</span>
+                    </div>
                     <div className="flex justify-between items-center px-4 py-3">
                       <span className="text-xs font-semibold text-slate-500">Email</span>
                       <span className="text-xs font-semibold text-slate-700">{selectedUserForDetail.email}</span>
@@ -722,8 +897,8 @@ export default function UsersPage() {
                       <span className="text-xs font-semibold text-slate-700 uppercase">{selectedUserForDetail.roleName || 'Operator'}</span>
                     </div>
                     <div className="flex justify-between items-center px-4 py-3">
-                      <span className="text-xs font-semibold text-slate-500">Warehouse Assignment</span>
-                      <span className="text-xs font-semibold text-slate-700">{selectedUserForDetail.warehouseName || 'Global Access'}</span>
+                      <span className="text-xs font-semibold text-slate-500">Warehouses</span>
+                      <span className="text-xs font-semibold text-slate-700">{selectedUserForDetail.warehousesCount ?? 0}</span>
                     </div>
                     <div className="flex justify-between items-center px-4 py-3">
                       <span className="text-xs font-semibold text-slate-500">Created At</span>
@@ -740,12 +915,13 @@ export default function UsersPage() {
                     onClick={() => {
                       setSelectedUser(selectedUserForDetail);
                       createForm.reset({
+                        username: selectedUserForDetail.username || selectedUserForDetail.employeeCode,
                         email: selectedUserForDetail.email,
                         firstName: selectedUserForDetail.firstName,
                         lastName: selectedUserForDetail.lastName,
                         phone: selectedUserForDetail.phone || '',
-                        roleId: selectedUserForDetail.roleId || '',
-                        warehouseId: selectedUserForDetail.warehouseId || '',
+                        role: (selectedUserForDetail.roleKey || 'OPERATOR') as RoleNameKey,
+                        warehouseIds: selectedUserForDetail.warehouseIds || [],
                         password: '',
                       });
                       setIsDetailsOpen(false);
@@ -768,13 +944,13 @@ export default function UsersPage() {
                   </Button>
                   <Button
                     onClick={() => {
-                      handleDelete(selectedUserForDetail);
+                      handleDeactivate(selectedUserForDetail);
                       setIsDetailsOpen(false);
                     }}
                     variant="outline"
                     className="w-full text-red-650 hover:bg-red-50 text-red-650 hover:text-red-700 rounded-xl h-11 text-xs font-bold border-red-200"
                   >
-                    Delete Account
+                    Deactivate Account
                   </Button>
                 </div>
 

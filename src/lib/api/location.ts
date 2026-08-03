@@ -1,10 +1,25 @@
 import { Location, LocationListResponse, CreateLocationRequest, UpdateLocationRequest } from '../types/location';
 import { fetchWithAuth } from './auth';
 
-// Backend route is flat (`/locations?shelfId=...`), not nested under `/shelves/:id/locations`,
-// and does not support pagination — it returns the full array with no `meta`.
-export async function getLocations(shelfId: string, page: number = 1, pageSize: number = 20): Promise<LocationListResponse> {
-  return fetchWithAuth(`/locations?shelfId=${shelfId}`);
+// Backend route is flat (`/locations?shelfId=...`), optional shelfId returns all locations.
+export async function getLocations(shelfId?: string, page: number = 1, pageSize: number = 20): Promise<LocationListResponse> {
+  const url = shelfId ? `/locations?shelfId=${shelfId}` : '/locations';
+  const response = await fetchWithAuth(url);
+  const rows = Array.isArray(response.data) ? response.data : [];
+  return {
+    data: rows.map((row: any) => ({
+      ...row,
+      shelfName: row.shelf?.name || row.shelfName,
+      isOccupied: row.isOccupied ?? false,
+      capacity: 1
+    })),
+    meta: {
+      page,
+      pageSize,
+      total: rows.length,
+      totalPages: Math.max(1, Math.ceil(rows.length / pageSize))
+    }
+  };
 }
 
 export async function getLocation(id: string): Promise<Location> {

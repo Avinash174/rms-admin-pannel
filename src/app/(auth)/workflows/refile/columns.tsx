@@ -1,106 +1,71 @@
 import { ColumnDef } from '@tanstack/react-table';
-import { Clock, FileText, CheckCircle2, XCircle, User, ArrowRight } from 'lucide-react';
+import { OperationSummary } from '@/lib/api/operations';
+import { User } from 'lucide-react';
 
-export interface Refile {
-  id: string;
-  refileCode: string;
-  fileRecordBarcode: string;
-  fileRecordTitle: string;
-  sourceBoxBarcode: string;
-  destinationBoxBarcode: string;
-  status: 'PENDING' | 'IN_PROGRESS' | 'COMPLETED' | 'FAILED';
-  reason?: string;
-  assignedTo?: string;
-  startedAt?: string;
-  completedAt?: string;
-  createdAt: string;
-}
-
-const statusStyles = {
-  PENDING: 'bg-yellow-50 text-yellow-700 border-yellow-200',
-  IN_PROGRESS: 'bg-blue-50 text-blue-700 border-blue-200',
-  COMPLETED: 'bg-emerald-50 text-emerald-700 border-emerald-200',
-  FAILED: 'bg-rose-50 text-rose-700 border-rose-200',
-};
-
-const statusIcons = {
-  PENDING: <Clock className="w-3.5 h-3.5" />,
-  IN_PROGRESS: <FileText className="w-3.5 h-3.5" />,
-  COMPLETED: <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" />,
-  FAILED: <XCircle className="w-3.5 h-3.5 text-rose-500" />,
-};
-
-export const columns: ColumnDef<Refile>[] = [
+export const columns: ColumnDef<OperationSummary>[] = [
   {
-    accessorKey: 'refileCode',
-    header: () => <span className="text-xs font-bold tracking-wider text-slate-500 uppercase">Refile Code</span>,
+    accessorKey: 'performedAt',
+    header: 'Date',
+    cell: ({ row }) => (
+      <span className="text-xs text-slate-600">
+        {new Date(row.original.performedAt).toLocaleString()}
+      </span>
+    ),
+  },
+  {
+    accessorKey: 'fileBarcode',
+    header: 'File',
     cell: ({ row, table }) => {
       const item = row.original;
       const meta = table.options.meta as any;
       return (
-        <div className="flex flex-col cursor-pointer group" onClick={() => meta?.onCustomAction?.(item)}>
-          <span className="font-mono font-bold text-slate-900 text-sm group-hover:text-blue-600 transition-colors">
-            {item.refileCode}
-          </span>
-          <span className="text-[10px] text-slate-400 font-semibold mt-0.5">Click to view details</span>
-        </div>
+        <button
+          className="font-mono text-sm font-semibold hover:text-blue-600 text-left"
+          onClick={() => meta?.onCustomAction?.(item)}
+        >
+          {item.fileBarcode || item.summary}
+        </button>
       );
     },
   },
   {
-    accessorKey: 'fileRecordTitle',
-    header: () => <span className="text-xs font-bold tracking-wider text-slate-500 uppercase">File Record</span>,
+    id: 'user',
+    header: 'User',
     cell: ({ row }) => (
-      <div className="flex flex-col">
-        <span className="text-xs font-bold text-slate-800">{row.original.fileRecordTitle}</span>
-        <span className="text-[10px] text-slate-400 font-mono mt-0.5">{row.original.fileRecordBarcode}</span>
-      </div>
-    ),
-  },
-  {
-    accessorKey: 'sourceBoxBarcode',
-    header: () => <span className="text-xs font-bold tracking-wider text-slate-500 uppercase">Box Route</span>,
-    cell: ({ row }) => {
-      const item = row.original;
-      return (
-        <div className="flex items-center gap-2 font-mono text-xs font-semibold text-slate-700 bg-slate-50 border border-slate-100 px-3 py-1.5 rounded-xl w-fit">
-          <span>{item.sourceBoxBarcode}</span>
-          <ArrowRight className="w-3.5 h-3.5 text-slate-400 shrink-0" />
-          <span className="text-blue-600">{item.destinationBoxBarcode}</span>
-        </div>
-      );
-    },
-  },
-  {
-    accessorKey: 'reason',
-    header: () => <span className="text-xs font-bold tracking-wider text-slate-500 uppercase">Reason</span>,
-    cell: ({ row }) => (
-      <span className="text-xs text-slate-600 font-medium">{row.original.reason || '-'}</span>
-    ),
-  },
-  {
-    accessorKey: 'assignedTo',
-    header: () => <span className="text-xs font-bold tracking-wider text-slate-500 uppercase">Operator</span>,
-    cell: ({ row }) => (
-      <div className="flex items-center gap-1.5 text-xs text-slate-700 font-semibold">
-        <div className="w-6 h-6 rounded-full bg-slate-100 flex items-center justify-center border border-slate-200">
-          <User className="w-3.5 h-3.5 text-slate-500" />
-        </div>
-        {row.original.assignedTo || 'Unassigned'}
+      <div className="flex items-center gap-1.5 text-xs text-slate-700">
+        <User className="w-3.5 h-3.5 text-slate-400" />
+        {row.original.user.fullName}
       </div>
     ),
   },
   {
     accessorKey: 'status',
-    header: () => <span className="text-xs font-bold tracking-wider text-slate-500 uppercase">Status</span>,
+    header: 'Status',
     cell: ({ row }) => {
-      const status = row.getValue('status') as string;
+      const status = row.original.status;
+      const isRejected = status === 'REJECTED';
       return (
-        <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-xl text-xs font-bold border ${
-          statusStyles[status as keyof typeof statusStyles] || statusStyles.PENDING
-        }`}>
-          {statusIcons[status as keyof typeof statusIcons]}
-          {status.replace('_', ' ')}
+        <span
+          className={`inline-flex px-2.5 py-0.5 rounded-lg border text-xs font-bold uppercase ${
+            isRejected
+              ? 'bg-rose-50 text-rose-700 border-rose-200'
+              : 'bg-emerald-50 text-emerald-700 border-emerald-200'
+          }`}
+        >
+          {status}
+        </span>
+      );
+    },
+  },
+  {
+    accessorKey: 'reasonCode',
+    header: 'Reason',
+    cell: ({ row }) => {
+      const reason = row.original.reasonCode;
+      if (!reason) return <span className="text-slate-400">—</span>;
+      return (
+        <span className="text-xs font-semibold text-amber-700 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded-lg">
+          {reason}
         </span>
       );
     },

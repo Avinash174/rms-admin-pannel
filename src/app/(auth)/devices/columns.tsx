@@ -1,98 +1,40 @@
 import { ColumnDef } from '@tanstack/react-table';
 import { Device } from '@/lib/types/device';
-import { Calendar, Tablet, User } from 'lucide-react';
-
-function getAvatarGradient(name: string) {
-  let hash = 0;
-  for (let i = 0; i < name.length; i++) {
-    hash = name.charCodeAt(i) + ((hash << 5) - hash);
-  }
-  const h1 = Math.abs(hash) % 360;
-  const h2 = (h1 + 40) % 360;
-  return {
-    background: `linear-gradient(135deg, hsl(${h1}, 80%, 92%) 0%, hsl(${h2}, 85%, 85%) 100%)`,
-    color: `hsl(${h1}, 90%, 30%)`,
-    border: `1px solid hsl(${h1}, 70%, 80%)`,
-  };
-}
-
-function getInitials(name: string) {
-  if (!name) return '';
-  return name
-    .split(' ')
-    .map((n) => n[0])
-    .slice(0, 2)
-    .join('')
-    .toUpperCase();
-}
+import { Calendar, User } from 'lucide-react';
 
 export const columns: ColumnDef<Device>[] = [
   {
-    accessorKey: 'name',
-    header: () => <span className="text-xs font-bold tracking-wider text-slate-500 uppercase">Device Name</span>,
+    accessorKey: 'serialNumber',
+    header: () => <span className="text-xs font-bold tracking-wider text-slate-500 uppercase">Serial Number</span>,
     cell: ({ row, table }) => {
       const device = row.original;
-      const name = device.name || 'Unknown Device';
-      const initials = getInitials(name);
-      const style = getAvatarGradient(name);
+      const serial = device.serialNumber || device.deviceId;
       const meta = table.options.meta as any;
 
       return (
-        <div 
-          className="flex items-center gap-4 py-1.5 cursor-pointer group"
+        <button
+          className="text-left font-mono text-sm font-semibold text-slate-800 hover:text-blue-600"
           onClick={() => meta?.onCustomAction?.(device)}
         >
-          <div
-            className="flex items-center justify-center w-11 h-11 rounded-2xl text-sm font-bold tracking-wider shadow-sm transition-all duration-300 group-hover:scale-105 group-hover:shadow-md"
-            style={{ 
-              background: style.background, 
-              color: style.color,
-              border: style.border
-            }}
-          >
-            {initials || <Tablet className="w-5 h-5" />}
-          </div>
-          <div className="flex flex-col">
-            <span className="font-semibold text-slate-900 text-sm leading-snug group-hover:text-blue-600 transition-colors duration-200">
-              {name}
-            </span>
-            <span className="text-[11px] text-slate-400 font-mono mt-0.5 select-all">
-              ID: {device.deviceId}
-            </span>
-          </div>
-        </div>
+          {serial}
+        </button>
       );
     },
-  },
-  {
-    accessorKey: 'type',
-    header: () => <span className="text-xs font-bold tracking-wider text-slate-500 uppercase">Type</span>,
-    cell: ({ row }) => (
-      <div className="inline-flex items-center px-3 py-1 rounded-xl bg-slate-50 border border-slate-200/80 text-slate-700 text-xs font-bold uppercase tracking-wider">
-        {row.getValue('type')}
-      </div>
-    ),
   },
   {
     accessorKey: 'model',
-    header: () => <span className="text-xs font-bold tracking-wider text-slate-500 uppercase">Model / Serial</span>,
-    cell: ({ row }) => {
-      const device = row.original;
-      return (
-        <div className="flex flex-col gap-0.5">
-          <span className="text-xs text-slate-800 font-semibold">{device.model || '-'}</span>
-          <span className="text-[10px] text-slate-400 font-mono mt-0.5">{device.serialNumber || '-'}</span>
-        </div>
-      );
-    },
+    header: () => <span className="text-xs font-bold tracking-wider text-slate-500 uppercase">Model</span>,
+    cell: ({ row }) => (
+      <span className="text-sm text-slate-700">{row.getValue('model') || '—'}</span>
+    ),
   },
   {
     accessorKey: 'userName',
-    header: () => <span className="text-xs font-bold tracking-wider text-slate-500 uppercase">Assigned User</span>,
+    header: () => <span className="text-xs font-bold tracking-wider text-slate-500 uppercase">Last User</span>,
     cell: ({ row }) => (
-      <div className="flex items-center gap-1 text-xs text-slate-700 font-semibold">
+      <div className="flex items-center gap-1.5 text-xs text-slate-700 font-medium">
         <User className="w-3.5 h-3.5 text-slate-400" />
-        {row.getValue('userName') || 'Unassigned'}
+        {row.getValue('userName') || '—'}
       </div>
     ),
   },
@@ -100,10 +42,23 @@ export const columns: ColumnDef<Device>[] = [
     accessorKey: 'appVersion',
     header: () => <span className="text-xs font-bold tracking-wider text-slate-500 uppercase">App Version</span>,
     cell: ({ row }) => (
-      <div className="text-xs text-slate-800 font-mono font-bold">
-        {row.getValue('appVersion') || '-'}
-      </div>
+      <span className="text-xs font-mono font-semibold text-slate-700">
+        {row.getValue('appVersion') || '—'}
+      </span>
     ),
+  },
+  {
+    accessorKey: 'lastSyncedAt',
+    header: () => <span className="text-xs font-bold tracking-wider text-slate-500 uppercase">Last Seen</span>,
+    cell: ({ row }) => {
+      const date = row.original.lastSyncedAt;
+      return (
+        <div className="flex items-center gap-1.5 text-xs text-slate-500">
+          <Calendar className="w-3.5 h-3.5 text-slate-400" />
+          {date ? new Date(date).toLocaleString() : '—'}
+        </div>
+      );
+    },
   },
   {
     accessorKey: 'isActive',
@@ -119,33 +74,14 @@ export const columns: ColumnDef<Device>[] = [
             e.stopPropagation();
             meta?.onEdit?.({ ...device, isActive: !isActive }, true);
           }}
-          className={`group flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs font-bold transition-all duration-300 border ${
+          className={`px-3 py-1 rounded-full text-xs font-bold border ${
             isActive
-              ? 'bg-emerald-50/60 text-emerald-700 border-emerald-200 hover:bg-emerald-100/80 shadow-sm shadow-emerald-500/5'
-              : 'bg-rose-50/60 text-rose-700 border-rose-200 hover:bg-rose-100/80 shadow-sm shadow-rose-500/5'
+              ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+              : 'bg-rose-50 text-rose-700 border-rose-200'
           }`}
         >
-          <span className="relative flex h-2 w-2">
-            {isActive && (
-              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-            )}
-            <span className={`relative inline-flex rounded-full h-2 w-2 ${isActive ? 'bg-emerald-500' : 'bg-rose-500'}`} />
-          </span>
           {isActive ? 'Active' : 'Inactive'}
         </button>
-      );
-    },
-  },
-  {
-    accessorKey: 'lastSyncedAt',
-    header: () => <span className="text-xs font-bold tracking-wider text-slate-500 uppercase">Last Synced</span>,
-    cell: ({ row }) => {
-      const date = row.original.lastSyncedAt;
-      return (
-        <div className="flex items-center gap-1.5 text-xs text-slate-500 font-medium">
-          <Calendar className="w-3.5 h-3.5 text-slate-400" />
-          {date ? new Date(date).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' }) : '-'}
-        </div>
       );
     },
   },

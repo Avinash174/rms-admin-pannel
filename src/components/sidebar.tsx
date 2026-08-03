@@ -1,135 +1,205 @@
 "use client";
 
-import { useState } from 'react';
-import { X, LayoutDashboard, Users, Shield, Warehouse, Map, FileBox, Settings, Menu, Bell, Database } from "lucide-react";
-import Link from "next/link";
+import Link from 'next/link';
+import { usePathname } from 'next/navigation';
+import {
+  X,
+  LayoutDashboard,
+  Users,
+  Shield,
+  Warehouse,
+  FileBox,
+  Settings,
+  Building2,
+  GitBranch,
+  MapPin,
+  Layers,
+  ClipboardList,
+  BarChart3,
+  ScrollText,
+  Smartphone,
+  Database
+} from 'lucide-react';
+import { useAuth } from '@/contexts/auth-context';
+import { can, isSuperAdmin } from '@/lib/permissions';
 
 interface SidebarProps {
   isOpen: boolean;
   onClose: () => void;
 }
 
+type NavItem = {
+  href: string;
+  label: string;
+  icon: React.ComponentType<{ className?: string }>;
+  permission?: string | string[];
+};
+
+type NavSection = {
+  category: string;
+  items: NavItem[];
+};
+
+const NAV_SECTIONS: NavSection[] = [
+  {
+    category: 'Operations',
+    items: [
+      { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard, permission: 'dashboard:view' }
+    ]
+  },
+  {
+    category: 'Masters',
+    items: [
+      { href: '/companies', label: 'Company', icon: Building2, permission: 'settings:manage' },
+      { href: '/branches', label: 'Branch', icon: GitBranch, permission: 'settings:view' },
+      { href: '/warehouses', label: 'Warehouse', icon: Warehouse, permission: 'settings:view' },
+      { href: '/sites', label: 'Site', icon: MapPin, permission: 'settings:view' },
+      { href: '/rooms', label: 'Room', icon: Layers, permission: 'settings:view' },
+      { href: '/racks', label: 'Rack', icon: Layers, permission: 'settings:view' },
+      { href: '/shelves', label: 'Shelf', icon: Layers, permission: 'settings:view' },
+      { href: '/locations', label: 'Location', icon: MapPin, permission: 'settings:view' },
+      { href: '/clients', label: 'Client', icon: Users, permission: 'settings:view' }
+    ]
+  },
+  {
+    category: 'Access',
+    items: [
+      { href: '/users', label: 'Users', icon: Users, permission: 'user:view' },
+      { href: '/roles', label: 'Roles', icon: Shield, permission: 'role:view' },
+      { href: '/devices', label: 'Devices', icon: Smartphone, permission: 'device:view' }
+    ]
+  },
+  {
+    category: 'Records',
+    items: [
+      { href: '/boxes', label: 'Boxes', icon: FileBox, permission: 'box:view' },
+      { href: '/file-records', label: 'Files', icon: FileBox, permission: 'file:view' },
+      { href: '/barcodes', label: 'Barcodes', icon: Database, permission: 'box:manage' }
+    ]
+  },
+  {
+    category: 'Operations Review',
+    items: [
+      {
+        href: '/workflows/inventory-verification',
+        label: 'Inventory',
+        icon: ClipboardList,
+        permission: 'report:view'
+      },
+      { href: '/workflows/refile', label: 'Refile', icon: ClipboardList, permission: 'report:view' },
+      { href: '/workflows/transfer', label: 'Transfer', icon: ClipboardList, permission: 'report:view' }
+    ]
+  },
+  {
+    category: 'Insight',
+    items: [
+      { href: '/reports', label: 'Reports', icon: BarChart3, permission: 'report:view' },
+      { href: '/audit-logs', label: 'Audit Logs', icon: ScrollText, permission: 'audit:view' }
+    ]
+  },
+  {
+    category: 'System',
+    items: [
+      { href: '/settings', label: 'Settings', icon: Settings, permission: 'settings:view' }
+    ]
+  }
+];
+
+function isActiveRoute(pathname: string, href: string): boolean {
+  if (href === '/dashboard') {
+    return pathname === href;
+  }
+  return pathname === href || pathname.startsWith(`${href}/`);
+}
+
+function itemVisible(item: NavItem, user: any): boolean {
+  if (!item.permission) return true;
+  const permissions = Array.isArray(item.permission) ? item.permission : [item.permission];
+  return permissions.some((permission) => can(permission, user));
+}
+
 export function Sidebar({ isOpen, onClose }: SidebarProps) {
-  const navItems = [
-    {
-      category: "Overview",
-      items: [
-        { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
-      ],
-    },
-    {
-      category: "Management",
-      items: [
-        { href: "/companies", label: "Company Management", icon: Warehouse },
-        { href: "/warehouses", label: "Warehouse Management", icon: Warehouse },
-        { href: "/branches", label: "Branch Management", icon: Warehouse },
-        { href: "/sites", label: "Site Management", icon: Warehouse },
-        { href: "/rooms", label: "Room / Rack / Shelf / Location", icon: Warehouse },
-        { href: "/clients", label: "Client Management", icon: Users },
-        { href: "/departments", label: "Department Management", icon: Users },
-        { href: "/boxes", label: "Box Management", icon: FileBox },
-        { href: "/file-records", label: "File Record Management", icon: FileBox },
-        { href: "/users", label: "User Management", icon: Users },
-        { href: "/roles", label: "Role & Permission Management", icon: Shield },
-        { href: "/devices", label: "Device Management", icon: Warehouse },
-        { href: "/reason-codes", label: "Reason Code Management", icon: Settings },
-      ],
-    },
-    {
-      category: "Workflows",
-      items: [
-        { href: "/workflows/fresh-box-move", label: "Fresh Box Moving", icon: FileBox },
-        { href: "/workflows/inventory-verification", label: "Inventory Verification", icon: FileBox },
-        { href: "/workflows/refile", label: "Refile Management", icon: FileBox },
-        { href: "/workflows/segregation", label: "Segregation / Merge / Transfer", icon: FileBox },
-      ],
-    },
-    {
-      category: "System",
-      items: [
-        { href: "/audit-logs", label: "Audit Logs", icon: Shield },
-        { href: "/reports", label: "Reports", icon: FileBox },
-        { href: "/settings", label: "Settings", icon: Settings },
-      ],
-    },
-  ];
+  const pathname = usePathname();
+  const { user } = useAuth();
 
   return (
     <>
-      {/* Mobile overlay */}
       {isOpen && (
-        <div
-          className="fixed inset-0 bg-black/50 z-40 lg:hidden"
-          onClick={onClose}
-        />
+        <div className="fixed inset-0 z-40 bg-black/50 lg:hidden" onClick={onClose} />
       )}
 
-      {/* Sidebar */}
       <aside
         className={`
-          fixed lg:relative inset-y-0 left-0 z-50
-          w-72 lg:w-64 bg-white border-r border-slate-200
-          transform transition-transform duration-300 ease-in-out
-          ${isOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
-          flex flex-col h-screen
+          fixed inset-y-0 left-0 z-50 flex h-screen w-60 flex-col
+          border-r border-slate-200 bg-white
+          transition-transform duration-300 ease-in-out
+          lg:relative lg:translate-x-0
+          ${isOpen ? 'translate-x-0' : '-translate-x-full'}
         `}
       >
-        {/* Header */}
-        <div className="h-16 flex items-center justify-between px-6 border-b border-slate-200 bg-slate-50/20">
-          <Link href="/dashboard" className="flex items-center gap-2.5 group">
-            <div className="flex items-center justify-center w-9 h-9 rounded-xl bg-gradient-to-tr from-blue-600 to-indigo-500 text-white shadow-md shadow-blue-500/20 group-hover:scale-105 transition-transform duration-300">
-              <Database className="w-4.5 h-4.5 stroke-[2.5]" />
+        <div className="flex h-16 items-center justify-between border-b border-slate-200 bg-slate-50/20 px-4">
+          <Link href="/dashboard" className="group flex items-center gap-2.5" onClick={onClose}>
+            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-tr from-blue-600 to-indigo-500 text-white shadow-md shadow-blue-500/20">
+              <Database className="h-4 w-4 stroke-[2.5]" />
             </div>
             <div className="flex flex-col">
-              <span className="text-sm font-black text-slate-900 tracking-wider uppercase leading-none">
-                RMS <span className="text-blue-650 text-blue-600">Admin</span>
+              <span className="text-sm font-black uppercase leading-none tracking-wider text-slate-900">
+                RMS <span className="text-blue-600">Admin</span>
               </span>
-              <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mt-1">
+              <span className="mt-1 text-[9px] font-bold uppercase tracking-widest text-slate-400">
                 Control Panel
               </span>
             </div>
           </Link>
-          <button
-            onClick={onClose}
-            className="lg:hidden p-2 hover:bg-slate-100 rounded-lg transition-colors"
-          >
-            <X className="w-5 h-5" />
+          <button onClick={onClose} className="rounded-lg p-2 transition-colors hover:bg-slate-100 lg:hidden">
+            <X className="h-5 w-5" />
           </button>
         </div>
 
-        {/* Navigation */}
-        <nav className="flex-1 overflow-y-auto overflow-x-hidden p-4 space-y-4">
-          {navItems.map((section) => (
-            <div key={section.category} className="min-w-0">
-              <div className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2 px-3 truncate">
-                {section.category}
+        {isSuperAdmin(user) && user?.companyName && (
+          <div className="border-b border-slate-100 px-4 py-3">
+            <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Company</p>
+            <p className="truncate text-sm font-semibold text-slate-800">{user.companyName}</p>
+          </div>
+        )}
+
+        <nav className="flex-1 space-y-4 overflow-y-auto p-3">
+          {NAV_SECTIONS.map((section) => {
+            const visibleItems = section.items.filter((item) => itemVisible(item, user));
+            if (visibleItems.length === 0) return null;
+
+            return (
+              <div key={section.category}>
+                <div className="mb-2 truncate px-3 text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                  {section.category}
+                </div>
+                <div className="space-y-0.5">
+                  {visibleItems.map((item) => {
+                    const Icon = item.icon;
+                    const active = isActiveRoute(pathname, item.href);
+                    return (
+                      <Link
+                        key={item.href}
+                        href={item.href}
+                        onClick={onClose}
+                        className={`flex items-center rounded-xl px-3 py-2 text-sm font-medium transition-colors ${
+                          active
+                            ? 'bg-blue-50 text-blue-700'
+                            : 'text-slate-600 hover:bg-slate-50 hover:text-blue-600'
+                        }`}
+                      >
+                        <Icon className={`mr-3 h-4 w-4 flex-shrink-0 ${active ? 'text-blue-600' : ''}`} />
+                        <span className="truncate">{item.label}</span>
+                      </Link>
+                    );
+                  })}
+                </div>
               </div>
-              <div className="space-y-1">
-                {section.items.map((item) => {
-                  const Icon = item.icon;
-                  return (
-                    <Link
-                      key={item.href}
-                      href={item.href}
-                      className="flex items-center px-3 py-2 text-slate-600 hover:text-blue-600 hover:bg-slate-50 rounded-[14px] transition-colors min-w-0"
-                      onClick={() => onClose()}
-                    >
-                      <Icon className="w-5 h-5 mr-3 flex-shrink-0" />
-                      <span className="font-medium truncate">{item.label}</span>
-                    </Link>
-                  );
-                })}
-              </div>
-            </div>
-          ))}
+            );
+          })}
         </nav>
 
-        {/* Footer */}
-        <div className="p-4 border-t border-slate-200">
-          <div className="flex items-center px-3 py-2 text-slate-500 text-sm">
-            <span className="font-medium">v1.0.0</span>
-          </div>
-        </div>
+        <div className="border-t border-slate-200 p-4 text-xs text-slate-500">v1.0.0</div>
       </aside>
     </>
   );

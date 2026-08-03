@@ -16,10 +16,15 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
+import { HierarchyFilters, useEffectiveHierarchyIds } from '@/components/masters/hierarchy-filters';
 
 export default function LocationsPage() {
   const [page, setPage] = useState(1);
-  const [shelfId] = useState('1'); // In real app, this would come from URL or context
+  const [warehouseId, setWarehouseId] = useState('');
+  const [roomId, setRoomId] = useState('');
+  const [rackId, setRackId] = useState('');
+  const [shelfId, setShelfId] = useState('');
+  const { effectiveShelfId } = useEffectiveHierarchyIds(warehouseId, roomId, rackId, shelfId, 'shelf');
   
   // Drawer states
   const [isFormDrawerOpen, setIsFormDrawerOpen] = useState(false);
@@ -47,12 +52,12 @@ export default function LocationsPage() {
   const queryClient = useQueryClient();
 
   const { data, isLoading, error, refetch } = useQuery({
-    queryKey: ['locations', shelfId, page],
-    queryFn: () => getLocations(shelfId, page, 20),
+    queryKey: ['locations', effectiveShelfId, page],
+    queryFn: () => getLocations(effectiveShelfId || undefined, page, 20),
   });
 
   const createMutation = useMutation({
-    mutationFn: (data: CreateLocationData) => createLocation(shelfId, data),
+    mutationFn: (data: CreateLocationData) => createLocation(effectiveShelfId, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['locations'] });
       setIsFormDrawerOpen(false);
@@ -98,7 +103,7 @@ export default function LocationsPage() {
     defaultValues: {
       barcode: '',
       name: '',
-      shelfId: shelfId,
+      shelfId: effectiveShelfId,
       isActive: true,
     },
   });
@@ -181,7 +186,7 @@ export default function LocationsPage() {
             form.reset({
               barcode: '',
               name: '',
-              shelfId: shelfId,
+              shelfId: effectiveShelfId,
               isActive: true,
             });
             setIsFormDrawerOpen(true);
@@ -192,6 +197,18 @@ export default function LocationsPage() {
           Add Location
         </Button>
       </div>
+
+      <HierarchyFilters
+        depth="shelf"
+        warehouseId={warehouseId}
+        roomId={roomId}
+        rackId={rackId}
+        shelfId={shelfId}
+        onWarehouseChange={setWarehouseId}
+        onRoomChange={setRoomId}
+        onRackChange={setRackId}
+        onShelfChange={setShelfId}
+      />
 
       {/* Metrics Section */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">

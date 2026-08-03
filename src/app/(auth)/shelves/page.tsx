@@ -16,10 +16,14 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
+import { HierarchyFilters, useEffectiveHierarchyIds } from '@/components/masters/hierarchy-filters';
 
 export default function ShelvesPage() {
   const [page, setPage] = useState(1);
-  const [rackId] = useState('1'); // In real app, this would come from URL or context
+  const [warehouseId, setWarehouseId] = useState('');
+  const [roomId, setRoomId] = useState('');
+  const [rackId, setRackId] = useState('');
+  const { effectiveRackId } = useEffectiveHierarchyIds(warehouseId, roomId, rackId, '', 'rack');
   
   // Drawer states
   const [isFormDrawerOpen, setIsFormDrawerOpen] = useState(false);
@@ -47,12 +51,13 @@ export default function ShelvesPage() {
   const queryClient = useQueryClient();
 
   const { data, isLoading, error, refetch } = useQuery({
-    queryKey: ['shelves', rackId, page],
-    queryFn: () => getShelves(rackId, page, 20),
+    queryKey: ['shelves', effectiveRackId, page],
+    queryFn: () => getShelves(effectiveRackId, page, 20),
+    enabled: !!effectiveRackId,
   });
 
   const createMutation = useMutation({
-    mutationFn: (data: CreateShelfData) => createShelf(rackId, data),
+    mutationFn: (data: CreateShelfData) => createShelf(effectiveRackId, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['shelves'] });
       setIsFormDrawerOpen(false);
@@ -99,7 +104,7 @@ export default function ShelvesPage() {
       name: '',
       code: '',
       description: '',
-      rackId: rackId,
+      rackId: effectiveRackId,
       isActive: true,
     },
   });
@@ -183,7 +188,7 @@ export default function ShelvesPage() {
               name: '',
               code: '',
               description: '',
-              rackId: rackId,
+              rackId: effectiveRackId,
               isActive: true,
             });
             setIsFormDrawerOpen(true);
@@ -194,6 +199,16 @@ export default function ShelvesPage() {
           Add Shelf
         </Button>
       </div>
+
+      <HierarchyFilters
+        depth="rack"
+        warehouseId={warehouseId}
+        roomId={roomId}
+        rackId={rackId}
+        onWarehouseChange={setWarehouseId}
+        onRoomChange={setRoomId}
+        onRackChange={setRackId}
+      />
 
       {/* Metrics Section */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">

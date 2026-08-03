@@ -1,6 +1,7 @@
 import { LoginRequest, LoginResponse, RefreshTokenRequest, RefreshTokenResponse } from '../types/auth';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api/v1/admin';
+const API_ROOT_URL = process.env.NEXT_PUBLIC_API_ROOT_URL || 'http://localhost:3001/api/v1';
 
 export async function login(data: LoginRequest): Promise<LoginResponse> {
   const response = await fetch(`${API_BASE_URL}/auth/login`, {
@@ -49,6 +50,8 @@ export async function login(data: LoginRequest): Promise<LoginResponse> {
       companyId,
       roleId,
       roleName: result.user.role || 'Operator',
+      permissions: result.user.permissions || [],
+      companyName: result.user.company?.name,
     },
   };
 
@@ -187,6 +190,14 @@ function onRefreshed(token: string) {
 }
 
 export async function fetchWithAuth(endpoint: string, options?: RequestInit): Promise<any> {
+  return fetchWithAuthBase(API_BASE_URL, endpoint, options);
+}
+
+export async function fetchWithAuthRoot(endpoint: string, options?: RequestInit): Promise<any> {
+  return fetchWithAuthBase(API_ROOT_URL, endpoint, options);
+}
+
+async function fetchWithAuthBase(baseUrl: string, endpoint: string, options?: RequestInit): Promise<any> {
   const token = typeof window !== 'undefined' ? localStorage.getItem('access_token') : null;
   const headers = {
     'Content-Type': 'application/json',
@@ -194,7 +205,7 @@ export async function fetchWithAuth(endpoint: string, options?: RequestInit): Pr
     ...options?.headers,
   };
 
-  const url = API_BASE_URL + endpoint;
+  const url = baseUrl + endpoint;
 
   console.log('[API Request] Fetching: ' + url, {
     method: options?.method || 'GET',

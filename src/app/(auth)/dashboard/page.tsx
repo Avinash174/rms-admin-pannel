@@ -1,298 +1,306 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { 
-  Building2, 
-  Files, 
-  Box, 
-  ScanLine, 
-  ArrowUpRight,
-  Download,
-  Loader2,
-  AlertCircle,
-  RefreshCw,
-  Info
-} from "lucide-react";
+import { format, subDays } from "date-fns";
 import {
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  ResponsiveContainer,
-} from "recharts";
-import { getDashboardData, getScanActivity } from "@/lib/api/dashboard";
-import { format } from "date-fns";
+  Activity,
+  AlertTriangle,
+  Loader2,
+  RefreshCw,
+  ScanLine,
+  Smartphone,
+  XCircle
+} from "lucide-react";
+import Link from "next/link";
+import { useAuth } from "@/contexts/auth-context";
+import { can } from "@/lib/permissions";
+import {
+  getOperationsByDay,
+  getRecentScans,
+  getReportsSummary
+} from "@/lib/api/reports-summary";
+import { OperationTypeKey } from "@/lib/types/reports-summary";
+import { Skeleton } from "@/components/ui/skeleton";
 
-const CHART_RANGES = [
-  { label: '7D',  days: 7 },
-  { label: '30D', days: 30 },
-  { label: '90D', days: 90 },
-] as const;
+const OPERATION_TYPES: OperationTypeKey[] = [
+  "INTAKE",
+  "FRESH_BOX",
+  "INVENTORY",
+  "REFILE",
+  "SEGREGATION"
+];
 
-type ChartRange = typeof CHART_RANGES[number]['days'];
+const TYPE_LABELS: Record<OperationTypeKey, string> = {
+  INTAKE: "Intake",
+  FRESH_BOX: "Fresh Box",
+  INVENTORY: "Inventory",
+  REFILE: "Refile",
+  SEGREGATION: "Segregation",
+  LOOKUP: "Lookup"
+};
+
+const TYPE_COLORS: Record<OperationTypeKey, string> = {
+  INTAKE: "bg-violet-500",
+  FRESH_BOX: "bg-blue-500",
+  INVENTORY: "bg-emerald-500",
+  REFILE: "bg-amber-500",
+  SEGREGATION: "bg-rose-500",
+  LOOKUP: "bg-slate-400"
+};
+
+function sumOperations(counts: Record<OperationTypeKey, number>): number {
+  return OPERATION_TYPES.reduce((total, type) => total + (counts[type] ?? 0), 0);
+}
 
 export default function DashboardPage() {
-  const [chartRange, setChartRange] = useState<ChartRange>(7);
+  const { user } = useAuth();
+  const canView = can("report:view", user) || can("dashboard:view", user);
+
+  const from = useMemo(
+    () => subDays(new Date(), 7).toISOString(),
+    []
+  );
+  const to = useMemo(() => new Date().toISOString(), []);
 
   const {
-    data: dashboardData,
-    isLoading,
-    error,
-    refetch
+    data: summary,
+    isLoading: summaryLoading,
+    error: summaryError,
+    refetch: refetchSummary
   } = useQuery({
-    queryKey: ['dashboard'],
-    queryFn: getDashboardData,
-    refetchInterval: 5 * 60 * 1000, // Refetch every 5 minutes
+    queryKey: ["reports-summary"],
+    queryFn: () => getReportsSummary(),
+    enabled: canView,
+    refetchInterval: 60_000
   });
 
-  // Scan Activity has its own range-scoped query — the combined dashboard
-  // payload above is always fetched for a fixed 7-day window (days=7), so
-  // slicing it client-side for 30D/90D just re-sliced the same 7 days and
-  // the range buttons appeared to do nothing. Refetch from the backend with
-  // the actual selected range instead.
   const {
-    data: scanActivityData,
-    isFetching: isScanActivityFetching,
+    data: operationsByDay = [],
+    isLoading: operationsLoading
   } = useQuery({
-    queryKey: ['scan-activity', chartRange],
-    queryFn: () => getScanActivity(chartRange),
+    queryKey: ["operations-by-day", from, to],
+    queryFn: () => getOperationsByDay(from, to),
+    enabled: canView
   });
 
-  if (isLoading) {
+  const {
+    data: recentScans = [],
+    isLoading: scansLoading,
+    isFetching: scansFetching
+  } = useQuery({
+    queryKey: ["recent-scans"],
+    queryFn: () => getRecentScans(10),
+    enabled: canView,
+    refetchInterval: 5000
+  });
+
+  const operationsByType = useMemo(() => {
+    const totals: Record<OperationTypeKey, number> = {
+      INTAKE: 0,
+      FRESH_BOX: 0,
+      INVENTORY: 0,
+      REFILE: 0,
+      SEGREGATION: 0,
+      LOOKUP: 0
+    };
+
+    for (const entry of operationsByDay) {
+      for (const type of OPERATION_TYPES) {
+        totals[type] += entry.counts[type] ?? 0;
+      }
+    }
+
+    return totals;
+  }, [operationsByDay]);
+
+  const maxOperationCount = Math.max(...OPERATION_TYPES.map((type) => operationsByType[type]), 1);
+  const todayTotal = summary ? sumOperations(summary.todayOperationsByType) : 0;
+
+  if (!canView) {
     return (
-      <div className="flex items-center justify-center h-96">
-        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+      <div className="flex h-96 flex-col items-center justify-center text-center">
+        <XCircle className="mb-3 h-10 w-10 text-slate-400" />
+        <h2 className="text-lg font-semibold text-slate-900">Access denied</h2>
+        <p className="mt-1 text-sm text-slate-500">You do not have permission to view the dashboard.</p>
       </div>
     );
   }
 
-  if (error) {
+  if (summaryError) {
     return (
-      <div className="flex flex-col items-center justify-center h-96 space-y-4">
-        <AlertCircle className="w-12 h-12 text-red-500" />
-        <div className="text-center">
-          <h3 className="text-lg font-semibold text-slate-900">Failed to load dashboard</h3>
-          <p className="text-sm text-slate-500 mt-1">Please check your connection and try again</p>
-        </div>
+      <div className="flex h-96 flex-col items-center justify-center space-y-4">
+        <AlertTriangle className="h-10 w-10 text-red-500" />
+        <p className="text-sm text-slate-600">Failed to load dashboard data.</p>
         <button
-          onClick={() => refetch()}
-          className="flex items-center px-4 py-2 bg-primary text-white rounded-[14px] hover:bg-primary/90 transition-colors text-sm font-medium"
+          onClick={() => refetchSummary()}
+          className="inline-flex items-center rounded-xl bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
         >
-          <RefreshCw className="w-4 h-4 mr-2" />
+          <RefreshCw className="mr-2 h-4 w-4" />
           Retry
         </button>
       </div>
     );
   }
 
-  if (!dashboardData) {
-    return null;
-  }
-
-  const { metrics, recentActivity } = dashboardData;
-
-  const filteredScanActivity = scanActivityData ?? [];
-
   return (
-    <div className="w-full space-y-6 lg:space-y-8 px-4 sm:px-6 lg:px-0">
-      {/* Page Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div>
-          <h1 className="text-2xl sm:text-3xl font-bold text-slate-900 tracking-tight">Dashboard</h1>
-          <p className="text-sm text-slate-500 mt-1">Overview of your records and warehouse operations.</p>
-        </div>
-        <button className="flex items-center justify-center px-4 py-2 bg-blue-600 text-white rounded-[14px] hover:bg-blue-700 transition-colors text-sm font-medium w-full sm:w-auto">
-          <Download className="w-4 h-4 mr-2" />
-          Export Report
-        </button>
+    <div className="space-y-6">
+      <div>
+        <h1 className="text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl">Dashboard</h1>
+        <p className="mt-1 text-sm text-slate-500">Live operational overview for your company.</p>
       </div>
 
-      {/* Metrics Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
-        <MetricCard 
-          title="Total Warehouses" 
-          value={metrics.totalWarehouses.toString()} 
-          icon={Building2} 
-          trend="Total company warehouse sites" 
-          color="blue"
-        />
-        <MetricCard 
-          title="Active Records" 
-          value={metrics.totalFiles.toLocaleString()} 
-          icon={Files} 
-          trend="Fully active file metadata entries" 
-          color="emerald"
-        />
-        <MetricCard 
-          title="Physical Boxes" 
-          value={metrics.totalBoxes.toLocaleString()} 
-          icon={Box} 
-          trend="Barcoded box containers on shelves" 
-          color="purple"
-        />
-        <MetricCard 
-          title="Scans Today" 
-          value={metrics.scansToday.toString()} 
-          icon={ScanLine} 
-          trend="Verified scanner workflows today" 
-          color="amber"
-        />
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        {summaryLoading ? (
+          Array.from({ length: 4 }).map((_, index) => (
+            <Skeleton key={index} className="h-28" />
+          ))
+        ) : (
+          <>
+            <MetricCard
+              title="Today's Operations"
+              value={todayTotal.toString()}
+              icon={Activity}
+              tone="blue"
+            />
+            <MetricCard
+              title="Missing Files"
+              value={(summary?.missingFilesCount ?? 0).toString()}
+              icon={AlertTriangle}
+              tone={summary && summary.missingFilesCount > 0 ? "danger" : "emerald"}
+            />
+            <MetricCard
+              title="Active Devices"
+              value={(summary?.activeDevicesCount ?? 0).toString()}
+              icon={Smartphone}
+              tone="purple"
+            />
+            <MetricCard
+              title="Rejected Refiles (7d)"
+              value={(summary?.rejectedRefilesCount ?? 0).toString()}
+              icon={XCircle}
+              tone={summary && summary.rejectedRefilesCount > 0 ? "amber" : "slate"}
+            />
+          </>
+        )}
       </div>
-      
-      {/* Charts & Tables Area */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
-        
-        {/* Chart */}
-        <div className="lg:col-span-2 bg-white rounded-[14px] border border-slate-200 shadow-sm p-4 sm:p-6">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4 sm:mb-6">
+
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+        <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+          <div className="mb-4 flex items-center justify-between">
             <div>
-              <h2 className="text-base sm:text-lg font-semibold text-slate-900 flex items-center gap-2">
-                Scan Activity
-                {isScanActivityFetching && <Loader2 className="w-3.5 h-3.5 animate-spin text-slate-400" />}
-              </h2>
-              <p className="text-xs text-slate-400 mt-0.5">Scanner workflow events over time</p>
+              <h2 className="text-lg font-semibold text-slate-900">Live Scan Ticker</h2>
+              <p className="text-xs text-slate-400">Recent workflow events (refreshes every 5s)</p>
             </div>
+            {scansFetching && <Loader2 className="h-4 w-4 animate-spin text-slate-400" />}
+          </div>
 
-            {/* Time-range segmented filter */}
-            <div className="flex bg-slate-100 p-1 rounded-xl gap-0.5 self-start sm:self-auto">
-              {CHART_RANGES.map(({ label, days }) => (
-                <button
-                  key={days}
-                  onClick={() => setChartRange(days)}
-                  className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-all ${
-                    chartRange === days
-                      ? 'bg-white text-blue-600 shadow-sm border border-slate-200/60'
-                      : 'text-slate-500 hover:text-slate-800 hover:bg-slate-50'
-                  }`}
-                >
-                  {label}
-                </button>
+          {scansLoading ? (
+            <div className="space-y-3">
+              {Array.from({ length: 5 }).map((_, index) => (
+                <Skeleton key={index} className="h-10" />
               ))}
             </div>
-          </div>
-          <div className="h-64 sm:h-72 w-full">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={filteredScanActivity} margin={{ top: 0, right: 0, left: -20, bottom: 0 }}>
-                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E2E8F0" />
-                <XAxis 
-                  dataKey="date" 
-                  axisLine={false} 
-                  tickLine={false} 
-                  tick={{ fill: '#64748B', fontSize: 12 }} 
-                  dy={10}
-                  tickFormatter={(value) => format(new Date(value), chartRange <= 7 ? 'EEE' : 'MMM dd')}
-                />
-                <YAxis axisLine={false} tickLine={false} tick={{ fill: '#64748B', fontSize: 12 }} />
-                <Tooltip 
-                  cursor={{ fill: '#F8FAFC' }} 
-                  contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
-                  labelFormatter={(value) => format(new Date(value), 'MMM dd, yyyy')}
-                />
-                <Bar dataKey="scans" fill="#2563EB" radius={[4, 4, 0, 0]} maxBarSize={40} />
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
-        </div>
- 
-        {/* Recent Activity Table (Mini) */}
-        <div className="bg-white rounded-[14px] border border-slate-200 shadow-sm p-4 sm:p-6 flex flex-col">
-          <div className="flex items-center justify-between mb-4 sm:mb-6">
-            <h2 className="text-base sm:text-lg font-semibold text-slate-900">Recent Activity</h2>
-            <a href="/audit-logs" className="text-sm font-medium text-blue-600 hover:underline">View All</a>
-          </div>
-          {recentActivity.length === 0 ? (
-            <div className="flex-1 flex items-center justify-center text-slate-400 text-sm">
-              No recent activity
-            </div>
+          ) : recentScans.length === 0 ? (
+            <p className="py-8 text-center text-sm text-slate-400">No recent scans yet.</p>
           ) : (
-            <div className="flex-1 space-y-4 sm:space-y-6">
-              {recentActivity.map((activity) => (
-                <div key={activity.id} className="flex items-start">
-                  <div className={`w-2 h-2 mt-2 rounded-full shrink-0 ${
-                    activity.status === 'success' ? 'bg-green-500' :
-                    activity.status === 'pending' ? 'bg-yellow-500' :
-                    'bg-red-500'
-                  }`} />
-                  <div className="ml-3 sm:ml-4 flex-1 min-w-0">
-                    <p className="text-sm font-medium text-slate-900 truncate">{activity.action}</p>
-                    <p className="text-xs text-slate-500 mt-0.5 truncate">{activity.userName} {activity.location && `• ${activity.location}`}</p>
+            <div className="max-h-80 space-y-2 overflow-y-auto">
+              {recentScans.map((scan) => (
+                <div
+                  key={scan.id}
+                  className="flex items-center justify-between rounded-xl border border-slate-100 px-3 py-2"
+                >
+                  <div className="min-w-0">
+                    <p className="font-mono text-sm font-semibold text-slate-900">{scan.barcode}</p>
+                    <p className="truncate text-xs text-slate-500">
+                      {scan.userName} · {scan.type.replaceAll("_", " ")}
+                    </p>
                   </div>
-                  <span className="text-xs text-slate-400 whitespace-nowrap ml-2 sm:ml-4 hidden sm:block">
-                    {format(new Date(activity.timestamp), 'MMM dd, HH:mm')}
+                  <span className="ml-3 whitespace-nowrap text-xs text-slate-400">
+                    {format(new Date(scan.scannedAt), "HH:mm:ss")}
                   </span>
                 </div>
               ))}
             </div>
           )}
-        </div>
-        
+        </section>
+
+        <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+          <h2 className="text-lg font-semibold text-slate-900">Operations by Type (7 days)</h2>
+          <p className="mb-5 text-xs text-slate-400">Aggregated from /reports/operations-by-day</p>
+
+          {operationsLoading ? (
+            <div className="space-y-3">
+              {Array.from({ length: 5 }).map((_, index) => (
+                <Skeleton key={index} className="h-8" />
+              ))}
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {OPERATION_TYPES.map((type) => {
+                const count = operationsByType[type];
+                const width = `${Math.max((count / maxOperationCount) * 100, count > 0 ? 8 : 0)}%`;
+                return (
+                  <div key={type}>
+                    <div className="mb-1 flex items-center justify-between text-sm">
+                      <span className="font-medium text-slate-700">{TYPE_LABELS[type]}</span>
+                      <span className="font-semibold text-slate-900">{count}</span>
+                    </div>
+                    <div className="h-3 rounded-full bg-slate-100">
+                      <div
+                        className={`h-3 rounded-full transition-all ${TYPE_COLORS[type]}`}
+                        style={{ width }}
+                      />
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </section>
+      </div>
+
+      <div className="flex justify-end">
+        <Link
+          href="/reports"
+          className="inline-flex items-center rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
+        >
+          <ScanLine className="mr-2 h-4 w-4" />
+          Open Reports
+        </Link>
       </div>
     </div>
   );
 }
 
-function MetricCard({ title, value, icon: Icon, trend, color = 'blue' }: { 
-  title: string, 
-  value: string, 
-  icon: any, 
-  trend: string,
-  color?: 'blue' | 'emerald' | 'purple' | 'amber' | 'rose'
+function MetricCard({
+  title,
+  value,
+  icon: Icon,
+  tone
+}: {
+  title: string;
+  value: string;
+  icon: React.ComponentType<{ className?: string }>;
+  tone: "blue" | "emerald" | "purple" | "amber" | "danger" | "slate";
 }) {
-  const styles = {
-    blue: {
-      gradient: 'from-blue-50 to-indigo-50/30',
-      iconContainer: 'bg-blue-50 text-blue-600 border-blue-100/50',
-      iconText: 'text-blue-500',
-    },
-    emerald: {
-      gradient: 'from-emerald-50 to-teal-50/30',
-      iconContainer: 'bg-emerald-50 text-emerald-600 border-emerald-100/50',
-      iconText: 'text-emerald-500',
-    },
-    purple: {
-      gradient: 'from-purple-50 to-violet-50/30',
-      iconContainer: 'bg-purple-50 text-purple-600 border-purple-100/50',
-      iconText: 'text-purple-500',
-    },
-    amber: {
-      gradient: 'from-amber-50 to-orange-50/30',
-      iconContainer: 'bg-amber-50 text-amber-600 border-amber-100/50',
-      iconText: 'text-amber-500',
-    },
-    rose: {
-      gradient: 'from-rose-50 to-red-50/30',
-      iconContainer: 'bg-rose-50 text-rose-600 border-rose-100/50',
-      iconText: 'text-rose-500',
-    },
+  const toneClasses = {
+    blue: "border-blue-100 bg-blue-50 text-blue-700",
+    emerald: "border-emerald-100 bg-emerald-50 text-emerald-700",
+    purple: "border-purple-100 bg-purple-50 text-purple-700",
+    amber: "border-amber-100 bg-amber-50 text-amber-700",
+    danger: "border-red-100 bg-red-50 text-red-700",
+    slate: "border-slate-100 bg-slate-50 text-slate-700"
   };
 
-  const activeStyle = styles[color] || styles.blue;
-
   return (
-    <div className="relative overflow-hidden bg-white p-6 rounded-2xl border border-slate-150 shadow-sm hover:shadow-md transition-all duration-300 group">
-      <div className={`absolute top-0 right-0 w-28 h-28 bg-gradient-to-bl ${activeStyle.gradient} rounded-bl-full -z-0 opacity-80 transition-transform duration-500 group-hover:scale-105`} />
-      <div className="relative z-10 flex items-center justify-between">
-        <div className="space-y-2">
-          <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">{title}</p>
-          <h3 className="text-3xl font-extrabold text-slate-900 tracking-tight">{value}</h3>
+    <div className={`rounded-2xl border p-5 shadow-sm ${toneClasses[tone]}`}>
+      <div className="flex items-start justify-between">
+        <div>
+          <p className="text-xs font-bold uppercase tracking-wider opacity-80">{title}</p>
+          <p className="mt-2 text-3xl font-extrabold">{value}</p>
         </div>
-        <div className={`p-3.5 rounded-2xl border shadow-sm ${activeStyle.iconContainer}`}>
-          <Icon className="w-6 h-6 stroke-[2]" />
-        </div>
-      </div>
-      <div className="mt-5 text-xs text-slate-400 flex items-center gap-1.5 border-t border-slate-50 pt-4">
-        {color === 'emerald' ? (
-          <span className="relative flex h-2 w-2">
-            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-            <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
-          </span>
-        ) : (
-          <Info className={`w-4 h-4 ${activeStyle.iconText}`} />
-        )}
-        {trend}
+        <Icon className="h-6 w-6 opacity-80" />
       </div>
     </div>
   );

@@ -5,34 +5,20 @@ export interface Device {
   type: 'SCANNER' | 'TABLET' | 'PHONE' | 'OTHER';
   model?: string;
   serialNumber?: string;
-  osVersion?: string;
   appVersion?: string;
   userId?: string;
   userName?: string;
   lastSyncedAt?: string;
   isActive: boolean;
+  status?: string;
   companyId: string;
   createdAt: string;
   updatedAt: string;
 }
 
-export interface CreateDeviceRequest {
-  deviceId: string;
-  name: string;
-  type: 'SCANNER' | 'TABLET' | 'PHONE' | 'OTHER';
-  model?: string;
-  serialNumber?: string;
-  userId?: string;
-  isActive?: boolean;
-}
-
 export interface UpdateDeviceRequest {
-  name?: string;
-  type?: 'SCANNER' | 'TABLET' | 'PHONE' | 'OTHER';
-  model?: string;
-  serialNumber?: string;
-  userId?: string;
   isActive?: boolean;
+  label?: string | null;
 }
 
 export interface DeviceListResponse {

@@ -74,6 +74,29 @@ export const columns: ColumnDef<Location>[] = [
     ),
   },
   {
+    accessorKey: 'isOccupied',
+    header: () => <span className="text-xs font-bold tracking-wider text-slate-500 uppercase">Occupancy</span>,
+    cell: ({ row }) => {
+      const occupied = row.original.isOccupied ? 1 : 0;
+      const capacity = row.original.capacity ?? 1;
+      const percent = Math.round((occupied / capacity) * 100);
+      return (
+        <div className="min-w-[120px]">
+          <div className="mb-1 flex items-center justify-between text-xs font-semibold text-slate-700">
+            <span>{occupied}/{capacity}</span>
+            <span>{percent}%</span>
+          </div>
+          <div className="h-2 rounded-full bg-slate-100">
+            <div
+              className={`h-2 rounded-full ${occupied > 0 ? 'bg-amber-500' : 'bg-emerald-500'}`}
+              style={{ width: `${percent}%` }}
+            />
+          </div>
+        </div>
+      );
+    },
+  },
+  {
     accessorKey: 'isActive',
     header: () => <span className="text-xs font-bold tracking-wider text-slate-500 uppercase">Status</span>,
     cell: ({ row, table }) => {

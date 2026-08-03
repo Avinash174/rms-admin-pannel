@@ -2,10 +2,13 @@ export interface Location {
   id: string;
   barcode: string;
   name?: string;
+  code?: string;
   shelfId: string;
   shelfName?: string;
-  companyId: string;
+  companyId?: string;
   isActive: boolean;
+  isOccupied?: boolean;
+  capacity?: number;
   createdAt: string;
   updatedAt: string;
 }

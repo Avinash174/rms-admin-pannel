@@ -4,7 +4,17 @@ import { fetchWithAuth } from './auth';
 // Backend route is flat (`/shelves?rackId=...`), not nested under `/racks/:id/shelves`,
 // and does not support pagination — it returns the full array with no `meta`.
 export async function getShelves(rackId: string, page: number = 1, pageSize: number = 20): Promise<ShelfListResponse> {
-  return fetchWithAuth(`/shelves?rackId=${rackId}`);
+  const response = await fetchWithAuth(`/shelves?rackId=${rackId}`);
+  const rows = Array.isArray(response.data) ? response.data : [];
+  return {
+    data: rows,
+    meta: {
+      page,
+      pageSize,
+      total: rows.length,
+      totalPages: Math.max(1, Math.ceil(rows.length / pageSize))
+    }
+  };
 }
 
 export async function getShelf(id: string): Promise<Shelf> {

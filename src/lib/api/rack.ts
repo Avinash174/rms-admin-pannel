@@ -4,7 +4,17 @@ import { fetchWithAuth } from './auth';
 // Backend route is flat (`/racks?roomId=...`), not nested under `/rooms/:id/racks`,
 // and does not support pagination — it returns the full array with no `meta`.
 export async function getRacks(roomId: string, page: number = 1, pageSize: number = 20): Promise<RackListResponse> {
-  return fetchWithAuth(`/racks?roomId=${roomId}`);
+  const response = await fetchWithAuth(`/racks?roomId=${roomId}`);
+  const rows = Array.isArray(response.data) ? response.data : [];
+  return {
+    data: rows,
+    meta: {
+      page,
+      pageSize,
+      total: rows.length,
+      totalPages: Math.max(1, Math.ceil(rows.length / pageSize))
+    }
+  };
 }
 
 export async function getRack(id: string): Promise<Rack> {
