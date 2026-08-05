@@ -122,8 +122,9 @@ export default function RefilePage() {
         />
       </div>
 
-      <div className={`fixed inset-0 z-50 ${isDetailOpen ? '' : 'pointer-events-none'}`}>
+      <div className={`fixed inset-0 z-50 transition-opacity duration-300 ${isDetailOpen ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'}`}>
         <div className="absolute inset-0 bg-slate-900/40" onClick={() => setIsDetailOpen(false)} />
+
         <div
           className={`absolute inset-y-0 right-0 w-full max-w-lg bg-white shadow-2xl flex flex-col transition-transform ${
             isDetailOpen ? 'translate-x-0' : 'translate-x-full'

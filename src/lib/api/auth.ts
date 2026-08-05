@@ -207,11 +207,6 @@ async function fetchWithAuthBase(baseUrl: string, endpoint: string, options?: Re
 
   const url = baseUrl + endpoint;
 
-  console.log('[API Request] Fetching: ' + url, {
-    method: options?.method || 'GET',
-    body: options?.body ? JSON.parse(options.body as string) : undefined
-  });
-
   let response = await fetch(url, {
     cache: 'no-store',
     ...options,
@@ -325,6 +320,5 @@ async function fetchWithAuthBase(baseUrl: string, endpoint: string, options?: Re
   }
 
   const data = await response.json();
-  console.log('[API Response] Success from ' + endpoint + ':', data);
   return data;
 }
