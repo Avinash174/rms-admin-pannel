@@ -14,7 +14,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { useAuth } from "@/contexts/auth-context";
-import { can } from "@/lib/permissions";
+import { can, isSuperAdmin } from "@/lib/permissions";
 import {
   getOperationsByDay,
   getRecentScans,
@@ -55,7 +55,7 @@ function sumOperations(counts: Record<OperationTypeKey, number>): number {
 
 export default function DashboardPage() {
   const { user } = useAuth();
-  const canView = can("report:view", user) || can("dashboard:view", user);
+  const canView = isSuperAdmin(user) || can("report:view", user) || can("dashboard:view", user);
 
   const from = useMemo(
     () => subDays(new Date(), 7).toISOString(),
