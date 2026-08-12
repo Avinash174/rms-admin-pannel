@@ -19,6 +19,7 @@ import {
   BarChart3,
   ScrollText,
   Smartphone,
+  QrCode,
 } from 'lucide-react';
 import { useAuth } from '@/contexts/auth-context';
 import { can, isSuperAdmin } from '@/lib/permissions';
@@ -58,7 +59,8 @@ const NAV_SECTIONS: NavSection[] = [
       { href: '/racks', label: 'Rack', icon: Layers, permission: 'settings:view' },
       { href: '/shelves', label: 'Shelf', icon: Layers, permission: 'settings:view' },
       { href: '/locations', label: 'Location', icon: MapPin, permission: 'settings:view' },
-      { href: '/clients', label: 'Client', icon: Users, permission: 'settings:view' }
+      { href: '/clients', label: 'Client', icon: Users, permission: 'settings:view' },
+      { href: '/barcodes/master', label: 'Barcode Master', icon: QrCode, permission: 'settings:view' }
     ]
   },
   {
