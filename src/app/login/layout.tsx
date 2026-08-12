@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-import { Providers } from "../providers";
 
 export const metadata: Metadata = {
   title: "Login - RMS Admin",
@@ -11,9 +10,5 @@ export default function LoginLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  return (
-    <Providers>
-      {children}
-    </Providers>
-  );
+  return children;
 }

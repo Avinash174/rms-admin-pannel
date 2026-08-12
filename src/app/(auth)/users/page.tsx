@@ -486,81 +486,124 @@ export default function UsersPage() {
       </div>
 
       {/* Create Dialog */}
-      <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
-        <DialogContent className="sm:max-w-[500px] rounded-2xl border-none shadow-2xl p-6 bg-white">
-          <DialogHeader>
-            <DialogTitle>Add User</DialogTitle>
-            <DialogDescription>
-              Create a new user account. Click save when you're done.
-            </DialogDescription>
-          </DialogHeader>
-          <form onSubmit={createForm.handleSubmit(handleCreateSubmit)} className="space-y-4 pt-4">
-            <div className="grid gap-4">
-              <div className="grid gap-2">
-                <Label htmlFor="username">Username</Label>
+      {/* ===== Add User — Right Slide-Over ===== */}
+      {/* Backdrop */}
+      <div
+        onClick={() => setIsCreateDialogOpen(false)}
+        className={`fixed inset-0 z-40 bg-slate-900/40 backdrop-blur-sm transition-opacity duration-300 ${isCreateDialogOpen ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'}`}
+      />
+
+      {/* Drawer Panel */}
+      <div className={`fixed inset-y-0 right-0 z-[60] h-screen w-full max-w-[440px] bg-white shadow-2xl flex flex-col transform transition-transform duration-300 ease-in-out ${isCreateDialogOpen ? 'translate-x-0' : 'translate-x-full'}`}>
+
+        {/* Sticky Header */}
+        <div className="relative overflow-hidden bg-gradient-to-br from-indigo-600 via-violet-600 to-purple-700 px-6 pt-6 pb-8 shrink-0">
+          <div className="absolute inset-0 opacity-20 bg-[radial-gradient(circle_at_top_right,white,transparent_60%)]" />
+          <div className="relative flex items-start justify-between">
+            <div className="space-y-0.5">
+              <div className="flex items-center gap-2">
+                <div className="p-1.5 bg-white/20 rounded-lg">
+                  <Plus className="h-4 w-4 text-white" />
+                </div>
+                <h2 className="text-white text-lg font-bold tracking-tight">Add User</h2>
+              </div>
+              <p className="text-white/70 text-xs mt-1">Create a new user account for your organisation.</p>
+            </div>
+            <button
+              onClick={() => setIsCreateDialogOpen(false)}
+              className="text-white/70 hover:text-white p-1.5 rounded-lg hover:bg-white/10 transition-colors mt-0.5"
+            >
+              <X className="h-5 w-5" />
+            </button>
+          </div>
+        </div>
+
+        {/* Scrollable Form Body */}
+        <div className="flex-1 overflow-y-auto px-6 py-5">
+          <form id="create-user-form" onSubmit={createForm.handleSubmit(handleCreateSubmit)} className="space-y-6">
+
+            {/* Identity */}
+            <div className="space-y-3">
+              <h5 className="text-[10px] font-bold text-slate-400 uppercase tracking-widest flex items-center gap-2">
+                <span className="h-px flex-1 bg-slate-100" />Identity<span className="h-px flex-1 bg-slate-100" />
+              </h5>
+
+              <div className="grid gap-1.5">
+                <Label htmlFor="create-username" className="text-xs text-slate-500 font-medium">Username</Label>
                 <Input
-                  id="username"
+                  id="create-username"
                   {...createForm.register('username')}
                   placeholder="jdoe"
-                  className="h-10 rounded-xl font-mono"
+                  className="h-10 rounded-xl font-mono border-slate-200 focus:ring-2 focus:ring-violet-500/25 text-sm"
                 />
                 {createForm.formState.errors.username && (
                   <p className="text-xs font-semibold text-rose-500">{createForm.formState.errors.username.message}</p>
                 )}
               </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="grid gap-2">
-                  <Label htmlFor="firstName">First Name</Label>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div className="grid gap-1.5">
+                  <Label htmlFor="create-firstName" className="text-xs text-slate-500 font-medium">First Name</Label>
                   <Input
-                    id="firstName"
+                    id="create-firstName"
                     {...createForm.register('firstName')}
                     placeholder="John"
-                    className="h-10 rounded-xl"
+                    className="h-10 rounded-xl border-slate-200 focus:ring-2 focus:ring-violet-500/25 text-sm"
                   />
                   {createForm.formState.errors.firstName && (
                     <p className="text-xs font-semibold text-rose-500">{createForm.formState.errors.firstName.message}</p>
                   )}
                 </div>
-                <div className="grid gap-2">
-                  <Label htmlFor="lastName">Last Name</Label>
+                <div className="grid gap-1.5">
+                  <Label htmlFor="create-lastName" className="text-xs text-slate-500 font-medium">Last Name</Label>
                   <Input
-                    id="lastName"
+                    id="create-lastName"
                     {...createForm.register('lastName')}
                     placeholder="Doe"
-                    className="h-10 rounded-xl"
+                    className="h-10 rounded-xl border-slate-200 focus:ring-2 focus:ring-violet-500/25 text-sm"
                   />
                   {createForm.formState.errors.lastName && (
                     <p className="text-xs font-semibold text-rose-500">{createForm.formState.errors.lastName.message}</p>
                   )}
                 </div>
               </div>
-              <div className="grid gap-2">
-                <Label htmlFor="email">Email</Label>
+
+              <div className="grid gap-1.5">
+                <Label htmlFor="create-email" className="text-xs text-slate-500 font-medium">Email</Label>
                 <Input
-                  id="email"
+                  id="create-email"
                   type="email"
                   {...createForm.register('email')}
                   placeholder="john.doe@example.com"
-                  className="h-10 rounded-xl"
+                  className="h-10 rounded-xl border-slate-200 focus:ring-2 focus:ring-violet-500/25 text-sm"
                 />
                 {createForm.formState.errors.email && (
                   <p className="text-xs font-semibold text-rose-500">{createForm.formState.errors.email.message}</p>
                 )}
               </div>
-              <div className="grid gap-2">
-                <Label htmlFor="phone">Phone</Label>
+
+              <div className="grid gap-1.5">
+                <Label htmlFor="create-phone" className="text-xs text-slate-500 font-medium">Phone</Label>
                 <Input
-                  id="phone"
+                  id="create-phone"
                   {...createForm.register('phone')}
                   placeholder="+1 234-567-8900"
-                  className="h-10 rounded-xl"
+                  className="h-10 rounded-xl border-slate-200 focus:ring-2 focus:ring-violet-500/25 text-sm"
                 />
                 {createForm.formState.errors.phone && (
                   <p className="text-xs font-semibold text-rose-500">{createForm.formState.errors.phone.message}</p>
                 )}
               </div>
-              <div className="grid gap-2">
-                <Label htmlFor="role">Role</Label>
+            </div>
+
+            {/* Role & Warehouses */}
+            <div className="space-y-3">
+              <h5 className="text-[10px] font-bold text-slate-400 uppercase tracking-widest flex items-center gap-2">
+                <span className="h-px flex-1 bg-slate-100" />Role & Access<span className="h-px flex-1 bg-slate-100" />
+              </h5>
+
+              <div className="grid gap-1.5">
+                <Label htmlFor="create-role" className="text-xs text-slate-500 font-medium">Role</Label>
                 <Select
                   value={createForm.watch('role')}
                   onValueChange={(value: RoleNameKey) => {
@@ -570,7 +613,7 @@ export default function UsersPage() {
                     }
                   }}
                 >
-                  <SelectTrigger className="h-10 rounded-xl">
+                  <SelectTrigger className="h-10 rounded-xl border-slate-200 text-sm">
                     <SelectValue placeholder="Select role" />
                   </SelectTrigger>
                   <SelectContent>
@@ -585,140 +628,195 @@ export default function UsersPage() {
                   <p className="text-xs font-semibold text-rose-500">{createForm.formState.errors.role.message}</p>
                 )}
               </div>
+
               {showWarehousePicker && (
-                <div className="grid gap-2">
-                  <Label>Warehouses</Label>
-                  <div className="max-h-36 overflow-y-auto border border-slate-200 rounded-xl p-3 space-y-2">
+                <div className="grid gap-1.5">
+                  <Label className="text-xs text-slate-500 font-medium">Warehouses</Label>
+                  <div className="max-h-36 overflow-y-auto border border-slate-200 rounded-xl p-3 space-y-2 bg-slate-50/50">
                     {warehouses.length === 0 ? (
                       <p className="text-xs text-slate-400">No warehouses available</p>
                     ) : (
                       warehouses.map((wh) => (
-                        <label key={wh.id} className="flex items-center gap-2 text-sm cursor-pointer">
+                        <label key={wh.id} className="flex items-center gap-2.5 text-sm cursor-pointer py-0.5">
                           <input
                             type="checkbox"
                             checked={selectedWarehouseIds.includes(wh.id)}
                             onChange={() => toggleWarehouse(wh.id)}
-                            className="rounded border-slate-300"
+                            className="rounded border-slate-300 text-violet-600 focus:ring-violet-500"
                           />
-                          <span>{wh.code} — {wh.name}</span>
+                          <span className="text-slate-700">{wh.code} — {wh.name}</span>
                         </label>
                       ))
                     )}
                   </div>
                 </div>
               )}
-              <div className="grid gap-2">
-                <Label htmlFor="password">Password</Label>
+            </div>
+
+            {/* Security */}
+            <div className="space-y-3">
+              <h5 className="text-[10px] font-bold text-slate-400 uppercase tracking-widest flex items-center gap-2">
+                <span className="h-px flex-1 bg-slate-100" />Security<span className="h-px flex-1 bg-slate-100" />
+              </h5>
+              <div className="grid gap-1.5">
+                <Label htmlFor="create-password" className="text-xs text-slate-500 font-medium">Password</Label>
                 <Input
-                  id="password"
+                  id="create-password"
                   type="password"
                   {...createForm.register('password')}
                   placeholder="••••••••"
-                  className="h-10 rounded-xl"
+                  className="h-10 rounded-xl border-slate-200 focus:ring-2 focus:ring-violet-500/25 text-sm"
                 />
                 {createForm.formState.errors.password && (
                   <p className="text-xs font-semibold text-rose-500">{createForm.formState.errors.password.message}</p>
                 )}
               </div>
             </div>
-            <DialogFooter>
-              <Button type="button" variant="outline" onClick={() => setIsCreateDialogOpen(false)} className="rounded-xl h-10">
-                Cancel
-              </Button>
-              <Button type="submit" disabled={createMutation.isPending} className="bg-blue-600 hover:bg-blue-700 text-white rounded-xl h-10 px-6">
-                {createMutation.isPending && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
-                Save
-              </Button>
-            </DialogFooter>
-          </form>
-        </DialogContent>
-      </Dialog>
 
-      {/* Edit Dialog */}
-      <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
-        <DialogContent className="sm:max-w-[500px] rounded-2xl border-none shadow-2xl bg-white">
-          {/* Gradient profile banner (inner card) */}
-          <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-blue-600 via-blue-600 to-indigo-600 px-5 pt-5 pb-14 mt-1">
-            <div className="absolute inset-0 opacity-20 bg-[radial-gradient(circle_at_top_right,white,transparent_60%)]" />
-            <div className="relative space-y-1">
-              <h2 className="text-white text-lg font-bold tracking-tight">Edit Profile</h2>
-              <p className="text-blue-100/90 text-xs">Update account information and access status.</p>
-            </div>
+          </form>
+        </div>
+
+        {/* Sticky Footer */}
+        <div className="shrink-0 border-t border-slate-100 bg-white px-6 py-4 flex items-center justify-end gap-3">
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => setIsCreateDialogOpen(false)}
+            className="rounded-xl h-10 px-5 text-slate-600"
+          >
+            Cancel
+          </Button>
+          <Button
+            type="submit"
+            form="create-user-form"
+            disabled={createMutation.isPending}
+            className="bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-700 hover:to-violet-700 text-white rounded-xl h-10 px-6 shadow-md transition-all"
+          >
+            {createMutation.isPending && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+            Create User
+          </Button>
+        </div>
+      </div>
+
+      {/* ===== Edit Profile — Right Slide-Over ===== */}
+      {/* Backdrop */}
+      <div
+        onClick={() => setIsEditDialogOpen(false)}
+        className={`fixed inset-0 z-40 bg-slate-950/40 backdrop-blur-sm transition-opacity duration-300 ${isEditDialogOpen ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'}`}
+      />
+
+      {/* Drawer Panel */}
+      <div className={`fixed inset-y-0 right-0 z-[60] h-screen w-full max-w-[460px] bg-slate-50 shadow-2xl flex flex-col transform transition-transform duration-300 ease-out ${isEditDialogOpen ? 'translate-x-0' : 'translate-x-full'}`}>
+
+        {/* Header with User Info Banner */}
+        <div className="relative overflow-hidden bg-gradient-to-br from-slate-900 via-blue-950 to-indigo-900 p-6 shrink-0 text-white border-b border-slate-800">
+          <div className="absolute inset-0 opacity-15 bg-[radial-gradient(circle_at_top_right,white,transparent_70%)] pointer-events-none" />
+          
+          {/* Top Bar: Title & Close */}
+          <div className="relative flex items-center justify-between mb-5">
+            <span className="text-[11px] font-bold uppercase tracking-widest text-blue-300 bg-blue-500/20 px-2.5 py-1 rounded-full border border-blue-400/20">
+              Edit User Profile
+            </span>
+            <button
+              onClick={() => setIsEditDialogOpen(false)}
+              className="text-slate-400 hover:text-white p-1.5 rounded-xl hover:bg-white/10 transition-colors"
+            >
+              <X className="h-5 w-5" />
+            </button>
           </div>
 
-          {/* Avatar + identity, overlapping the banner */}
-          <div className="-mt-10">
-            <div className="flex items-end gap-4">
-              <div className="w-[68px] h-[68px] rounded-2xl bg-white p-1 shadow-lg ring-1 ring-slate-100 shrink-0">
-                <div className="w-full h-full rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 text-white flex items-center justify-center text-xl font-extrabold">
-                  {editInitials || <Users className="w-6 h-6" />}
-                </div>
+          {/* Integrated User Avatar + Info */}
+          <div className="relative flex items-center gap-4">
+            <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-blue-500 to-indigo-600 text-white p-0.5 shadow-lg shadow-blue-900/40 shrink-0 ring-2 ring-white/10">
+              <div className="w-full h-full rounded-[14px] bg-slate-900/40 backdrop-blur-sm flex items-center justify-center text-lg font-black tracking-wider">
+                {editInitials || <Users className="w-6 h-6" />}
               </div>
-              <div className="pb-1 min-w-0">
-                <h4 className="text-base font-extrabold text-slate-900 truncate">
+            </div>
+            <div className="min-w-0 flex-1">
+              <div className="flex items-center gap-2">
+                <h4 className="text-base font-extrabold text-white truncate">
                   {selectedUser?.firstName} {selectedUser?.lastName}
                 </h4>
-                <p className="text-xs text-slate-400 font-mono truncate">
-                  {selectedUser?.employeeCode || 'No employee code'}
-                </p>
+                <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                  editIsActive ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30' : 'bg-rose-500/20 text-rose-300 border border-rose-500/30'
+                }`}>
+                  {editIsActive ? 'Active' : 'Inactive'}
+                </span>
               </div>
+              <p className="text-xs text-slate-300 font-mono mt-0.5 truncate">
+                {selectedUser?.employeeCode ? `EMP: ${selectedUser.employeeCode}` : selectedUser?.email}
+              </p>
             </div>
           </div>
+        </div>
 
-          <form onSubmit={createForm.handleSubmit(handleEditSubmit)} className="pt-6 space-y-5">
-            {/* Identity section */}
-            <div className="space-y-3">
-              <h5 className="text-[11px] font-bold text-slate-400 uppercase tracking-widest">Identity</h5>
+        {/* Scrollable Form Body */}
+        <div className="flex-1 overflow-y-auto p-6 space-y-5">
+          <form id="edit-user-form" onSubmit={createForm.handleSubmit(handleEditSubmit)} className="space-y-5">
+
+            {/* Identity Card */}
+            <div className="bg-white rounded-2xl p-4 border border-slate-200/80 shadow-xs space-y-4">
+              <div className="flex items-center gap-2 text-xs font-bold text-slate-800 uppercase tracking-wider">
+                <div className="w-1.5 h-4 bg-blue-600 rounded-full" />
+                Identity Details
+              </div>
+              
               <div className="grid grid-cols-2 gap-3">
                 <div className="grid gap-1.5">
-                  <Label htmlFor="edit-firstName" className="text-xs text-slate-500">First Name</Label>
+                  <Label htmlFor="edit-firstName" className="text-[11px] text-slate-500 font-semibold">First Name</Label>
                   <Input
                     id="edit-firstName"
                     {...createForm.register('firstName')}
                     placeholder="First Name"
-                    className="h-10 rounded-xl border-slate-200 focus:ring-2 focus:ring-blue-500/25"
+                    className="h-9.5 rounded-xl border-slate-200 bg-slate-50/50 focus:bg-white focus:ring-2 focus:ring-blue-500/20 text-xs font-medium"
                   />
                 </div>
                 <div className="grid gap-1.5">
-                  <Label htmlFor="edit-lastName" className="text-xs text-slate-500">Last Name</Label>
+                  <Label htmlFor="edit-lastName" className="text-[11px] text-slate-500 font-semibold">Last Name</Label>
                   <Input
                     id="edit-lastName"
                     {...createForm.register('lastName')}
                     placeholder="Last Name"
-                    className="h-10 rounded-xl border-slate-200 focus:ring-2 focus:ring-blue-500/25"
+                    className="h-9.5 rounded-xl border-slate-200 bg-slate-50/50 focus:bg-white focus:ring-2 focus:ring-blue-500/20 text-xs font-medium"
                   />
                 </div>
               </div>
+
               <div className="grid gap-1.5">
-                <Label htmlFor="edit-email" className="text-xs text-slate-500">Email</Label>
+                <Label htmlFor="edit-email" className="text-[11px] text-slate-500 font-semibold">Email Address</Label>
                 <div className="relative">
                   <Input
                     id="edit-email"
                     type="email"
                     {...createForm.register('email')}
                     placeholder="Email"
-                    className="h-10 rounded-xl bg-slate-50 text-slate-400 cursor-not-allowed border-slate-200 pr-10"
+                    className="h-9.5 rounded-xl bg-slate-100 text-slate-500 cursor-not-allowed border-slate-200 pr-10 text-xs font-medium"
                     disabled
                   />
-                  <Key className="absolute right-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-300" />
+                  <Key className="absolute right-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400" />
                 </div>
               </div>
+
               <div className="grid gap-1.5">
-                <Label htmlFor="edit-phone" className="text-xs text-slate-500">Phone</Label>
+                <Label htmlFor="edit-phone" className="text-[11px] text-slate-500 font-semibold">Phone Number</Label>
                 <Input
                   id="edit-phone"
                   {...createForm.register('phone')}
-                  placeholder="Phone"
-                  className="h-10 rounded-xl border-slate-200 focus:ring-2 focus:ring-blue-500/25"
+                  placeholder="Phone number"
+                  className="h-9.5 rounded-xl border-slate-200 bg-slate-50/50 focus:bg-white focus:ring-2 focus:ring-blue-500/20 text-xs font-medium"
                 />
               </div>
             </div>
 
-            {/* Access / status section */}
-            <div className="space-y-3">
-              <h5 className="text-[11px] font-bold text-slate-400 uppercase tracking-widest">Role & Warehouses</h5>
-              <div className="grid gap-2">
-                <Label className="text-xs text-slate-500">Role</Label>
+            {/* Role & Access Card */}
+            <div className="bg-white rounded-2xl p-4 border border-slate-200/80 shadow-xs space-y-4">
+              <div className="flex items-center gap-2 text-xs font-bold text-slate-800 uppercase tracking-wider">
+                <div className="w-1.5 h-4 bg-indigo-600 rounded-full" />
+                Role & Warehouses
+              </div>
+
+              <div className="grid gap-1.5">
+                <Label className="text-[11px] text-slate-500 font-semibold">System Role</Label>
                 <Select
                   value={createForm.watch('role')}
                   onValueChange={(value: RoleNameKey) => {
@@ -728,7 +826,7 @@ export default function UsersPage() {
                     }
                   }}
                 >
-                  <SelectTrigger className="h-10 rounded-xl">
+                  <SelectTrigger className="h-9.5 rounded-xl border-slate-200 bg-slate-50/50 text-xs font-medium">
                     <SelectValue placeholder="Select role" />
                   </SelectTrigger>
                   <SelectContent>
@@ -740,38 +838,47 @@ export default function UsersPage() {
                   </SelectContent>
                 </Select>
               </div>
+
               {MOBILE_ROLES.includes(createForm.watch('role')) && (
-                <div className="grid gap-2">
-                  <Label className="text-xs text-slate-500">Warehouses</Label>
-                  <div className="max-h-36 overflow-y-auto border border-slate-200 rounded-xl p-3 space-y-2">
+                <div className="grid gap-1.5">
+                  <Label className="text-[11px] text-slate-500 font-semibold">Assigned Warehouses</Label>
+                  <div className="max-h-40 overflow-y-auto border border-slate-200 rounded-xl p-3 space-y-2 bg-slate-50/50">
                     {warehouses.map((wh) => (
-                      <label key={wh.id} className="flex items-center gap-2 text-sm cursor-pointer">
+                      <label key={wh.id} className="flex items-center gap-2.5 text-xs cursor-pointer py-1 hover:bg-slate-100/50 px-1 rounded-lg transition-colors">
                         <input
                           type="checkbox"
                           checked={(createForm.watch('warehouseIds') || []).includes(wh.id)}
                           onChange={() => toggleWarehouse(wh.id)}
-                          className="rounded border-slate-300"
+                          className="rounded border-slate-300 text-blue-600 focus:ring-blue-500"
                         />
-                        <span>{wh.code} — {wh.name}</span>
+                        <span className="text-slate-700 font-medium">{wh.code} — {wh.name}</span>
                       </label>
                     ))}
                   </div>
                 </div>
               )}
-              <h5 className="text-[11px] font-bold text-slate-400 uppercase tracking-widest pt-2">Access Status</h5>
-              <div className="grid grid-cols-2 gap-2">
+            </div>
+
+            {/* Access Status Card */}
+            <div className="bg-white rounded-2xl p-4 border border-slate-200/80 shadow-xs space-y-3">
+              <div className="flex items-center gap-2 text-xs font-bold text-slate-800 uppercase tracking-wider">
+                <div className="w-1.5 h-4 bg-emerald-600 rounded-full" />
+                Account Status
+              </div>
+
+              <div className="grid grid-cols-2 gap-2.5 p-1 bg-slate-100 rounded-xl border border-slate-200/60">
                 {([
-                  { value: true, label: 'Active', active: 'bg-emerald-500 text-white border-emerald-500 shadow-sm shadow-emerald-500/30' },
-                  { value: false, label: 'Inactive', active: 'bg-rose-500 text-white border-rose-500 shadow-sm shadow-rose-500/30' },
+                  { value: true, label: 'Active', active: 'bg-emerald-600 text-white shadow-md shadow-emerald-600/20 font-bold' },
+                  { value: false, label: 'Inactive', active: 'bg-rose-600 text-white shadow-md shadow-rose-600/20 font-bold' },
                 ] as const).map((opt) => (
                   <button
                     key={String(opt.value)}
                     type="button"
                     onClick={() => selectedUser && updateMutation.mutate({ id: selectedUser.id, data: { isActive: opt.value } })}
-                    className={`h-10 rounded-xl border text-xs font-semibold transition-all ${
+                    className={`h-9 rounded-lg text-xs transition-all ${
                       editIsActive === opt.value
                         ? opt.active
-                        : 'bg-white text-slate-500 border-slate-200 hover:border-slate-300 hover:bg-slate-50'
+                        : 'text-slate-600 hover:text-slate-900 hover:bg-white/60 font-medium'
                     }`}
                   >
                     {opt.label}
@@ -780,18 +887,31 @@ export default function UsersPage() {
               </div>
             </div>
 
-            <div className="flex items-center justify-end gap-2 pt-2">
-              <Button type="button" variant="outline" onClick={() => setIsEditDialogOpen(false)} className="rounded-xl h-10">
-                Cancel
-              </Button>
-              <Button type="submit" disabled={updateMutation.isPending} className="bg-blue-600 hover:bg-blue-700 text-white rounded-xl h-10 px-6 shadow-md hover:shadow-blue-500/25">
-                {updateMutation.isPending && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
-                Save Changes
-              </Button>
-            </div>
           </form>
-        </DialogContent>
-      </Dialog>
+        </div>
+
+        {/* Sticky Footer */}
+        <div className="shrink-0 border-t border-slate-200 bg-white px-6 py-4 flex items-center justify-end gap-3 shadow-lg relative z-20">
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => setIsEditDialogOpen(false)}
+            className="rounded-xl h-10 px-5 text-slate-600 border-slate-200 text-xs font-semibold hover:bg-slate-50"
+          >
+            Cancel
+          </Button>
+          <Button
+            type="submit"
+            form="edit-user-form"
+            disabled={updateMutation.isPending}
+            className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white rounded-xl h-10 px-6 text-xs font-bold shadow-md shadow-blue-500/20 transition-all"
+          >
+            {updateMutation.isPending && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+            Save Changes
+          </Button>
+        </div>
+      </div>
+
 
       {/* Password Reset Dialog */}
       <Dialog open={isPasswordDialogOpen} onOpenChange={setIsPasswordDialogOpen}>

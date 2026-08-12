@@ -1,4 +1,4 @@
-import { fetchWithAuthRoot } from './auth';
+import { fetchWithAuth, fetchWithAuthRoot } from './auth';
 
 export interface RecordTimelineEntry {
   id: string;
@@ -92,6 +92,18 @@ export async function updateRecordBox(id: string, data: { label?: string }) {
     body: JSON.stringify(data),
   });
   return response.data as RecordBox;
+}
+
+export async function deleteRecordBox(id: string): Promise<void> {
+  try {
+    await fetchWithAuth(`/boxes/${id}`, {
+      method: 'DELETE',
+    });
+  } catch {
+    await fetchWithAuth(`/barcode/${id}`, {
+      method: 'DELETE',
+    });
+  }
 }
 
 export async function getRecordBoxTimeline(id: string): Promise<RecordTimelineEntry[]> {

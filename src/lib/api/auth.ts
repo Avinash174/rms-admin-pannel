@@ -1,10 +1,25 @@
 import { LoginRequest, LoginResponse, RefreshTokenRequest, RefreshTokenResponse } from '../types/auth';
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api/v1/admin';
-const API_ROOT_URL = process.env.NEXT_PUBLIC_API_ROOT_URL || 'http://localhost:3001/api/v1';
+function getApiBaseUrl(): string {
+  if (process.env.NEXT_PUBLIC_API_URL) return process.env.NEXT_PUBLIC_API_URL;
+  if (typeof window !== 'undefined') {
+    const hostname = window.location.hostname || 'localhost';
+    return `http://${hostname}:3002/api/v1/admin`;
+  }
+  return 'http://localhost:3002/api/v1/admin';
+}
+
+function getApiRootUrl(): string {
+  if (process.env.NEXT_PUBLIC_API_ROOT_URL) return process.env.NEXT_PUBLIC_API_ROOT_URL;
+  if (typeof window !== 'undefined') {
+    const hostname = window.location.hostname || 'localhost';
+    return `http://${hostname}:3002/api/v1`;
+  }
+  return 'http://localhost:3002/api/v1';
+}
 
 export async function login(data: LoginRequest): Promise<LoginResponse> {
-  const response = await fetch(`${API_BASE_URL}/auth/login`, {
+  const response = await fetch(`${getApiBaseUrl()}/auth/login`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -13,6 +28,11 @@ export async function login(data: LoginRequest): Promise<LoginResponse> {
   });
 
   if (!response.ok) {
+    if (response.status === 404) {
+      throw new Error(
+        'Login failed: API not found. Start the backend on port 3002 (cd backend && npm run dev) and open the admin panel at http://localhost:3000'
+      );
+    }
     throw new Error(`Login failed: ${response.statusText}`);
   }
 
@@ -64,7 +84,7 @@ export async function login(data: LoginRequest): Promise<LoginResponse> {
 }
 
 export async function refreshToken(data: RefreshTokenRequest): Promise<RefreshTokenResponse> {
-  const response = await fetch(`${API_BASE_URL}/auth/refresh`, {
+  const response = await fetch(`${getApiBaseUrl()}/auth/refresh`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -104,7 +124,7 @@ export async function logout(): Promise<void> {
   // Attempt to notify backend (non-blocking)
   const token = localStorage.getItem('refresh_token');
   if (token) {
-    fetch(`${API_BASE_URL}/auth/logout`, {
+    fetch(`${getApiBaseUrl()}/auth/logout`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -139,7 +159,7 @@ export async function bindDevice(serialNumber: string, model: string) {
     throw new Error('Not authenticated');
   }
 
-  const response = await fetch(`${API_BASE_URL}/auth/device-bind`, {
+  const response = await fetch(`${getApiBaseUrl()}/auth/device-bind`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -173,11 +193,11 @@ function onRefreshed(token: string) {
 }
 
 export async function fetchWithAuth(endpoint: string, options?: RequestInit): Promise<any> {
-  return fetchWithAuthBase(API_BASE_URL, endpoint, options);
+  return fetchWithAuthBase(getApiBaseUrl(), endpoint, options);
 }
 
 export async function fetchWithAuthRoot(endpoint: string, options?: RequestInit): Promise<any> {
-  return fetchWithAuthBase(API_ROOT_URL, endpoint, options);
+  return fetchWithAuthBase(getApiRootUrl(), endpoint, options);
 }
 
 async function fetchWithAuthBase(baseUrl: string, endpoint: string, options?: RequestInit): Promise<any> {
@@ -238,7 +258,7 @@ async function fetchWithAuthBase(baseUrl: string, endpoint: string, options?: Re
           isRefreshing = true;
           try {
             console.log('[API Auth] Attempting token refresh...');
-            const refreshResponse = await fetch(`${API_BASE_URL}/auth/refresh`, {
+            const refreshResponse = await fetch(`${getApiBaseUrl()}/auth/refresh`, {
               method: 'POST',
               headers: {
                 'Content-Type': 'application/json',

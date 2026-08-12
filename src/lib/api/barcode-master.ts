@@ -9,21 +9,21 @@ export interface BarcodeMasterItem {
   type: BarcodeType;
   status: BarcodeStatus;
   companyId: string;
-  siteId?: string;
-  branchId?: string;
-  warehouseId?: string;
+  siteId?: string | null;
+  branchId?: string | null;
+  warehouseId?: string | null;
   isAssigned: boolean;
-  assignedToType?: string;
-  assignedToId?: string;
-  assignedAt?: string;
+  assignedToType?: string | null;
+  assignedToId?: string | null;
+  assignedAt?: string | null;
   createdById: string;
-  remarks?: string;
+  remarks?: string | null;
   createdAt: string;
   updatedAt: string;
-  site?: { id: string; name: string; code: string };
-  branch?: { id: string; name: string; code: string };
-  warehouse?: { id: string; name: string; code: string };
-  createdBy?: { id: string; fullName: string; email: string };
+  site?: { id: string; name: string; code: string } | null;
+  branch?: { id: string; name: string; code: string } | null;
+  warehouse?: { id: string; name: string; code: string } | null;
+  createdBy?: { id: string; fullName: string; email: string } | null;
   history?: BarcodeHistoryItem[];
 }
 
@@ -146,10 +146,13 @@ export async function createBarcode(data: {
 
 export async function updateBarcode(id: string, data: {
   status?: BarcodeStatus;
-  siteId?: string;
-  branchId?: string;
-  warehouseId?: string;
-  remarks?: string;
+  siteId?: string | null;
+  branchId?: string | null;
+  warehouseId?: string | null;
+  isAssigned?: boolean;
+  assignedToType?: string | null;
+  assignedToId?: string | null;
+  remarks?: string | null;
 }): Promise<BarcodeMasterItem> {
   const response = await fetchWithAuth(`/barcode/${id}`, {
     method: 'PUT',
@@ -210,6 +213,22 @@ export async function bulkActionBarcodes(ids: string[], action: 'ACTIVATE' | 'DE
   }
   throw new Error(response.message || 'Failed to execute bulk action');
 }
+
+export async function bulkAssignBarcodes(ids: string[], data: {
+  warehouseId?: string | null;
+  siteId?: string | null;
+  branchId?: string | null;
+}) {
+  const response = await fetchWithAuth('/barcode/bulk-assign', {
+    method: 'POST',
+    body: JSON.stringify({ ids, ...data })
+  });
+  if (response.success) {
+    return response;
+  }
+  throw new Error(response.message || 'Failed to bulk assign barcodes');
+}
+
 
 export async function printBarcodes(ids: string[]) {
   const response = await fetchWithAuth('/barcode/print', {

@@ -10,7 +10,7 @@ import {
   ReportFilters
 } from '../types/reports';
 
-const API_ROOT_URL = process.env.NEXT_PUBLIC_API_ROOT_URL || 'http://localhost:3001/api/v1';
+const API_ROOT_URL = process.env.NEXT_PUBLIC_API_ROOT_URL || 'http://localhost:3002/api/v1';
 
 function buildQuery(filters: ReportFilters): string {
   const params = new URLSearchParams();

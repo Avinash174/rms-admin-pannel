@@ -4,16 +4,18 @@ import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { format, subDays } from "date-fns";
 import {
-  AlertCircle,
-  Loader2,
+  ScrollText,
   RefreshCw,
   Search,
+  X,
+  Layers,
   Terminal,
-  X
+  Activity,
+  ShieldCheck
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import { toast } from "sonner";
 import { DataTable } from "@/components/ui/data-table";
 import { columns } from "./columns";
 import { getAuditLogById, getAuditLogs } from "@/lib/api/audit";
@@ -43,8 +45,8 @@ const ACTION_OPTIONS = [
 function JsonBlock({ title, value }: { title: string; value: unknown }) {
   return (
     <div className="space-y-2">
-      <h5 className="text-xs font-bold text-slate-400 uppercase tracking-widest">{title}</h5>
-      <pre className="p-4 bg-slate-900 text-emerald-300 rounded-xl text-xs overflow-x-auto whitespace-pre-wrap">
+      <h5 className="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest">{title}</h5>
+      <pre className="p-4 bg-slate-900 text-emerald-400 rounded-2xl text-xs font-mono overflow-x-auto whitespace-pre-wrap shadow-inner border border-slate-800">
         {value ? JSON.stringify(value, null, 2) : "null"}
       </pre>
     </div>
@@ -77,238 +79,180 @@ export default function AuditLogsPage() {
     [actionFilter, entityTypeFilter, userIdFilter, entityIdSearch, fromDate, toDate]
   );
 
-  const { data, isLoading, error, refetch } = useQuery({
+  const { data, refetch, isFetching } = useQuery({
     queryKey: ["audit-logs", page, filters],
     queryFn: () => getAuditLogs(filters, page, 20)
   });
+
+  const handleRefresh = async () => {
+    await refetch();
+    toast.success("Audit logs refreshed");
+  };
 
   const { data: usersData } = useQuery({
     queryKey: ["audit-users"],
     queryFn: () => getUsers(1, 100, { isActive: true })
   });
 
-  const { data: detailLog, isLoading: detailLoading } = useQuery({
+  const { data: detailLog } = useQuery({
     queryKey: ["audit-log-detail", selectedLog?.id],
     queryFn: () => getAuditLogById(selectedLog!.id),
     enabled: !!selectedLog?.id && isDetailsOpen
   });
 
-  if (isLoading) {
-    return (
-      <div className="flex items-center justify-center h-96">
-        <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className="flex flex-col items-center justify-center h-96 gap-3">
-        <AlertCircle className="w-10 h-10 text-rose-500" />
-        <Button onClick={() => refetch()} variant="outline" className="rounded-xl">
-          <RefreshCw className="w-4 h-4 mr-2" /> Retry
-        </Button>
-      </div>
-    );
-  }
-
   const logs = data?.data || [];
-  const tableMeta = data?.meta
-    ? {
-        page: data.meta.page,
-        pageSize: data.meta.pageSize || data.meta.limit || 20,
-        total: data.meta.total,
-        totalPages: data.meta.totalPages
-      }
-    : undefined;
+  const meta = data?.meta;
+
+  const totalLogs = meta?.total || logs.length;
+  const moveLogs = logs.filter((l) => l.action.includes("MOVE")).length;
+  const refileLogs = logs.filter((l) => l.action.includes("REFILE")).length;
+  const overrideLogs = logs.filter((l) => l.action.includes("OVERRIDE")).length;
 
   return (
-    <div className="space-y-6 px-4 sm:px-6 lg:px-0 pb-12">
-      <div>
-        <div className="flex items-center gap-2">
-          <Terminal className="w-6 h-6 text-blue-600" />
-          <h1 className="text-2xl font-bold text-slate-900">Audit Logs</h1>
-        </div>
-        <p className="text-sm text-slate-500 mt-1">
-          Filter workflow and master-data changes with before/after state details.
-        </p>
-      </div>
-
-      <div className="bg-white rounded-2xl border p-4 grid grid-cols-1 md:grid-cols-3 xl:grid-cols-6 gap-4">
-        <div>
-          <Label className="text-xs uppercase text-slate-500">Action</Label>
-          <select
-            value={actionFilter}
-            onChange={(e) => {
-              setActionFilter(e.target.value);
-              setPage(1);
-            }}
-            className="mt-1 h-10 w-full rounded-xl border px-3 text-sm"
-          >
-            <option value="">All actions</option>
-            {ACTION_OPTIONS.map((action) => (
-              <option key={action} value={action}>
-                {action.replace(/_/g, " ")}
-              </option>
-            ))}
-          </select>
-        </div>
-        <div>
-          <Label className="text-xs uppercase text-slate-500">Entity type</Label>
-          <select
-            value={entityTypeFilter}
-            onChange={(e) => {
-              setEntityTypeFilter(e.target.value);
-              setPage(1);
-            }}
-            className="mt-1 h-10 w-full rounded-xl border px-3 text-sm"
-          >
-            <option value="">All entities</option>
-            {ENTITY_TYPES.map((type) => (
-              <option key={type} value={type}>
-                {type}
-              </option>
-            ))}
-          </select>
-        </div>
-        <div>
-          <Label className="text-xs uppercase text-slate-500">User</Label>
-          <select
-            value={userIdFilter}
-            onChange={(e) => {
-              setUserIdFilter(e.target.value);
-              setPage(1);
-            }}
-            className="mt-1 h-10 w-full rounded-xl border px-3 text-sm"
-          >
-            <option value="">All users</option>
-            {(usersData?.data || []).map((user) => (
-              <option key={user.id} value={user.id}>
-                {user.fullName || user.email}
-              </option>
-            ))}
-          </select>
-        </div>
-        <div>
-          <Label className="text-xs uppercase text-slate-500">From</Label>
-          <Input
-            type="date"
-            value={fromDate}
-            onChange={(e) => {
-              setFromDate(e.target.value);
-              setPage(1);
-            }}
-            className="mt-1 rounded-xl"
-          />
-        </div>
-        <div>
-          <Label className="text-xs uppercase text-slate-500">To</Label>
-          <Input
-            type="date"
-            value={toDate}
-            onChange={(e) => {
-              setToDate(e.target.value);
-              setPage(1);
-            }}
-            className="mt-1 rounded-xl"
-          />
-        </div>
-        <div>
-          <Label className="text-xs uppercase text-slate-500">Entity ID / barcode</Label>
-          <div className="relative mt-1">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-            <Input
-              value={entityIdSearch}
-              onChange={(e) => {
-                setEntityIdSearch(e.target.value);
-                setPage(1);
-              }}
-              placeholder="Search barcode..."
-              className="pl-10 rounded-xl"
-            />
+    <div className="space-y-6 p-6 pb-16">
+      {/* Header Bar */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white p-5 rounded-2xl border border-slate-200/80 shadow-sm">
+        <div className="flex items-center gap-3">
+          <div className="p-3 bg-violet-50 rounded-xl text-violet-600">
+            <ScrollText className="h-6 w-6" />
+          </div>
+          <div>
+            <h1 className="text-xl font-bold text-slate-900">Activity & Audit Logs</h1>
+            <p className="text-xs text-slate-500">Immutable audit tracking for system actions, location moves & barcode scans</p>
           </div>
         </div>
+        <Button variant="outline" className="rounded-xl h-9 text-xs" onClick={handleRefresh} disabled={isFetching}>
+          <RefreshCw className={`w-3.5 h-3.5 mr-1.5 ${isFetching ? 'animate-spin text-violet-600' : ''}`} /> Refresh Logs
+        </Button>
       </div>
 
-      <div className="bg-white rounded-2xl border shadow-sm">
+      {/* KPI Stats Cards */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-xs flex items-center justify-between">
+          <div>
+            <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Total Audit Logs</span>
+            <h3 className="text-2xl font-black text-slate-900 mt-1">{totalLogs.toLocaleString()}</h3>
+          </div>
+          <div className="p-3 bg-violet-50 text-violet-600 rounded-xl"><ShieldCheck className="h-6 w-6" /></div>
+        </div>
+
+        <div className="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-xs flex items-center justify-between">
+          <div>
+            <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Box Moves</span>
+            <h3 className="text-2xl font-black text-slate-900 mt-1">{moveLogs}</h3>
+          </div>
+          <div className="p-3 bg-blue-50 text-blue-600 rounded-xl"><Layers className="h-6 w-6" /></div>
+        </div>
+
+        <div className="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-xs flex items-center justify-between">
+          <div>
+            <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Refile Events</span>
+            <h3 className="text-2xl font-black text-slate-900 mt-1">{refileLogs}</h3>
+          </div>
+          <div className="p-3 bg-emerald-50 text-emerald-600 rounded-xl"><Activity className="h-6 w-6" /></div>
+        </div>
+
+        <div className="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-xs flex items-center justify-between">
+          <div>
+            <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Location Overrides</span>
+            <h3 className="text-2xl font-black text-slate-900 mt-1">{overrideLogs}</h3>
+          </div>
+          <div className="p-3 bg-amber-50 text-amber-600 rounded-xl"><Terminal className="h-6 w-6" /></div>
+        </div>
+      </div>
+
+      {/* Search & Filters */}
+      <div className="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-xs grid grid-cols-1 md:grid-cols-4 gap-3 items-center">
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+          <Input
+            placeholder="Search Entity Barcode / ID..."
+            value={entityIdSearch}
+            onChange={(e) => setEntityIdSearch(e.target.value)}
+            className="pl-9 h-9 text-xs rounded-xl"
+          />
+        </div>
+
+        <select
+          value={actionFilter}
+          onChange={(e) => setActionFilter(e.target.value)}
+          className="h-9 border rounded-xl px-3 text-xs bg-slate-50/50"
+        >
+          <option value="">All Workflow Actions</option>
+          {ACTION_OPTIONS.map((act) => (
+            <option key={act} value={act}>{act}</option>
+          ))}
+        </select>
+
+        <select
+          value={entityTypeFilter}
+          onChange={(e) => setEntityTypeFilter(e.target.value)}
+          className="h-9 border rounded-xl px-3 text-xs bg-slate-50/50"
+        >
+          <option value="">All Entity Types</option>
+          {ENTITY_TYPES.map((et) => (
+            <option key={et} value={et}>{et}</option>
+          ))}
+        </select>
+
+        <select
+          value={userIdFilter}
+          onChange={(e) => setUserIdFilter(e.target.value)}
+          className="h-9 border rounded-xl px-3 text-xs bg-slate-50/50"
+        >
+          <option value="">All Users</option>
+          {(usersData?.data || []).map((u: any) => (
+            <option key={u.id} value={u.id}>{u.fullName} ({u.employeeCode})</option>
+          ))}
+        </select>
+      </div>
+
+      {/* Main Table */}
+      <div className="bg-white rounded-2xl border border-slate-200/80 shadow-sm p-4">
         <DataTable
           columns={columns}
           data={logs}
-          meta={tableMeta}
+          meta={meta ? { page: meta.page, pageSize: meta.pageSize || 20, total: meta.total, totalPages: meta.totalPages } : undefined}
           onPageChange={setPage}
-          onCustomAction={(log: AuditLog) => {
+          onCustomAction={(log: any) => {
             setSelectedLog(log);
             setIsDetailsOpen(true);
           }}
         />
       </div>
 
-      <div
-        className={`fixed inset-0 z-50 overflow-hidden transition-opacity duration-300 ${isDetailsOpen ? "opacity-100 pointer-events-auto" : "opacity-0 pointer-events-none"}`}
-      >
-        <div
-          className="absolute inset-0 bg-slate-900/40 backdrop-blur-xs"
-          onClick={() => setIsDetailsOpen(false)}
-        />
-        <div className="absolute inset-y-0 right-0 max-w-full flex pl-10">
-          <div
-            className={`w-screen max-w-lg bg-white shadow-2xl flex flex-col transform transition-transform duration-300 ease-in-out ${isDetailsOpen ? "translate-x-0" : "translate-x-full"}`}
-          >
-            <div className="px-6 py-5 border-b flex items-center justify-between bg-slate-50/50">
-              <div className="flex items-center gap-2">
-                <Terminal className="w-5 h-5 text-blue-600" />
-                <h3 className="text-lg font-bold text-slate-900">Audit Detail</h3>
+      {/* Right Slide-Over Details Drawer */}
+      {isDetailsOpen && (
+        <div className="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-xs flex justify-end animate-in fade-in duration-200">
+          <div className="bg-white h-full max-w-lg w-full p-6 shadow-2xl border-l border-slate-200 flex flex-col justify-between animate-in slide-in-from-right duration-300">
+            <div>
+              <div className="flex items-center justify-between border-b pb-4">
+                <div>
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-violet-600 bg-violet-50 px-2 py-0.5 rounded-md">
+                    Audit Log Detail
+                  </span>
+                  <h3 className="font-bold text-slate-900 text-base mt-1">{selectedLog?.action}</h3>
+                </div>
+                <button onClick={() => setIsDetailsOpen(false)} className="text-slate-400 hover:text-slate-600 p-1.5 rounded-lg hover:bg-slate-100"><X className="h-5 w-5" /></button>
               </div>
-              <Button
-                onClick={() => setIsDetailsOpen(false)}
-                variant="ghost"
-                className="h-9 w-9 p-0 rounded-full"
-              >
-                <X className="w-5 h-5 text-slate-400" />
-              </Button>
+
+              <div className="space-y-4 text-xs pt-4 overflow-y-auto max-h-[70vh]">
+                <div className="grid grid-cols-2 gap-2 bg-slate-50 p-3 rounded-xl text-slate-700">
+                  <div><strong>Log ID:</strong> <span className="font-mono text-[10px]">{selectedLog?.id}</span></div>
+                  <div><strong>Timestamp:</strong> {selectedLog?.createdAt ? new Date(selectedLog.createdAt).toLocaleString() : "-"}</div>
+                </div>
+
+                <JsonBlock title="Previous State" value={detailLog?.previousState || selectedLog?.previousState} />
+                <JsonBlock title="New State" value={detailLog?.newState || selectedLog?.newState} />
+              </div>
             </div>
 
-            <div className="flex-1 overflow-y-auto p-6 space-y-6">
-              {detailLoading && (
-                <div className="flex justify-center py-8">
-                  <Loader2 className="w-6 h-6 animate-spin text-blue-600" />
-                </div>
-              )}
-
-              {!detailLoading && (detailLog || selectedLog) && (
-                <>
-                  <div className="space-y-2 text-sm">
-                    <p>
-                      <span className="font-semibold text-slate-500">Action:</span>{" "}
-                      {(detailLog || selectedLog)!.action}
-                    </p>
-                    <p>
-                      <span className="font-semibold text-slate-500">Entity:</span>{" "}
-                      {(detailLog || selectedLog)!.entityType}{" "}
-                      {(detailLog || selectedLog)!.entityId || "—"}
-                    </p>
-                    <p>
-                      <span className="font-semibold text-slate-500">User:</span>{" "}
-                      {(detailLog || selectedLog)!.userName}
-                    </p>
-                    <p>
-                      <span className="font-semibold text-slate-500">Device:</span>{" "}
-                      {(detailLog || selectedLog)!.device?.serialNumber || "—"}
-                    </p>
-                    <p>
-                      <span className="font-semibold text-slate-500">Timestamp:</span>{" "}
-                      {new Date((detailLog || selectedLog)!.createdAt).toLocaleString()}
-                    </p>
-                  </div>
-
-                  <JsonBlock title="Before" value={(detailLog || selectedLog)!.previousState} />
-                  <JsonBlock title="After" value={(detailLog || selectedLog)!.newState} />
-                </>
-              )}
+            <div className="flex items-center justify-end pt-4 border-t">
+              <Button variant="outline" className="rounded-xl text-xs" onClick={() => setIsDetailsOpen(false)}>Close Drawer</Button>
             </div>
           </div>
         </div>
-      </div>
+      )}
     </div>
   );
 }

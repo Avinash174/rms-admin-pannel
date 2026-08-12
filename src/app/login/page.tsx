@@ -1,8 +1,9 @@
 "use client";
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/auth-context';
+import { isAuthenticated } from '@/lib/api/auth';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -11,12 +12,18 @@ import { Eye, EyeOff } from 'lucide-react';
 
 export default function LoginPage() {
   const router = useRouter();
-  const { login } = useAuth();
+  const { login, user, isLoading: authLoading } = useAuth();
   const [email, setEmail] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+
+  useEffect(() => {
+    if (!authLoading && (user || isAuthenticated())) {
+      router.replace('/dashboard');
+    }
+  }, [authLoading, user, router]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -30,11 +37,10 @@ export default function LoginPage() {
 
       // Call auth context login which calls real backend API and handles storage
       await login({ email, password });
-      
-      router.push('/dashboard');
+      router.replace('/dashboard');
     } catch (err: any) {
       if (err.message === 'Failed to fetch' || err.name === 'TypeError') {
-        setError('Cannot connect to the backend server. Please make sure the backend service is running on port 3001.');
+        setError('Cannot connect to the backend server. Please make sure the backend is running on port 3002 (cd backend && npm run dev).');
       } else {
         setError(err.message || 'Login failed. Please check your credentials.');
       }

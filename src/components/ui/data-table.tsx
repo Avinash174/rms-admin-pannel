@@ -23,6 +23,8 @@ interface DataTableProps<TData, TValue> {
   onDelete?: (row: TData) => void
   onDeactivate?: (row: TData) => void
   onCustomAction?: (row: TData) => void
+  onPrintBarcode?: (row: TData) => void
+  onViewTimeline?: (row: TData) => void
 }
 
 export function DataTable<TData, TValue>({
@@ -34,6 +36,8 @@ export function DataTable<TData, TValue>({
   onDelete,
   onDeactivate,
   onCustomAction,
+  onPrintBarcode,
+  onViewTimeline,
 }: DataTableProps<TData, TValue>) {
   const [pagination, setPagination] = React.useState<PaginationState>({
     pageIndex: 0,
@@ -54,6 +58,8 @@ export function DataTable<TData, TValue>({
       onDelete,
       onDeactivate,
       onCustomAction,
+      onPrintBarcode,
+      onViewTimeline,
     },
   })
 

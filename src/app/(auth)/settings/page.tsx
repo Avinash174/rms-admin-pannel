@@ -1,16 +1,20 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import { toast } from "sonner";
 import {
   Building2,
-  Loader2,
   Lock,
   Server,
   Settings,
   Shield,
-  User
+  User,
+  CheckCircle2,
+  Globe,
+  Clock,
+  Save,
+  KeyRound
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -30,7 +34,6 @@ const TIMEZONES = [
 
 export default function SettingsPage() {
   const { user } = useAuth();
-  const queryClient = useQueryClient();
   const canManageCompany = isSuperAdmin(user) || can("settings:manage", user);
 
   const [profile, setProfile] = useState({
@@ -46,7 +49,7 @@ export default function SettingsPage() {
     timezone: "UTC"
   });
 
-  const { data: companySettings, isLoading } = useQuery({
+  const { data: companySettings } = useQuery({
     queryKey: ["company-settings-root"],
     queryFn: getCompanySettings,
     enabled: canManageCompany
@@ -84,7 +87,7 @@ export default function SettingsPage() {
       });
     },
     onSuccess: () => {
-      toast.success("Profile updated");
+      toast.success("Profile updated successfully");
       setProfile((prev) => ({ ...prev, newPassword: "", confirmPassword: "" }));
     },
     onError: (error: Error) => toast.error(error.message || "Failed to update profile")
@@ -98,186 +101,169 @@ export default function SettingsPage() {
         timezone: companyPrefs.timezone
       }),
     onSuccess: () => {
-      toast.success("Company preferences saved");
-      queryClient.invalidateQueries({ queryKey: ["company-settings-root"] });
+      toast.success("Company settings saved");
     },
-    onError: () => toast.error("Failed to save company preferences")
+    onError: (error: Error) => toast.error(error.message || "Failed to update company settings")
   });
 
-  if (isLoading && canManageCompany) {
-    return (
-      <div className="flex items-center justify-center h-96">
-        <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
-      </div>
-    );
-  }
-
   return (
-    <div className="space-y-8 px-4 sm:px-6 lg:px-0 pb-12">
-      <div>
-        <div className="flex items-center gap-2">
-          <Settings className="w-6 h-6 text-blue-600" />
-          <h1 className="text-2xl font-bold text-slate-900">Settings</h1>
+    <div className="space-y-6 p-6 pb-16">
+      {/* Top Header Card */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white p-5 rounded-2xl border border-slate-200/80 shadow-sm">
+        <div className="flex items-center gap-3">
+          <div className="p-3 bg-slate-900 rounded-xl text-white">
+            <Settings className="h-6 w-6" />
+          </div>
+          <div>
+            <h1 className="text-xl font-bold text-slate-900">System & Account Settings</h1>
+            <p className="text-xs text-slate-500">Global system configurations, company parameters & user security profile</p>
+          </div>
         </div>
-        <p className="text-sm text-slate-500 mt-1">
-          Manage your profile and company preferences.
-        </p>
       </div>
 
-      <section className="bg-white rounded-2xl border p-6 space-y-5">
-        <div className="flex items-center gap-2">
-          <User className="w-5 h-5 text-blue-600" />
-          <h2 className="text-lg font-bold text-slate-900">My Profile</h2>
+      {/* KPI Overview Cards */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-xs flex items-center justify-between">
+          <div>
+            <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Company</span>
+            <h3 className="text-base font-bold text-slate-900 mt-1 truncate max-w-[150px]">{companyPrefs.name || "Default Org"}</h3>
+          </div>
+          <div className="p-3 bg-blue-50 text-blue-600 rounded-xl"><Building2 className="h-6 w-6" /></div>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-xs flex items-center justify-between">
           <div>
-            <Label htmlFor="fullName">Full name</Label>
-            <Input
-              id="fullName"
-              value={profile.fullName}
-              onChange={(e) => setProfile((prev) => ({ ...prev, fullName: e.target.value }))}
-              className="mt-1 rounded-xl"
-            />
+            <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Timezone</span>
+            <h3 className="text-base font-bold text-slate-900 mt-1">{companyPrefs.timezone}</h3>
           </div>
-          <div>
-            <Label htmlFor="email">Email</Label>
-            <Input
-              id="email"
-              type="email"
-              value={profile.email}
-              onChange={(e) => setProfile((prev) => ({ ...prev, email: e.target.value }))}
-              className="mt-1 rounded-xl"
-            />
-          </div>
-          <div>
-            <Label htmlFor="newPassword">New password</Label>
-            <Input
-              id="newPassword"
-              type="password"
-              value={profile.newPassword}
-              onChange={(e) => setProfile((prev) => ({ ...prev, newPassword: e.target.value }))}
-              className="mt-1 rounded-xl"
-            />
-          </div>
-          <div>
-            <Label htmlFor="confirmPassword">Confirm password</Label>
-            <Input
-              id="confirmPassword"
-              type="password"
-              value={profile.confirmPassword}
-              onChange={(e) =>
-                setProfile((prev) => ({ ...prev, confirmPassword: e.target.value }))
-              }
-              className="mt-1 rounded-xl"
-            />
-          </div>
+          <div className="p-3 bg-indigo-50 text-indigo-600 rounded-xl"><Globe className="h-6 w-6" /></div>
         </div>
 
-        <Button
-          onClick={() => profileMutation.mutate()}
-          disabled={profileMutation.isPending}
-          className="rounded-xl"
-        >
-          {profileMutation.isPending ? (
-            <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-          ) : (
-            <Lock className="w-4 h-4 mr-2" />
-          )}
-          Save profile
-        </Button>
-      </section>
+        <div className="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-xs flex items-center justify-between">
+          <div>
+            <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Security Tier</span>
+            <h3 className="text-base font-bold text-slate-900 mt-1">{user?.role || "USER"}</h3>
+          </div>
+          <div className="p-3 bg-emerald-50 text-emerald-600 rounded-xl"><Shield className="h-6 w-6" /></div>
+        </div>
 
-      {canManageCompany && (
-        <section className="bg-white rounded-2xl border p-6 space-y-5">
-          <div className="flex items-center gap-2">
-            <Building2 className="w-5 h-5 text-blue-600" />
-            <h2 className="text-lg font-bold text-slate-900">Company Preferences</h2>
+        <div className="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-xs flex items-center justify-between">
+          <div>
+            <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Database Engine</span>
+            <h3 className="text-base font-bold text-slate-900 mt-1">PostgreSQL + Prisma</h3>
+          </div>
+          <div className="p-3 bg-violet-50 text-violet-600 rounded-xl"><Server className="h-6 w-6" /></div>
+        </div>
+      </div>
+
+      {/* Main Form Sections */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* User Profile Card */}
+        <div className="bg-white p-6 rounded-2xl border border-slate-200/80 shadow-xs space-y-5">
+          <div className="flex items-center gap-2 border-b pb-3">
+            <User className="h-5 w-5 text-blue-600" />
+            <h3 className="font-bold text-slate-900 text-base">User Security Profile</h3>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="space-y-4 text-xs">
             <div>
-              <Label htmlFor="companyName">Company name</Label>
+              <Label className="font-semibold text-slate-700">Full Name</Label>
               <Input
-                id="companyName"
-                value={companyPrefs.name}
-                onChange={(e) =>
-                  setCompanyPrefs((prev) => ({ ...prev, name: e.target.value }))
-                }
-                className="mt-1 rounded-xl"
+                value={profile.fullName}
+                onChange={(e) => setProfile({ ...profile, fullName: e.target.value })}
+                className="mt-1 h-9 rounded-xl"
               />
             </div>
             <div>
-              <Label htmlFor="capacity">Default location capacity (1–99)</Label>
+              <Label className="font-semibold text-slate-700">Email Address</Label>
               <Input
-                id="capacity"
-                type="number"
-                min={1}
-                max={99}
-                value={companyPrefs.defaultLocationCapacity}
-                onChange={(e) =>
-                  setCompanyPrefs((prev) => ({
-                    ...prev,
-                    defaultLocationCapacity: Number(e.target.value)
-                  }))
-                }
-                className="mt-1 rounded-xl"
+                type="email"
+                value={profile.email}
+                onChange={(e) => setProfile({ ...profile, email: e.target.value })}
+                className="mt-1 h-9 rounded-xl"
               />
             </div>
-            <div>
-              <Label htmlFor="timezone">Display timezone</Label>
-              <select
-                id="timezone"
-                value={companyPrefs.timezone}
-                onChange={(e) =>
-                  setCompanyPrefs((prev) => ({ ...prev, timezone: e.target.value }))
-                }
-                className="mt-1 h-10 w-full rounded-xl border px-3 text-sm"
-              >
-                {TIMEZONES.map((tz) => (
-                  <option key={tz} value={tz}>
-                    {tz}
-                  </option>
-                ))}
-              </select>
-            </div>
-          </div>
-
-          <Button
-            onClick={() => companyMutation.mutate()}
-            disabled={companyMutation.isPending}
-            className="rounded-xl"
-          >
-            {companyMutation.isPending ? (
-              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-            ) : (
-              <Building2 className="w-4 h-4 mr-2" />
-            )}
-            Save company preferences
-          </Button>
-        </section>
-      )}
-
-      {isSuperAdmin(user) && (
-        <section className="bg-white rounded-2xl border p-6 space-y-4">
-          <div className="flex items-center gap-2">
-            <Shield className="w-5 h-5 text-violet-600" />
-            <h2 className="text-lg font-bold text-slate-900">Super Admin Panel</h2>
-          </div>
-          <div className="rounded-xl border border-dashed border-slate-200 p-6 bg-slate-50">
-            <div className="flex items-start gap-3">
-              <Server className="w-5 h-5 text-slate-400 mt-0.5" />
+            <div className="pt-2 border-t space-y-3">
+              <Label className="font-bold text-slate-900 flex items-center gap-1.5"><KeyRound className="h-4 w-4 text-amber-500" /> Change Password</Label>
               <div>
-                <p className="text-sm font-semibold text-slate-800">Phase 2 placeholder</p>
-                <p className="text-sm text-slate-500 mt-1">
-                  System-wide metrics (total companies, users, operations) will appear here in a
-                  future release.
-                </p>
+                <Label className="text-slate-600">New Password</Label>
+                <Input
+                  type="password"
+                  value={profile.newPassword}
+                  onChange={(e) => setProfile({ ...profile, newPassword: e.target.value })}
+                  className="mt-1 h-9 rounded-xl"
+                  placeholder="Leave blank to keep current"
+                />
+              </div>
+              <div>
+                <Label className="text-slate-600">Confirm Password</Label>
+                <Input
+                  type="password"
+                  value={profile.confirmPassword}
+                  onChange={(e) => setProfile({ ...profile, confirmPassword: e.target.value })}
+                  className="mt-1 h-9 rounded-xl"
+                  placeholder="Repeat new password"
+                />
               </div>
             </div>
           </div>
-        </section>
-      )}
+
+          <div className="flex justify-end pt-3 border-t">
+            <Button className="rounded-xl text-xs bg-blue-600 hover:bg-blue-700" onClick={() => profileMutation.mutate()}>
+              <Save className="h-4 w-4 mr-1.5" /> Save Profile
+            </Button>
+          </div>
+        </div>
+
+        {/* Company Settings Card */}
+        {canManageCompany && (
+          <div className="bg-white p-6 rounded-2xl border border-slate-200/80 shadow-xs space-y-5">
+            <div className="flex items-center gap-2 border-b pb-3">
+              <Building2 className="h-5 w-5 text-indigo-600" />
+              <h3 className="font-bold text-slate-900 text-base">Company Organization Settings</h3>
+            </div>
+
+            <div className="space-y-4 text-xs">
+              <div>
+                <Label className="font-semibold text-slate-700">Organization Name</Label>
+                <Input
+                  value={companyPrefs.name}
+                  onChange={(e) => setCompanyPrefs({ ...companyPrefs, name: e.target.value })}
+                  className="mt-1 h-9 rounded-xl"
+                />
+              </div>
+              <div>
+                <Label className="font-semibold text-slate-700">Default Location Box Capacity</Label>
+                <Input
+                  type="number"
+                  min="1"
+                  value={companyPrefs.defaultLocationCapacity}
+                  onChange={(e) => setCompanyPrefs({ ...companyPrefs, defaultLocationCapacity: parseInt(e.target.value) || 1 })}
+                  className="mt-1 h-9 rounded-xl"
+                />
+              </div>
+              <div>
+                <Label className="font-semibold text-slate-700">System Timezone</Label>
+                <select
+                  value={companyPrefs.timezone}
+                  onChange={(e) => setCompanyPrefs({ ...companyPrefs, timezone: e.target.value })}
+                  className="mt-1 h-9 w-full rounded-xl border border-slate-200 px-3 text-xs bg-slate-50/50"
+                >
+                  {TIMEZONES.map((tz) => (
+                    <option key={tz} value={tz}>{tz}</option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
+            <div className="flex justify-end pt-3 border-t">
+              <Button className="rounded-xl text-xs bg-indigo-600 hover:bg-indigo-700" onClick={() => companyMutation.mutate()}>
+                <Save className="h-4 w-4 mr-1.5" /> Save Company Settings
+              </Button>
+            </div>
+          </div>
+        )}
+      </div>
     </div>
   );
 }
