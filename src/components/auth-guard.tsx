@@ -4,14 +4,13 @@ import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Loader2 } from 'lucide-react';
 import { useAuth } from '@/contexts/auth-context';
-import { isAuthenticated } from '@/lib/api/auth';
 
 export function AuthGuard({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const { isLoading, user } = useAuth();
 
   useEffect(() => {
-    if (!isLoading && !user && !isAuthenticated()) {
+    if (!isLoading && !user) {
       router.replace('/login');
     }
   }, [isLoading, user, router]);
@@ -24,7 +23,7 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
     );
   }
 
-  if (!user && !isAuthenticated()) {
+  if (!user) {
     return null;
   }
 

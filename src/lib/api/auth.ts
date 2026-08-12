@@ -44,12 +44,12 @@ export async function login(data: LoginRequest): Promise<LoginResponse> {
     refreshToken: result.refreshToken,
     user: {
       id: result.user.id,
-      email: result.user.email,
+      email: result.user.email || result.user.username,
       firstName,
       lastName,
       companyId,
       roleId,
-      roleName: result.user.role || 'Operator',
+      roleName: (result.user.role || 'SUPER_ADMIN').toString().trim().toUpperCase(),
       permissions: result.user.permissions || [],
       companyName: result.user.company?.name,
     },
@@ -126,27 +126,10 @@ export function isAuthenticated(): boolean {
 }
 
 export async function getCurrentUser() {
-  const token = localStorage.getItem('access_token');
-  if (!token) {
-    throw new Error('Not authenticated');
-  }
-
-  const response = await fetch(`${API_BASE_URL}/auth/me`, {
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${token}`,
-    },
-  });
-
-  if (!response.ok) {
-    throw new Error(`Failed to fetch current user: ${response.statusText}`);
-  }
-
-  const json = await response.json();
+  const json = await fetchWithAuth('/auth/me');
   if (!json.success || !json.data) {
     throw new Error(json.error?.message || 'Failed to fetch current user');
   }
-
   return json.data;
 }
 

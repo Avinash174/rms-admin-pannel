@@ -3,6 +3,22 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { login, logout, getStoredUser, isAuthenticated, getCurrentUser } from '@/lib/api/auth';
 import { LoginRequest } from '@/lib/types/auth';
+import { isAdminRole, normalizeRoleName } from '@/lib/permissions';
+
+function clearSession() {
+  localStorage.removeItem('access_token');
+  localStorage.removeItem('refresh_token');
+  localStorage.removeItem('user');
+}
+
+function normalizeStoredUser(user: any) {
+  if (!user) return null;
+  return {
+    ...user,
+    roleName: normalizeRoleName(user.roleName) || user.roleName || 'OPERATOR',
+    permissions: Array.isArray(user.permissions) ? user.permissions : [],
+  };
+}
 
 interface AuthContextType {
   user: any;
@@ -16,15 +32,18 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 function mapMeToUser(me: any, existing?: any) {
   const names = me.fullName ? me.fullName.split(' ') : ['Admin', 'User'];
+  const mePermissions = Array.isArray(me.role?.permissions) ? me.role.permissions : [];
+  const existingPermissions = Array.isArray(existing?.permissions) ? existing.permissions : [];
+
   return {
     id: me.id,
-    email: me.email,
+    email: me.email || existing?.email,
     firstName: names[0],
     lastName: names.slice(1).join(' ') || '',
     companyId: me.company?.id || existing?.companyId,
     roleId: me.role?.id || existing?.roleId,
-    roleName: me.role?.name || existing?.roleName || 'Operator',
-    permissions: me.role?.permissions || existing?.permissions || [],
+    roleName: normalizeRoleName(me.role?.name || existing?.roleName) || 'OPERATOR',
+    permissions: mePermissions.length > 0 ? mePermissions : existingPermissions,
     companyName: me.company?.name || existing?.companyName,
   };
 }
@@ -38,21 +57,30 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setMounted(true);
 
     async function hydrateUser() {
-      const storedUser = getStoredUser();
-      if (!storedUser || !isAuthenticated()) {
+      if (!isAuthenticated()) {
         setIsLoading(false);
         return;
       }
 
-      setUser(storedUser);
+      const storedUser = normalizeStoredUser(getStoredUser());
+
+      if (storedUser) {
+        setUser(storedUser);
+      }
 
       try {
         const me = await getCurrentUser();
-        const hydrated = mapMeToUser(me, storedUser);
-        setUser(hydrated);
-        localStorage.setItem('user', JSON.stringify(hydrated));
+        const hydrated = mapMeToUser(me, storedUser ?? undefined);
+        const normalized = normalizeStoredUser(hydrated);
+        setUser(normalized);
+        localStorage.setItem('user', JSON.stringify(normalized));
       } catch {
-        // Keep stored user if /me fails transiently
+        if (storedUser && ((storedUser.permissions?.length ?? 0) > 0 || isAdminRole(storedUser))) {
+          setUser(storedUser);
+        } else {
+          clearSession();
+          setUser(null);
+        }
       } finally {
         setIsLoading(false);
       }
@@ -63,7 +91,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const handleLogin = async (data: LoginRequest) => {
     const response = await login(data);
-    setUser(response.user);
+    const normalized = normalizeStoredUser(response.user);
+    setUser(normalized);
+    if (normalized) {
+      localStorage.setItem('user', JSON.stringify(normalized));
+    }
   };
 
   const handleLogout = async () => {

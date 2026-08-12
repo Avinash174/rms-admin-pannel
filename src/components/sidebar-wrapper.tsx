@@ -61,7 +61,7 @@ export function SidebarWrapper({ children }: { children: React.ReactNode }) {
                     {user?.firstName || 'Admin'}
                   </p>
                   <p className="text-xs text-slate-500">
-                    {user?.roleName || 'Administrator'}
+                    {user?.roleName?.replaceAll('_', ' ') || 'User'}
                   </p>
                 </div>
                 <svg className="w-4 h-4 text-slate-400 group-hover:text-slate-600 transition-colors hidden sm:block" fill="none" viewBox="0 0 24 24" stroke="currentColor">

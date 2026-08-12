@@ -2,8 +2,8 @@ import type { Metadata } from "next";
 import { Providers } from "../providers";
 
 export const metadata: Metadata = {
-  title: "Login - Enterprise RMS Admin",
-  description: "Sign in to your Enterprise RMS account",
+  title: "Login - RMS Admin",
+  description: "Sign in to RMS Records Management System",
 };
 
 export default function LoginLayout({

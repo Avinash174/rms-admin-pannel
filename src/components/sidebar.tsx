@@ -1,6 +1,7 @@
 "use client";
 
 import Link from 'next/link';
+import Image from 'next/image';
 import { usePathname } from 'next/navigation';
 import {
   X,
@@ -18,7 +19,6 @@ import {
   BarChart3,
   ScrollText,
   Smartphone,
-  Database
 } from 'lucide-react';
 import { useAuth } from '@/contexts/auth-context';
 import { can, isSuperAdmin } from '@/lib/permissions';
@@ -74,7 +74,7 @@ const NAV_SECTIONS: NavSection[] = [
     items: [
       { href: '/boxes', label: 'Boxes', icon: FileBox, permission: 'box:view' },
       { href: '/file-records', label: 'Files', icon: FileBox, permission: 'file:view' },
-      { href: '/barcodes', label: 'Barcodes', icon: Database, permission: 'box:manage' }
+      { href: '/barcodes', label: 'Barcodes', icon: FileBox, permission: 'box:manage' }
     ]
   },
   {
@@ -139,9 +139,13 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
       >
         <div className="flex h-16 items-center justify-between border-b border-slate-200 bg-slate-50/20 px-4">
           <Link href="/dashboard" className="group flex items-center gap-2.5" onClick={onClose}>
-            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-tr from-blue-600 to-indigo-500 text-white shadow-md shadow-blue-500/20">
-              <Database className="h-4 w-4 stroke-[2.5]" />
-            </div>
+            <Image
+              src="/rms-logo.png"
+              alt="RMS logo"
+              width={36}
+              height={36}
+              className="h-9 w-9 rounded-xl shadow-md shadow-blue-500/20"
+            />
             <div className="flex flex-col">
               <span className="text-sm font-black uppercase leading-none tracking-wider text-slate-900">
                 RMS <span className="text-blue-600">Admin</span>

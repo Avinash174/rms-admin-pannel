@@ -144,3 +144,20 @@ export async function resetUserPassword(id: string, newPassword: string): Promis
     throw new Error('Failed to reset password');
   }
 }
+
+export async function updateMe(data: {
+  fullName?: string;
+  email?: string;
+  phone?: string | null;
+  newPassword?: string;
+}): Promise<User> {
+  const response = await fetchWithAuthRoot('/users/me', {
+    method: 'PATCH',
+    body: JSON.stringify(data)
+  });
+
+  if (response.success && response.data) {
+    return mapAccessUser(response.data);
+  }
+  throw new Error('Failed to update profile');
+}

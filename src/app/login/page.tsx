@@ -6,6 +6,7 @@ import { useAuth } from '@/contexts/auth-context';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { RmsBrand } from '@/components/rms-brand';
 import { Eye, EyeOff } from 'lucide-react';
 
 export default function LoginPage() {
@@ -33,7 +34,7 @@ export default function LoginPage() {
       router.push('/dashboard');
     } catch (err: any) {
       if (err.message === 'Failed to fetch' || err.name === 'TypeError') {
-        setError('Cannot connect to the backend server. Please make sure the backend service is running on port 4000.');
+        setError('Cannot connect to the backend server. Please make sure the backend service is running on port 3001.');
       } else {
         setError(err.message || 'Login failed. Please check your credentials.');
       }
@@ -43,12 +44,15 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-slate-50">
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-50 via-blue-50/40 to-slate-100 px-4">
       <div className="w-full max-w-md">
-        <div className="bg-white rounded-2xl shadow-lg p-8">
-          <div className="text-center mb-8">
-            <h1 className="text-3xl font-bold text-slate-900 mb-2">Welcome Back</h1>
-            <p className="text-slate-600">Sign in to your Enterprise RMS account</p>
+        <div className="bg-white rounded-2xl shadow-xl shadow-slate-200/60 border border-slate-100 p-8">
+          <div className="mb-8 flex flex-col items-center">
+            <RmsBrand variant="login" />
+            <div className="mt-6 text-center">
+              <h2 className="text-xl font-semibold text-slate-900">Welcome Back</h2>
+              <p className="mt-1 text-sm text-slate-500">Sign in to your RMS admin account</p>
+            </div>
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-6">
@@ -102,9 +106,9 @@ export default function LoginPage() {
             </Button>
           </form>
 
-          <div className="mt-6 text-center text-sm text-slate-600">
-            <p>Enterprise Records Management System</p>
-            <p className="text-xs text-slate-400 mt-1">Admin Panel v1.0</p>
+          <div className="mt-6 text-center text-sm text-slate-500">
+            <p className="font-medium text-slate-600">Records Management System</p>
+            <p className="text-xs text-slate-400 mt-1">RMS Admin Panel · v1.0</p>
           </div>
         </div>
       </div>

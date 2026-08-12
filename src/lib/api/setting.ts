@@ -1,5 +1,5 @@
 import { ReasonCode, CompanySettings, CreateReasonCodeRequest, UpdateCompanySettingsRequest } from '../types/setting';
-import { fetchWithAuth } from './auth';
+import { fetchWithAuth, fetchWithAuthRoot } from './auth';
 
 export async function getReasonCodes(appliesTo?: string): Promise<ReasonCode[]> {
   const url = appliesTo ? `/settings/reason-codes?appliesTo=${appliesTo}` : '/settings/reason-codes';
@@ -28,16 +28,18 @@ export async function createReasonCode(data: CreateReasonCodeRequest): Promise<R
 }
 
 export async function getCompanySettings(): Promise<CompanySettings> {
-  const response = await fetchWithAuth('/settings/company');
+  const response = await fetchWithAuthRoot('/settings/company');
   if (response.success && response.data) {
     return response.data;
   }
   throw new Error('Failed to get company settings');
 }
 
-export async function updateCompanySettings(data: UpdateCompanySettingsRequest): Promise<CompanySettings> {
-  const response = await fetchWithAuth('/settings/company', {
-    method: 'PUT',
+export async function updateCompanySettings(
+  data: UpdateCompanySettingsRequest
+): Promise<CompanySettings> {
+  const response = await fetchWithAuthRoot('/settings/company', {
+    method: 'PATCH',
     body: JSON.stringify(data),
   });
   if (response.success && response.data) {

@@ -10,18 +10,23 @@ export interface ReasonCode {
 
 export interface CompanySettings {
   id: string;
-  companyId: string;
   name: string;
+  code: string;
+  defaultLocationCapacity: number;
+  timezone: string;
+  isActive?: boolean;
   createdAt: string;
   updatedAt: string;
+}
+
+export interface UpdateCompanySettingsRequest {
+  name?: string;
+  defaultLocationCapacity?: number;
+  timezone?: string;
 }
 
 export interface CreateReasonCodeRequest {
   code: string;
   label: string;
   appliesTo: string;
-}
-
-export interface UpdateCompanySettingsRequest {
-  name?: string;
 }

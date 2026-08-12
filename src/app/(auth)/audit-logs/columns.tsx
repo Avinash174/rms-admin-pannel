@@ -1,11 +1,48 @@
 import { ColumnDef } from '@tanstack/react-table';
-import { Clock, CheckCircle2, XCircle } from 'lucide-react';
+import { Clock } from 'lucide-react';
 import { AuditLog } from '@/lib/types/audit';
+
+function actionBadgeClass(action: string): string {
+  if (action.includes('REJECT') || action.includes('DELETED') || action === 'DESTROYED') {
+    return 'bg-rose-50 text-rose-700 border-rose-100';
+  }
+  if (
+    action.endsWith('_CREATED') ||
+    action.includes('CREATE') ||
+    action === 'BOX_CREATED' ||
+    action === 'FRESH_BOX_MOVE'
+  ) {
+    return 'bg-emerald-50 text-emerald-700 border-emerald-100';
+  }
+  if (
+    action.endsWith('_UPDATED') ||
+    action.includes('UPDATE') ||
+    action === 'LOCATION_OVERRIDE' ||
+    action === 'MERGE' ||
+    action === 'TRANSFER_INITIATE' ||
+    action === 'TRANSFER_ACCEPT'
+  ) {
+    return 'bg-amber-50 text-amber-700 border-amber-100';
+  }
+  if (
+    action === 'INVENTORY_VERIFY' ||
+    action === 'REFILE_SUCCESS' ||
+    action === 'SEGREGATION'
+  ) {
+    return 'bg-blue-50 text-blue-700 border-blue-100';
+  }
+  if (action === 'FRESH_BOX_MOVE' || action.includes('TRANSFER')) {
+    return 'bg-violet-50 text-violet-700 border-violet-100';
+  }
+  return 'bg-slate-50 text-slate-700 border-slate-100';
+}
 
 export const columns: ColumnDef<AuditLog>[] = [
   {
     accessorKey: 'createdAt',
-    header: () => <span className="text-xs font-bold tracking-wider text-slate-500 uppercase">Timestamp</span>,
+    header: () => (
+      <span className="text-xs font-bold tracking-wider text-slate-500 uppercase">Timestamp</span>
+    ),
     cell: ({ row }) => {
       const date = new Date(row.getValue('createdAt'));
       return (
@@ -14,105 +51,67 @@ export const columns: ColumnDef<AuditLog>[] = [
           {date.toLocaleString()}
         </div>
       );
-    },
-  },
-  {
-    accessorKey: 'userName',
-    header: () => <span className="text-xs font-bold tracking-wider text-slate-500 uppercase">User</span>,
-    cell: ({ row }) => (
-      <div className="text-sm font-semibold text-slate-900">
-        {row.getValue('userName')}
-      </div>
-    ),
+    }
   },
   {
     accessorKey: 'action',
-    header: () => <span className="text-xs font-bold tracking-wider text-slate-500 uppercase">Action</span>,
+    header: () => (
+      <span className="text-xs font-bold tracking-wider text-slate-500 uppercase">Action</span>
+    ),
     cell: ({ row }) => {
       const action = row.getValue('action') as string;
-      const styles = {
-        CREATE: 'bg-blue-50 text-blue-700 border-blue-100',
-        UPDATE: 'bg-amber-50 text-amber-700 border-amber-100',
-        DELETE: 'bg-rose-50 text-rose-700 border-rose-100',
-        READ: 'bg-slate-50 text-slate-700 border-slate-100',
-      };
-
-      // Map action to style category
-      let category = 'READ';
-      if (action.endsWith('_CREATED') || action.includes('CREATE') || action === 'FRESH_BOX_MOVE') {
-        category = 'CREATE';
-      } else if (action.endsWith('_UPDATED') || action.includes('UPDATE') || action === 'LOCATION_OVERRIDE' || action === 'MERGE' || action === 'TRANSFER_INITIATE' || action === 'TRANSFER_ACCEPT') {
-        category = 'UPDATE';
-      } else if (action.endsWith('_DELETED') || action.includes('DELETE') || action === 'DESTROYED') {
-        category = 'DELETE';
-      }
-
       return (
-        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-lg text-xs font-bold uppercase tracking-wider border ${
-          styles[category as keyof typeof styles] || styles.READ
-        }`}>
+        <span
+          className={`inline-flex items-center px-2.5 py-0.5 rounded-lg text-xs font-bold uppercase tracking-wider border ${actionBadgeClass(action)}`}
+        >
           {action.replace(/_/g, ' ')}
         </span>
       );
-    },
+    }
   },
   {
-    accessorKey: 'entity',
-    header: () => <span className="text-xs font-bold tracking-wider text-slate-500 uppercase">Entity</span>,
-    cell: ({ row }) => (
-      <div className="text-xs font-semibold text-slate-650 bg-slate-50 border border-slate-100 px-2 py-0.5 rounded-lg inline-block">
-        {row.getValue('entity')}
-      </div>
+    accessorKey: 'entityType',
+    header: () => (
+      <span className="text-xs font-bold tracking-wider text-slate-500 uppercase">Entity</span>
     ),
+    cell: ({ row }) => (
+      <div className="text-xs font-semibold text-slate-700 bg-slate-50 border border-slate-100 px-2 py-0.5 rounded-lg inline-block">
+        {row.getValue('entityType')}
+      </div>
+    )
   },
   {
     accessorKey: 'entityId',
-    header: () => <span className="text-xs font-bold tracking-wider text-slate-500 uppercase">Entity ID</span>,
+    header: () => (
+      <span className="text-xs font-bold tracking-wider text-slate-500 uppercase">Entity ID</span>
+    ),
     cell: ({ row }) => (
       <div className="font-mono text-xs font-semibold text-slate-600">
-        {row.getValue('entityId')}
+        {row.getValue('entityId') || '—'}
       </div>
-    ),
+    )
   },
   {
-    accessorKey: 'changes',
-    header: () => <span className="text-xs font-bold tracking-wider text-slate-500 uppercase">Changes</span>,
+    accessorKey: 'userName',
+    header: () => (
+      <span className="text-xs font-bold tracking-wider text-slate-500 uppercase">User</span>
+    ),
     cell: ({ row }) => (
-      <div className="text-xs text-slate-500 font-semibold max-w-[200px] truncate">
-        {row.getValue('changes') || '-'}
-      </div>
-    ),
+      <div className="text-sm font-semibold text-slate-900">{row.getValue('userName')}</div>
+    )
   },
   {
-    accessorKey: 'ipAddress',
-    header: () => <span className="text-xs font-bold tracking-wider text-slate-500 uppercase">IP Address</span>,
-    cell: ({ row }) => (
-      <div className="font-mono text-xs text-slate-500 font-semibold">
-        {row.getValue('ipAddress') || '-'}
-      </div>
+    id: 'device',
+    header: () => (
+      <span className="text-xs font-bold tracking-wider text-slate-500 uppercase">Device</span>
     ),
-  },
-  {
-    accessorKey: 'status',
-    header: () => <span className="text-xs font-bold tracking-wider text-slate-500 uppercase">Status</span>,
     cell: ({ row }) => {
-      const status = row.getValue('status') as string;
-      const isSuccess = status === 'SUCCESS';
+      const device = row.original.device;
       return (
-        <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-xl text-xs font-bold border ${
-          isSuccess 
-            ? 'bg-emerald-50/60 text-emerald-700 border-emerald-250 border-emerald-200' 
-            : 'bg-rose-50/60 text-rose-700 border-rose-200'
-        }`}>
-          <span className="relative flex h-2 w-2">
-            {isSuccess && (
-              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-            )}
-            <span className={`relative inline-flex rounded-full h-2 w-2 ${isSuccess ? 'bg-emerald-500' : 'bg-rose-500'}`} />
-          </span>
-          {status}
-        </span>
+        <div className="text-xs text-slate-600 font-mono">
+          {device?.serialNumber || '—'}
+        </div>
       );
-    },
-  },
+    }
+  }
 ];

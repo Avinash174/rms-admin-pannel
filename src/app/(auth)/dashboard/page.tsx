@@ -14,7 +14,6 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { useAuth } from "@/contexts/auth-context";
-import { can, isSuperAdmin } from "@/lib/permissions";
 import {
   getOperationsByDay,
   getRecentScans,
@@ -54,8 +53,8 @@ function sumOperations(counts: Record<OperationTypeKey, number>): number {
 }
 
 export default function DashboardPage() {
-  const { user } = useAuth();
-  const canView = isSuperAdmin(user) || can("report:view", user) || can("dashboard:view", user);
+  const { user, isLoading: authLoading } = useAuth();
+  const canView = Boolean(user);
 
   const from = useMemo(
     () => subDays(new Date(), 7).toISOString(),
@@ -116,6 +115,14 @@ export default function DashboardPage() {
 
   const maxOperationCount = Math.max(...OPERATION_TYPES.map((type) => operationsByType[type]), 1);
   const todayTotal = summary ? sumOperations(summary.todayOperationsByType) : 0;
+
+  if (authLoading) {
+    return (
+      <div className="flex h-96 items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
+      </div>
+    );
+  }
 
   if (!canView) {
     return (

@@ -1,350 +1,283 @@
 "use client";
 
-import { useState } from 'react';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { toast } from 'sonner';
+import { useEffect, useState } from "react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { toast } from "sonner";
 import {
-  Loader2, Settings, ShieldAlert, Sparkles, Check,
-  Database, Smartphone, Server, FileText, Info
-} from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { getCompanySettings, updateCompanySettings } from '@/lib/api/setting';
-import { CompanySettings } from '@/lib/types/setting';
+  Building2,
+  Loader2,
+  Lock,
+  Server,
+  Settings,
+  Shield,
+  User
+} from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { useAuth } from "@/contexts/auth-context";
+import { can, isSuperAdmin } from "@/lib/permissions";
+import { getCompanySettings, updateCompanySettings } from "@/lib/api/setting";
+import { updateMe } from "@/lib/api/user";
+
+const TIMEZONES = [
+  "UTC",
+  "Asia/Kolkata",
+  "Asia/Dubai",
+  "Europe/London",
+  "America/New_York"
+];
 
 export default function SettingsPage() {
-  const [activeTab, setActiveTab] = useState<'general' | 'scanning' | 'sync'>('general');
-  const [saveSuccess, setSaveSuccess] = useState(false);
+  const { user } = useAuth();
   const queryClient = useQueryClient();
+  const canManageCompany = isSuperAdmin(user) || can("settings:manage", user);
+
+  const [profile, setProfile] = useState({
+    fullName: "",
+    email: "",
+    newPassword: "",
+    confirmPassword: ""
+  });
+
+  const [companyPrefs, setCompanyPrefs] = useState({
+    name: "",
+    defaultLocationCapacity: 1,
+    timezone: "UTC"
+  });
 
   const { data: companySettings, isLoading } = useQuery({
-    queryKey: ['company-settings'],
+    queryKey: ["company-settings-root"],
     queryFn: getCompanySettings,
+    enabled: canManageCompany
   });
 
-  const [settings, setSettings] = useState({
-    companyName: companySettings?.name || '',
-    systemMode: 'PRODUCTION',
-    fileRetentionYears: 7,
-    boxRetentionYears: 10,
-    gpsInterval: 10,
-    syncIntervalMinutes: 5,
-    matchRateThreshold: 98,
-    redisTtl: 3600,
-    offlineBatchSize: 100,
-    syncRetryAttempts: 3,
-  });
+  useEffect(() => {
+    if (user) {
+      setProfile((prev) => ({
+        ...prev,
+        fullName: `${user.firstName || ""} ${user.lastName || ""}`.trim() || user.email || "",
+        email: user.email || ""
+      }));
+    }
+  }, [user]);
 
-  const saveMutation = useMutation({
-    mutationFn: (name: string) => updateCompanySettings({ name }),
+  useEffect(() => {
+    if (companySettings) {
+      setCompanyPrefs({
+        name: companySettings.name,
+        defaultLocationCapacity: companySettings.defaultLocationCapacity ?? 1,
+        timezone: companySettings.timezone ?? "UTC"
+      });
+    }
+  }, [companySettings]);
+
+  const profileMutation = useMutation({
+    mutationFn: () => {
+      if (profile.newPassword && profile.newPassword !== profile.confirmPassword) {
+        throw new Error("Passwords do not match");
+      }
+      return updateMe({
+        fullName: profile.fullName.trim(),
+        email: profile.email.trim(),
+        ...(profile.newPassword ? { newPassword: profile.newPassword } : {})
+      });
+    },
     onSuccess: () => {
-      setSaveSuccess(true);
-      queryClient.invalidateQueries({ queryKey: ['company-settings'] });
-      setTimeout(() => setSaveSuccess(false), 3000);
-      toast.success('Settings saved successfully');
+      toast.success("Profile updated");
+      setProfile((prev) => ({ ...prev, newPassword: "", confirmPassword: "" }));
     },
-    onError: () => {
-      toast.error('Failed to save settings');
-    },
+    onError: (error: Error) => toast.error(error.message || "Failed to update profile")
   });
 
-  const handleSave = (e: React.FormEvent) => {
-    e.preventDefault();
-    saveMutation.mutate(settings.companyName);
-  };
+  const companyMutation = useMutation({
+    mutationFn: () =>
+      updateCompanySettings({
+        name: companyPrefs.name.trim(),
+        defaultLocationCapacity: companyPrefs.defaultLocationCapacity,
+        timezone: companyPrefs.timezone
+      }),
+    onSuccess: () => {
+      toast.success("Company preferences saved");
+      queryClient.invalidateQueries({ queryKey: ["company-settings-root"] });
+    },
+    onError: () => toast.error("Failed to save company preferences")
+  });
 
-  const handleInputChange = (key: keyof typeof settings, value: any) => {
-    setSettings((prev) => ({
-      ...prev,
-      [key]: value,
-    }));
-  };
-
-  if (isLoading) {
+  if (isLoading && canManageCompany) {
     return (
-      <div className="flex items-center justify-center h-[500px]">
+      <div className="flex items-center justify-center h-96">
         <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
       </div>
     );
   }
 
   return (
-    <div className="w-full space-y-8 px-4 sm:px-6 lg:px-8 pb-16">
-      
-      {/* Page Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border-b border-slate-100 pb-6">
-        <div className="space-y-1.5">
-          <div className="flex items-center gap-2">
-            <h1 className="text-3xl font-extrabold text-slate-900 tracking-tight">System Settings</h1>
-            <span className="flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-blue-50 text-blue-700 border border-blue-100">
-              <Sparkles className="w-3.5 h-3.5 text-blue-600" /> Configurations Panel
-            </span>
+    <div className="space-y-8 px-4 sm:px-6 lg:px-0 pb-12">
+      <div>
+        <div className="flex items-center gap-2">
+          <Settings className="w-6 h-6 text-blue-600" />
+          <h1 className="text-2xl font-bold text-slate-900">Settings</h1>
+        </div>
+        <p className="text-sm text-slate-500 mt-1">
+          Manage your profile and company preferences.
+        </p>
+      </div>
+
+      <section className="bg-white rounded-2xl border p-6 space-y-5">
+        <div className="flex items-center gap-2">
+          <User className="w-5 h-5 text-blue-600" />
+          <h2 className="text-lg font-bold text-slate-900">My Profile</h2>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <Label htmlFor="fullName">Full name</Label>
+            <Input
+              id="fullName"
+              value={profile.fullName}
+              onChange={(e) => setProfile((prev) => ({ ...prev, fullName: e.target.value }))}
+              className="mt-1 rounded-xl"
+            />
           </div>
-          <p className="text-sm text-slate-500">Manage global operational thresholds, handheld scanning intervals, database retry parameters, and storage retention policies.</p>
-        </div>
-      </div>
-
-      {/* Settings Navigation and Form Container */}
-      <div className="grid grid-cols-1 lg:grid-cols-4 gap-8 items-start">
-        
-        {/* Navigation Tabs (Sidebar Layout) */}
-        <div className="bg-white p-4.5 p-4 rounded-2xl border border-slate-150 shadow-sm space-y-1">
-          <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest px-3 mb-3">Settings Categories</p>
-          <nav className="space-y-1">
-            <button
-              onClick={() => setActiveTab('general')}
-              type="button"
-              className={`w-full flex items-center gap-3 px-3.5 py-3 rounded-xl text-xs font-bold transition-all ${
-                activeTab === 'general'
-                  ? 'bg-blue-50 text-blue-600'
-                  : 'text-slate-500 hover:bg-slate-50 hover:text-slate-800'
-              }`}
-            >
-              <Server className="w-4 h-4" />
-              General & Retention
-            </button>
-            <button
-              onClick={() => setActiveTab('scanning')}
-              type="button"
-              className={`w-full flex items-center gap-3 px-3.5 py-3 rounded-xl text-xs font-bold transition-all ${
-                activeTab === 'scanning'
-                  ? 'bg-blue-50 text-blue-600'
-                  : 'text-slate-500 hover:bg-slate-50 hover:text-slate-800'
-              }`}
-            >
-              <Smartphone className="w-4 h-4" />
-              Scanning & Telemetry
-            </button>
-            <button
-              onClick={() => setActiveTab('sync')}
-              type="button"
-              className={`w-full flex items-center gap-3 px-3.5 py-3 rounded-xl text-xs font-bold transition-all ${
-                activeTab === 'sync'
-                  ? 'bg-blue-50 text-blue-600'
-                  : 'text-slate-500 hover:bg-slate-50 hover:text-slate-800'
-              }`}
-            >
-              <Database className="w-4 h-4" />
-              Database & Cache
-            </button>
-          </nav>
+          <div>
+            <Label htmlFor="email">Email</Label>
+            <Input
+              id="email"
+              type="email"
+              value={profile.email}
+              onChange={(e) => setProfile((prev) => ({ ...prev, email: e.target.value }))}
+              className="mt-1 rounded-xl"
+            />
+          </div>
+          <div>
+            <Label htmlFor="newPassword">New password</Label>
+            <Input
+              id="newPassword"
+              type="password"
+              value={profile.newPassword}
+              onChange={(e) => setProfile((prev) => ({ ...prev, newPassword: e.target.value }))}
+              className="mt-1 rounded-xl"
+            />
+          </div>
+          <div>
+            <Label htmlFor="confirmPassword">Confirm password</Label>
+            <Input
+              id="confirmPassword"
+              type="password"
+              value={profile.confirmPassword}
+              onChange={(e) =>
+                setProfile((prev) => ({ ...prev, confirmPassword: e.target.value }))
+              }
+              className="mt-1 rounded-xl"
+            />
+          </div>
         </div>
 
-        {/* Configurations Form */}
-        <div className="lg:col-span-3">
-          <form onSubmit={handleSave} className="bg-white rounded-2xl border border-slate-150 shadow-sm overflow-hidden flex flex-col">
-            
-            {/* Header of Active Tab */}
-            <div className="px-6 py-5 border-b border-slate-100 bg-slate-50/50">
-              <h3 className="text-sm font-bold text-slate-800 uppercase tracking-wider">
-                {activeTab === 'general' && 'General operational settings & Retention policies'}
-                {activeTab === 'scanning' && 'Scanning handheld telemetry & gps parameters'}
-                {activeTab === 'sync' && 'Database cache, sync batches, & retry thresholds'}
-              </h3>
+        <Button
+          onClick={() => profileMutation.mutate()}
+          disabled={profileMutation.isPending}
+          className="rounded-xl"
+        >
+          {profileMutation.isPending ? (
+            <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+          ) : (
+            <Lock className="w-4 h-4 mr-2" />
+          )}
+          Save profile
+        </Button>
+      </section>
+
+      {canManageCompany && (
+        <section className="bg-white rounded-2xl border p-6 space-y-5">
+          <div className="flex items-center gap-2">
+            <Building2 className="w-5 h-5 text-blue-600" />
+            <h2 className="text-lg font-bold text-slate-900">Company Preferences</h2>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div>
+              <Label htmlFor="companyName">Company name</Label>
+              <Input
+                id="companyName"
+                value={companyPrefs.name}
+                onChange={(e) =>
+                  setCompanyPrefs((prev) => ({ ...prev, name: e.target.value }))
+                }
+                className="mt-1 rounded-xl"
+              />
             </div>
-
-            {/* Form Fields */}
-            <div className="p-6 space-y-6">
-              
-              {activeTab === 'general' && (
-                <div className="space-y-6">
-                  {/* Company Name */}
-                  <div className="grid grid-cols-1 md:grid-cols-3 items-center gap-4">
-                    <Label htmlFor="companyName" className="text-xs font-bold text-slate-600 uppercase tracking-wider">Tenant Name</Label>
-                    <div className="md:col-span-2">
-                      <Input
-                        id="companyName"
-                        value={settings.companyName}
-                        onChange={(e) => handleInputChange('companyName', e.target.value)}
-                        className="h-11 rounded-xl border-slate-200 focus:ring-2 focus:ring-blue-500/10 focus:border-blue-500 text-xs font-semibold"
-                      />
-                    </div>
-                  </div>
-
-                  {/* System Mode */}
-                  <div className="grid grid-cols-1 md:grid-cols-3 items-center gap-4">
-                    <Label htmlFor="systemMode" className="text-xs font-bold text-slate-600 uppercase tracking-wider">Environment Mode</Label>
-                    <div className="md:col-span-2">
-                      <select
-                        id="systemMode"
-                        value={settings.systemMode}
-                        onChange={(e) => handleInputChange('systemMode', e.target.value)}
-                        className="w-full h-11 px-3.5 rounded-xl border border-slate-200 focus:ring-2 focus:ring-blue-500/10 focus:border-blue-500 bg-white text-xs font-semibold text-slate-800"
-                      >
-                        <option value="PRODUCTION">PRODUCTION</option>
-                        <option value="SANDBOX">SANDBOX / STAGING</option>
-                      </select>
-                    </div>
-                  </div>
-
-                  <div className="h-px bg-slate-100 my-2" />
-
-                  {/* File Retention Policy */}
-                  <div className="grid grid-cols-1 md:grid-cols-3 items-center gap-4">
-                    <Label htmlFor="fileRetention" className="text-xs font-bold text-slate-600 uppercase tracking-wider">File Retention (Years)</Label>
-                    <div className="md:col-span-2 flex items-center gap-3">
-                      <Input
-                        id="fileRetention"
-                        type="number"
-                        value={settings.fileRetentionYears}
-                        onChange={(e) => handleInputChange('fileRetentionYears', parseInt(e.target.value) || 0)}
-                        className="h-11 w-32 rounded-xl border-slate-200 text-xs font-semibold text-center"
-                      />
-                      <span className="text-xs text-slate-450 font-semibold">Standard record destruction threshold</span>
-                    </div>
-                  </div>
-
-                  {/* Box Retention Policy */}
-                  <div className="grid grid-cols-1 md:grid-cols-3 items-center gap-4">
-                    <Label htmlFor="boxRetention" className="text-xs font-bold text-slate-600 uppercase tracking-wider">Box Retention (Years)</Label>
-                    <div className="md:col-span-2 flex items-center gap-3">
-                      <Input
-                        id="boxRetention"
-                        type="number"
-                        value={settings.boxRetentionYears}
-                        onChange={(e) => handleInputChange('boxRetentionYears', parseInt(e.target.value) || 0)}
-                        className="h-11 w-32 rounded-xl border-slate-200 text-xs font-semibold text-center"
-                      />
-                      <span className="text-xs text-slate-450 font-semibold">Standard box container retention period</span>
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {activeTab === 'scanning' && (
-                <div className="space-y-6">
-                  {/* GPS Interval */}
-                  <div className="grid grid-cols-1 md:grid-cols-3 items-center gap-4">
-                    <Label htmlFor="gpsInterval" className="text-xs font-bold text-slate-600 uppercase tracking-wider">GPS Ping Interval (Sec)</Label>
-                    <div className="md:col-span-2 flex items-center gap-3">
-                      <Input
-                        id="gpsInterval"
-                        type="number"
-                        value={settings.gpsInterval}
-                        onChange={(e) => handleInputChange('gpsInterval', parseInt(e.target.value) || 0)}
-                        className="h-11 w-32 rounded-xl border-slate-200 text-xs font-semibold text-center"
-                      />
-                      <span className="text-xs text-slate-450 font-semibold">Frequency of device coordinate broadcasts</span>
-                    </div>
-                  </div>
-
-                  {/* Sync Interval */}
-                  <div className="grid grid-cols-1 md:grid-cols-3 items-center gap-4">
-                    <Label htmlFor="syncInterval" className="text-xs font-bold text-slate-600 uppercase tracking-wider">Sync Interval (Min)</Label>
-                    <div className="md:col-span-2 flex items-center gap-3">
-                      <Input
-                        id="syncInterval"
-                        type="number"
-                        value={settings.syncIntervalMinutes}
-                        onChange={(e) => handleInputChange('syncIntervalMinutes', parseInt(e.target.value) || 0)}
-                        className="h-11 w-32 rounded-xl border-slate-200 text-xs font-semibold text-center"
-                      />
-                      <span className="text-xs text-slate-450 font-semibold">Automatic scan queues synchronization sync timer</span>
-                    </div>
-                  </div>
-
-                  {/* Match Rate Threshold */}
-                  <div className="grid grid-cols-1 md:grid-cols-3 items-center gap-4">
-                    <Label htmlFor="matchRate" className="text-xs font-bold text-slate-600 uppercase tracking-wider">Verification Threshold (%)</Label>
-                    <div className="md:col-span-2 flex items-center gap-3">
-                      <Input
-                        id="matchRate"
-                        type="number"
-                        value={settings.matchRateThreshold}
-                        onChange={(e) => handleInputChange('matchRateThreshold', parseInt(e.target.value) || 0)}
-                        className="h-11 w-32 rounded-xl border-slate-200 text-xs font-semibold text-center"
-                      />
-                      <span className="text-xs text-slate-450 font-semibold">Minimum successful verification rate before warning alerts</span>
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {activeTab === 'sync' && (
-                <div className="space-y-6">
-                  {/* Redis Cache TTL */}
-                  <div className="grid grid-cols-1 md:grid-cols-3 items-center gap-4">
-                    <Label htmlFor="redisTtl" className="text-xs font-bold text-slate-600 uppercase tracking-wider">Redis Cache TTL (Sec)</Label>
-                    <div className="md:col-span-2 flex items-center gap-3">
-                      <Input
-                        id="redisTtl"
-                        type="number"
-                        value={settings.redisTtl}
-                        onChange={(e) => handleInputChange('redisTtl', parseInt(e.target.value) || 0)}
-                        className="h-11 w-32 rounded-xl border-slate-200 text-xs font-semibold text-center"
-                      />
-                      <span className="text-xs text-slate-450 font-semibold">Cache expiration duration for lookups</span>
-                    </div>
-                  </div>
-
-                  {/* Offline Batch Size */}
-                  <div className="grid grid-cols-1 md:grid-cols-3 items-center gap-4">
-                    <Label htmlFor="offlineBatch" className="text-xs font-bold text-slate-600 uppercase tracking-wider">Sync Batch Size</Label>
-                    <div className="md:col-span-2 flex items-center gap-3">
-                      <Input
-                        id="offlineBatch"
-                        type="number"
-                        value={settings.offlineBatchSize}
-                        onChange={(e) => handleInputChange('offlineBatchSize', parseInt(e.target.value) || 0)}
-                        className="h-11 w-32 rounded-xl border-slate-200 text-xs font-semibold text-center"
-                      />
-                      <span className="text-xs text-slate-450 font-semibold">Max records synchronized per database payload pack</span>
-                    </div>
-                  </div>
-
-                  {/* Sync Retry attempts */}
-                  <div className="grid grid-cols-1 md:grid-cols-3 items-center gap-4">
-                    <Label htmlFor="retryAttempts" className="text-xs font-bold text-slate-600 uppercase tracking-wider">Max Sync Retries</Label>
-                    <div className="md:col-span-2 flex items-center gap-3">
-                      <Input
-                        id="retryAttempts"
-                        type="number"
-                        value={settings.syncRetryAttempts}
-                        onChange={(e) => handleInputChange('syncRetryAttempts', parseInt(e.target.value) || 0)}
-                        className="h-11 w-32 rounded-xl border-slate-200 text-xs font-semibold text-center"
-                      />
-                      <span className="text-xs text-slate-450 font-semibold">Failure retry limit before tagging sync error overrides</span>
-                    </div>
-                  </div>
-                </div>
-              )}
-
+            <div>
+              <Label htmlFor="capacity">Default location capacity (1–99)</Label>
+              <Input
+                id="capacity"
+                type="number"
+                min={1}
+                max={99}
+                value={companyPrefs.defaultLocationCapacity}
+                onChange={(e) =>
+                  setCompanyPrefs((prev) => ({
+                    ...prev,
+                    defaultLocationCapacity: Number(e.target.value)
+                  }))
+                }
+                className="mt-1 rounded-xl"
+              />
             </div>
-
-            {/* Footer containing Save Action */}
-            <div className="px-6 py-4.5 border-t border-slate-100 bg-slate-50/50 flex justify-between items-center">
-              
-              {/* Status Message */}
-              <div>
-                {saveSuccess && (
-                  <span className="text-xs font-bold text-emerald-600 flex items-center gap-1">
-                    <Check className="w-4 h-4" /> Config saved successfully!
-                  </span>
-                )}
-                {saveMutation.isPending && (
-                  <span className="text-xs font-semibold text-slate-450 flex items-center gap-1.5">
-                    <Loader2 className="w-3.5 h-3.5 animate-spin" /> Synchronizing parameters...
-                  </span>
-                )}
-              </div>
-
-              {/* Action Button */}
-              <Button
-                type="submit"
-                disabled={saveMutation.isPending}
-                className="bg-blue-600 hover:bg-blue-700 text-white rounded-xl shadow-md hover:shadow-blue-500/20 transition-all duration-300 h-11 px-6 text-xs font-bold shrink-0"
+            <div>
+              <Label htmlFor="timezone">Display timezone</Label>
+              <select
+                id="timezone"
+                value={companyPrefs.timezone}
+                onChange={(e) =>
+                  setCompanyPrefs((prev) => ({ ...prev, timezone: e.target.value }))
+                }
+                className="mt-1 h-10 w-full rounded-xl border px-3 text-sm"
               >
-                {saveMutation.isPending ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : 'Save System Settings'}
-              </Button>
-
+                {TIMEZONES.map((tz) => (
+                  <option key={tz} value={tz}>
+                    {tz}
+                  </option>
+                ))}
+              </select>
             </div>
+          </div>
 
-          </form>
-        </div>
+          <Button
+            onClick={() => companyMutation.mutate()}
+            disabled={companyMutation.isPending}
+            className="rounded-xl"
+          >
+            {companyMutation.isPending ? (
+              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+            ) : (
+              <Building2 className="w-4 h-4 mr-2" />
+            )}
+            Save company preferences
+          </Button>
+        </section>
+      )}
 
-      </div>
-
+      {isSuperAdmin(user) && (
+        <section className="bg-white rounded-2xl border p-6 space-y-4">
+          <div className="flex items-center gap-2">
+            <Shield className="w-5 h-5 text-violet-600" />
+            <h2 className="text-lg font-bold text-slate-900">Super Admin Panel</h2>
+          </div>
+          <div className="rounded-xl border border-dashed border-slate-200 p-6 bg-slate-50">
+            <div className="flex items-start gap-3">
+              <Server className="w-5 h-5 text-slate-400 mt-0.5" />
+              <div>
+                <p className="text-sm font-semibold text-slate-800">Phase 2 placeholder</p>
+                <p className="text-sm text-slate-500 mt-1">
+                  System-wide metrics (total companies, users, operations) will appear here in a
+                  future release.
+                </p>
+              </div>
+            </div>
+          </div>
+        </section>
+      )}
     </div>
   );
 }

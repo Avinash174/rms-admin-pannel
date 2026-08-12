@@ -1,41 +1,46 @@
+export type AuditEntityType = 'BOX' | 'FILE_RECORD' | 'LOCATION' | 'USER' | 'DEVICE' | 'OTHER';
+
+export interface AuditLogUser {
+  id: string;
+  fullName: string;
+  email: string;
+}
+
+export interface AuditLogDevice {
+  id: string;
+  serialNumber: string;
+  model?: string | null;
+}
+
 export interface AuditLog {
   id: string;
-  companyId: string;
-  userId?: string;
-  userName?: string;
-  warehouseId?: string;
-  boxId?: string;
-  fileRecordId?: string;
   action: string;
-  outcome: string;
-  reasonCodeId?: string;
-  metadata?: Record<string, any>;
+  entityType: AuditEntityType;
+  entityId: string | null;
+  previousState?: Record<string, unknown> | null;
+  newState?: Record<string, unknown> | null;
+  user?: AuditLogUser | null;
+  device?: AuditLogDevice | null;
   createdAt: string;
-  // Computed fields for UI
-  entity?: string;
-  entityId?: string;
-  entityType?: string;
-  status?: string;
-  changes?: string;
-  ipAddress?: string;
-  userAgent?: string;
+  userName?: string;
 }
 
 export interface AuditLogFilters {
   userId?: string;
   warehouseId?: string;
-  boxId?: string;
-  fileRecordId?: string;
   action?: string;
-  start?: string;
-  end?: string;
+  entityType?: AuditEntityType;
+  entityId?: string;
+  from?: string;
+  to?: string;
 }
 
 export interface AuditLogListResponse {
   data: AuditLog[];
   meta: {
     page: number;
-    pageSize: number;
+    limit?: number;
+    pageSize?: number;
     total: number;
     totalPages: number;
   };
