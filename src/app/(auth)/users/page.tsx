@@ -41,7 +41,8 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 
-const MOBILE_ROLES: RoleNameKey[] = ['WAREHOUSE_MANAGER', 'SUPERVISOR', 'OPERATOR'];
+/** Roles that require explicit warehouse assignment (mobile + warehouse manager admin panel). */
+const WAREHOUSE_ASSIGNMENT_ROLES: RoleNameKey[] = ['WAREHOUSE_MANAGER', 'SUPERVISOR', 'OPERATOR'];
 
 const ALL_ROLES: { value: RoleNameKey; label: string }[] = [
   { value: 'SUPER_ADMIN', label: 'Super Admin' },
@@ -177,7 +178,7 @@ export default function UsersPage() {
 
   const selectedRole = createForm.watch('role');
   const selectedWarehouseIds = createForm.watch('warehouseIds') || [];
-  const showWarehousePicker = MOBILE_ROLES.includes(selectedRole);
+  const showWarehousePicker = WAREHOUSE_ASSIGNMENT_ROLES.includes(selectedRole);
 
   const handleCreateSubmit = (data: CreateUserData) => {
     createMutation.mutate({
@@ -204,7 +205,7 @@ export default function UsersPage() {
         role,
       },
     });
-    if (role && MOBILE_ROLES.includes(role)) {
+    if (role && WAREHOUSE_ASSIGNMENT_ROLES.includes(role)) {
       await assignmentsMutation.mutateAsync({
         id: selectedUser.id,
         warehouseIds: data.warehouseIds || [],
@@ -607,16 +608,16 @@ export default function UsersPage() {
                 <Select
                   value={createForm.watch('role')}
                   onValueChange={(value: RoleNameKey) => {
-                    createForm.setValue('role', value);
-                    if (!MOBILE_ROLES.includes(value)) {
+                    createForm.setValue('role', value, { shouldDirty: true, shouldValidate: true });
+                    if (!WAREHOUSE_ASSIGNMENT_ROLES.includes(value)) {
                       createForm.setValue('warehouseIds', []);
                     }
                   }}
                 >
-                  <SelectTrigger className="h-10 rounded-xl border-slate-200 text-sm">
+                  <SelectTrigger id="create-role" className="h-10 rounded-xl border-slate-200 text-sm">
                     <SelectValue placeholder="Select role" />
                   </SelectTrigger>
-                  <SelectContent>
+                  <SelectContent className="z-[100]">
                     {assignableRoles.map((role) => (
                       <SelectItem key={role.value} value={role.value}>
                         {role.label}
@@ -820,8 +821,8 @@ export default function UsersPage() {
                 <Select
                   value={createForm.watch('role')}
                   onValueChange={(value: RoleNameKey) => {
-                    createForm.setValue('role', value);
-                    if (!MOBILE_ROLES.includes(value)) {
+                    createForm.setValue('role', value, { shouldDirty: true, shouldValidate: true });
+                    if (!WAREHOUSE_ASSIGNMENT_ROLES.includes(value)) {
                       createForm.setValue('warehouseIds', []);
                     }
                   }}
@@ -829,7 +830,7 @@ export default function UsersPage() {
                   <SelectTrigger className="h-9.5 rounded-xl border-slate-200 bg-slate-50/50 text-xs font-medium">
                     <SelectValue placeholder="Select role" />
                   </SelectTrigger>
-                  <SelectContent>
+                  <SelectContent className="z-[100]">
                     {assignableRoles.map((role) => (
                       <SelectItem key={role.value} value={role.value}>
                         {role.label}
@@ -839,7 +840,7 @@ export default function UsersPage() {
                 </Select>
               </div>
 
-              {MOBILE_ROLES.includes(createForm.watch('role')) && (
+              {WAREHOUSE_ASSIGNMENT_ROLES.includes(createForm.watch('role')) && (
                 <div className="grid gap-1.5">
                   <Label className="text-[11px] text-slate-500 font-semibold">Assigned Warehouses</Label>
                   <div className="max-h-40 overflow-y-auto border border-slate-200 rounded-xl p-3 space-y-2 bg-slate-50/50">

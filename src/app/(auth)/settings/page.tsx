@@ -142,7 +142,7 @@ export default function SettingsPage() {
         <div className="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-xs flex items-center justify-between">
           <div>
             <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Security Tier</span>
-            <h3 className="text-base font-bold text-slate-900 mt-1">{user?.role || "USER"}</h3>
+            <h3 className="text-base font-bold text-slate-900 mt-1">{user?.roleName || "USER"}</h3>
           </div>
           <div className="p-3 bg-emerald-50 text-emerald-600 rounded-xl"><Shield className="h-6 w-6" /></div>
         </div>

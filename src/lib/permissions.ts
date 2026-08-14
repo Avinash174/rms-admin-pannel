@@ -17,7 +17,11 @@ export function isCompanyAdmin(user?: PermissionUser | null): boolean {
   return role === 'COMPANY_ADMIN' || role === 'COMPANY_ADMINISTRATOR';
 }
 
-/** Admin-panel users are always SUPER_ADMIN or COMPANY_ADMIN (enforced at login). */
+export function isWarehouseManager(user?: PermissionUser | null): boolean {
+  return normalizeRoleName(user?.roleName) === 'WAREHOUSE_MANAGER';
+}
+
+/** Full-access admin roles (bypass permission checks). Warehouse Manager uses explicit permissions. */
 export function isAdminRole(user?: PermissionUser | null): boolean {
   const role = normalizeRoleName(user?.roleName);
   return (

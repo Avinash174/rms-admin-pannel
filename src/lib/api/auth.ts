@@ -1,4 +1,19 @@
-import { LoginRequest, LoginResponse, RefreshTokenRequest, RefreshTokenResponse } from '../types/auth';
+import {
+  LoginRequest,
+  LoginResponse,
+  RefreshTokenRequest,
+  RefreshTokenResponse,
+  AuthSession,
+  EntityRef,
+} from '../types/auth';
+import {
+  applyLoginResponse,
+  clearPersistedSession,
+  mapApiUserToSessionUser,
+  mapLoginDataToResponse,
+  persistSession,
+  readPersistedSession,
+} from '@/lib/session';
 
 function getApiBaseUrl(): string {
   if (process.env.NEXT_PUBLIC_API_URL) return process.env.NEXT_PUBLIC_API_URL;
@@ -21,9 +36,7 @@ function getApiRootUrl(): string {
 export async function login(data: LoginRequest): Promise<LoginResponse> {
   const response = await fetch(`${getApiBaseUrl()}/auth/login`, {
     method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(data),
   });
 
@@ -33,7 +46,14 @@ export async function login(data: LoginRequest): Promise<LoginResponse> {
         'Login failed: API not found. Start the backend on port 3002 (cd backend && npm run dev) and open the admin panel at http://localhost:3000'
       );
     }
-    throw new Error(`Login failed: ${response.statusText}`);
+    let message = response.statusText;
+    try {
+      const err = await response.json();
+      message = err.error?.message || message;
+    } catch {
+      // ignore
+    }
+    throw new Error(message || 'Login failed');
   }
 
   const json = await response.json();
@@ -41,54 +61,15 @@ export async function login(data: LoginRequest): Promise<LoginResponse> {
     throw new Error(json.error?.message || 'Login failed');
   }
 
-  const result = json.data;
-
-  // Split full name into first and last names for frontend compatibility
-  const names = result.user.fullName ? result.user.fullName.split(' ') : ['Admin', 'User'];
-  const firstName = names[0];
-  const lastName = names.slice(1).join(' ') || '';
-
-  // Decode JWT to extract companyId and roleId
-  let companyId = '1';
-  let roleId = '1';
-  try {
-    const payload = JSON.parse(atob(result.accessToken.split('.')[1]));
-    companyId = payload.companyId || '1';
-    roleId = payload.roleId || '1';
-  } catch (e) {
-    console.error('Failed to decode access token payload:', e);
-  }
-
-  const responseData: LoginResponse = {
-    accessToken: result.accessToken,
-    refreshToken: result.refreshToken,
-    user: {
-      id: result.user.id,
-      email: result.user.email || result.user.username,
-      firstName,
-      lastName,
-      companyId,
-      roleId,
-      roleName: (result.user.role || 'SUPER_ADMIN').toString().trim().toUpperCase(),
-      permissions: result.user.permissions || [],
-      companyName: result.user.company?.name,
-    },
-  };
-
-  // Store tokens in localStorage
-  localStorage.setItem('access_token', responseData.accessToken);
-  localStorage.setItem('refresh_token', responseData.refreshToken);
-  localStorage.setItem('user', JSON.stringify(responseData.user));
-
+  const responseData = mapLoginDataToResponse(json.data);
+  applyLoginResponse(responseData);
   return responseData;
 }
 
 export async function refreshToken(data: RefreshTokenRequest): Promise<RefreshTokenResponse> {
   const response = await fetch(`${getApiBaseUrl()}/auth/refresh`, {
     method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(data),
   });
 
@@ -102,46 +83,65 @@ export async function refreshToken(data: RefreshTokenRequest): Promise<RefreshTo
   }
 
   const result = json.data;
-
   const responseData: RefreshTokenResponse = {
     accessToken: result.accessToken,
     refreshToken: result.refreshToken,
+    expiresAt: result.expiresAt,
   };
 
-  // Update tokens in localStorage
-  localStorage.setItem('access_token', responseData.accessToken);
-  localStorage.setItem('refresh_token', responseData.refreshToken);
+  const existing = readPersistedSession();
+  const user = mapApiUserToSessionUser(
+    result.user || {},
+    result.company,
+    result.branch,
+    result.warehouse,
+    result.permissions,
+    existing?.user
+  );
+
+  persistSession({
+    accessToken: responseData.accessToken,
+    refreshToken: responseData.refreshToken,
+    expiresAt: responseData.expiresAt,
+    user,
+    company: result.company,
+    branch: result.branch,
+    warehouse: result.warehouse,
+    permissions: result.permissions,
+  });
 
   return responseData;
 }
 
 export async function logout(): Promise<void> {
-  // Clear local storage regardless of API call success
-  localStorage.removeItem('access_token');
-  localStorage.removeItem('refresh_token');
-  localStorage.removeItem('user');
+  const token = typeof window !== 'undefined' ? localStorage.getItem('refresh_token') : null;
 
-  // Attempt to notify backend (non-blocking)
-  const token = localStorage.getItem('refresh_token');
   if (token) {
-    fetch(`${getApiBaseUrl()}/auth/logout`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ refreshToken: token }),
-    }).catch(() => {
-      // Silently ignore logout API failures - local storage is already cleared
-    });
+    try {
+      await fetch(`${getApiBaseUrl()}/auth/logout`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ refreshToken: token }),
+      });
+    } catch {
+      // ignore logout API failures
+    }
   }
+
+  clearPersistedSession();
 }
 
 export function getStoredUser() {
-  const userStr = localStorage.getItem('user');
-  return userStr ? JSON.parse(userStr) : null;
+  const session = readPersistedSession();
+  return session?.user ?? null;
+}
+
+export function getStoredSession(): Partial<AuthSession> | null {
+  return readPersistedSession();
 }
 
 export function isAuthenticated(): boolean {
+  if (typeof window === 'undefined') return false;
   return !!localStorage.getItem('access_token');
 }
 
@@ -153,30 +153,60 @@ export async function getCurrentUser() {
   return json.data;
 }
 
-export async function bindDevice(serialNumber: string, model: string) {
-  const token = localStorage.getItem('access_token');
-  if (!token) {
-    throw new Error('Not authenticated');
+export async function getPermissions() {
+  const json = await fetchWithAuth('/auth/permissions');
+  if (!json.success || !json.data) {
+    throw new Error(json.error?.message || 'Failed to fetch permissions');
   }
+  return json.data.permissions as string[];
+}
 
-  const response = await fetch(`${getApiBaseUrl()}/auth/device-bind`, {
+async function applySwitchResponse(data: Record<string, unknown>) {
+  const mapped = mapLoginDataToResponse(data);
+  return applyLoginResponse(mapped);
+}
+
+export async function switchWarehouse(warehouseId: string): Promise<AuthSession> {
+  const json = await fetchWithAuth('/auth/switch-warehouse', {
     method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${token}`,
-    },
+    body: JSON.stringify({ warehouseId }),
+  });
+  if (!json.success || !json.data) {
+    throw new Error(json.error?.message || 'Failed to switch warehouse');
+  }
+  return applySwitchResponse(json.data);
+}
+
+export async function switchBranch(branchId: string): Promise<AuthSession> {
+  const json = await fetchWithAuth('/auth/switch-branch', {
+    method: 'POST',
+    body: JSON.stringify({ branchId }),
+  });
+  if (!json.success || !json.data) {
+    throw new Error(json.error?.message || 'Failed to switch branch');
+  }
+  return applySwitchResponse(json.data);
+}
+
+export async function switchCompany(companyId: string): Promise<AuthSession> {
+  const json = await fetchWithAuth('/auth/switch-company', {
+    method: 'POST',
+    body: JSON.stringify({ companyId }),
+  });
+  if (!json.success || !json.data) {
+    throw new Error(json.error?.message || 'Failed to switch company');
+  }
+  return applySwitchResponse(json.data);
+}
+
+export async function bindDevice(serialNumber: string, model: string) {
+  const json = await fetchWithAuth('/auth/device-bind', {
+    method: 'POST',
     body: JSON.stringify({ serialNumber, model }),
   });
-
-  if (!response.ok) {
-    throw new Error(`Device bind failed: ${response.statusText}`);
-  }
-
-  const json = await response.json();
   if (!json.success || !json.data) {
     throw new Error(json.error?.message || 'Device bind failed');
   }
-
   return json.data;
 }
 
@@ -244,7 +274,7 @@ async function fetchWithAuthBase(baseUrl: string, endpoint: string, options?: Re
                 try {
                   retryErrorData = await retryResponse.json();
                 } catch (_) {}
-                reject(new Error(retryErrorData?.error?.message || 'API error: ' + retryResponse.status + ' ' + retryResponse.statusText));
+                reject(new Error(retryErrorData?.error?.message || 'API error: ' + retryResponse.status));
               } else {
                 resolve(await retryResponse.json());
               }
@@ -257,42 +287,15 @@ async function fetchWithAuthBase(baseUrl: string, endpoint: string, options?: Re
         if (!isRefreshing) {
           isRefreshing = true;
           try {
-            console.log('[API Auth] Attempting token refresh...');
-            const refreshResponse = await fetch(`${getApiBaseUrl()}/auth/refresh`, {
-              method: 'POST',
-              headers: {
-                'Content-Type': 'application/json',
-              },
-              body: JSON.stringify({ refreshToken: refreshTokenStr }),
-            });
-
-            if (refreshResponse.ok) {
-              const refreshJson = await refreshResponse.json();
-              if (refreshJson.success && refreshJson.data) {
-                const newAccessToken = refreshJson.data.accessToken;
-                const newRefreshToken = refreshJson.data.refreshToken;
-
-                if (typeof window !== 'undefined') {
-                  localStorage.setItem('access_token', newAccessToken);
-                  localStorage.setItem('refresh_token', newRefreshToken);
-                }
-
-                console.log('[API Auth] Token refresh successful.');
-                isRefreshing = false;
-                onRefreshed(newAccessToken);
-              } else {
-                throw new Error('Invalid refresh token response structure');
-              }
-            } else {
-              throw new Error('Refresh token request failed with status: ' + refreshResponse.status);
-            }
+            await refreshToken({ refreshToken: refreshTokenStr });
+            const newAccessToken = localStorage.getItem('access_token');
+            if (!newAccessToken) throw new Error('No access token after refresh');
+            isRefreshing = false;
+            onRefreshed(newAccessToken);
           } catch (refreshError) {
             isRefreshing = false;
-            console.error('[API Auth] Refresh failed, logging out', refreshError);
+            clearPersistedSession();
             if (typeof window !== 'undefined') {
-              localStorage.removeItem('access_token');
-              localStorage.removeItem('refresh_token');
-              localStorage.removeItem('user');
               window.location.href = '/login';
             }
             throw refreshError;
@@ -309,19 +312,63 @@ async function fetchWithAuthBase(baseUrl: string, endpoint: string, options?: Re
     try {
       errorData = await response.json();
     } catch (_) {}
-    console.error('[API Error] Failed: ' + response.status + ' ' + response.statusText + ' on ' + endpoint, JSON.stringify(errorData));
 
     if (response.status === 401) {
+      clearPersistedSession();
       if (typeof window !== 'undefined') {
-        localStorage.removeItem('access_token');
-        localStorage.removeItem('refresh_token');
-        localStorage.removeItem('user');
         window.location.href = '/login';
       }
     }
+
+    if (response.status === 403) {
+      const err = new Error(errorData?.error?.message || 'Permission denied') as Error & { status?: number };
+      err.status = 403;
+      throw err;
+    }
+
     throw new Error(errorData?.error?.message || 'API error: ' + response.status + ' ' + response.statusText);
   }
 
-  const data = await response.json();
-  return data;
+  return response.json();
+}
+
+export function hydrateSessionFromMe(me: Record<string, unknown>, existing?: Partial<AuthSession>): AuthSession {
+  const company = me.company as EntityRef;
+  const branch = (me.branch as EntityRef | null) ?? null;
+  const warehouse = me.warehouse as EntityRef;
+  const permissions = (me.permissions as string[]) || (me.role as { permissions?: string[] })?.permissions || [];
+
+  const user = mapApiUserToSessionUser(
+    {
+      id: me.id,
+      email: me.email,
+      employeeCode: me.employeeCode,
+      name: me.fullName,
+      mobile: me.phone,
+      role: (me.role as { name?: string })?.name,
+      roleId: (me.role as { id?: string })?.id,
+    },
+    company,
+    branch,
+    warehouse,
+    permissions,
+    existing?.user
+  );
+
+  const session: AuthSession = {
+    accessToken: existing?.accessToken || localStorage.getItem('access_token') || '',
+    refreshToken: existing?.refreshToken || localStorage.getItem('refresh_token') || '',
+    expiresAt: existing?.expiresAt,
+    user,
+    company,
+    branch,
+    warehouse,
+    permissions,
+    availableCompanies: me.availableCompanies as EntityRef[] | undefined,
+    availableBranches: me.availableBranches as EntityRef[] | undefined,
+    availableWarehouses: me.availableWarehouses as EntityRef[] | undefined,
+  };
+
+  persistSession(session);
+  return session;
 }
