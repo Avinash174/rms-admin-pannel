@@ -1,4 +1,4 @@
-import { canAccessNavItem, isSuperAdmin, PermissionUser } from '@/lib/permissions';
+import { canAccessNavItem, isSuperAdmin, isWarehouseAdmin, PermissionUser } from '@/lib/permissions';
 
 export type NavItemConfig = {
   href: string;
@@ -12,12 +12,15 @@ export type NavSectionConfig = {
   isCollapsible?: boolean;
   /** Hidden in sidebar for Super Admin only — other roles still see this section */
   hideForSuperAdmin?: boolean;
+  /** Hidden in sidebar for Warehouse Admin / Warehouse Manager */
+  hideForWarehouseAdmin?: boolean;
   items: NavItemConfig[];
 };
 
 /**
- * RMS-focused navigation — Records Management modules only.
- * Inventory, Operations, Services, and Devices are hidden for Super Admin only.
+ * RMS-focused navigation — Records Management modules.
+ * Super Admin manages Organization, Users & Access, Business Masters, Settings, Reports.
+ * Warehouse Admin manages Warehouse Structure, Inventory, Operations, Work Management, Reports, Account.
  */
 export const NAV_SECTIONS: NavSectionConfig[] = [
   {
@@ -28,6 +31,7 @@ export const NAV_SECTIONS: NavSectionConfig[] = [
   {
     category: 'Organization',
     isCollapsible: true,
+    hideForWarehouseAdmin: true,
     items: [
       { href: '/companies', label: 'Company Master', permission: 'company:manage' },
       { href: '/branches', label: 'Branch Master', permission: 'branch:view' },
@@ -36,16 +40,16 @@ export const NAV_SECTIONS: NavSectionConfig[] = [
     ],
   },
   {
-    category: 'Warehouse',
+    category: 'Warehouse Structure',
     isCollapsible: true,
     hideForSuperAdmin: true,
     items: [
-      { href: '/rack-templates', label: 'Rack Template Master', permission: 'storage:view' },
-      { href: '/rooms', label: 'Rooms Master', permission: 'storage:view' },
-      { href: '/rows', label: 'Shelf / Row Master', permission: 'storage:view' },
-      { href: '/racks', label: 'Racks Master', permission: 'storage:view' },
-      { href: '/levels', label: 'Levels Master', permission: 'storage:view' },
-      { href: '/locations', label: 'Location Master', permission: 'storage:view' },
+      { href: '/rooms', label: 'Rooms', permission: 'storage:view' },
+      { href: '/rows', label: 'Rows', permission: 'storage:view' },
+      { href: '/racks', label: 'Racks', permission: 'storage:view' },
+      { href: '/rack-templates', label: 'Rack Templates', permission: 'storage:view' },
+      { href: '/levels', label: 'Levels', permission: 'storage:view' },
+      { href: '/locations', label: 'Locations', permission: 'storage:view' },
     ],
   },
   {
@@ -53,17 +57,32 @@ export const NAV_SECTIONS: NavSectionConfig[] = [
     isCollapsible: true,
     hideForSuperAdmin: true,
     items: [
+      { href: '/boxes', label: 'Box Master', permission: 'box:view' },
+      { href: '/file-records', label: 'File Master', permission: 'file:view' },
+      { href: '/barcodes/master', label: 'Barcode Master', permission: 'box:manage' },
+      {
+        href: '/workflows/inventory-verification',
+        label: 'Inventory Verification',
+        permission: ['report:view', 'audit:view'],
+      },
+      { href: '/inventory-movements', label: 'Inventory Movements', permission: ['report:view', 'box:manage'] },
+    ],
+  },
+  {
+    category: 'System Masters',
+    isCollapsible: true,
+    hideForWarehouseAdmin: true,
+    hideForSuperAdmin: true,
+    items: [
       { href: '/box-types', label: 'Box Types', permission: 'box:view' },
       { href: '/file-types', label: 'File Types', permission: 'file:view' },
       { href: '/status-master', label: 'Status Master', permission: 'settings:view' },
-      { href: '/barcodes/master', label: 'Barcode Master', permission: 'box:manage' },
-      { href: '/boxes', label: 'Box Master', permission: 'box:view' },
-      { href: '/file-records', label: 'File Master', permission: 'file:view' },
     ],
   },
   {
     category: 'Business Masters',
     isCollapsible: true,
+    hideForWarehouseAdmin: true,
     items: [
       { href: '/departments', label: 'Departments', permission: 'settings:view' },
       { href: '/clients', label: 'Clients Master', permission: 'client:view' },
@@ -72,6 +91,7 @@ export const NAV_SECTIONS: NavSectionConfig[] = [
   {
     category: 'Users & Access',
     isCollapsible: true,
+    hideForWarehouseAdmin: true,
     items: [
       { href: '/users', label: 'User Master', permission: 'user:view' },
       { href: '/roles', label: 'Role Master', permission: 'role:view' },
@@ -82,21 +102,15 @@ export const NAV_SECTIONS: NavSectionConfig[] = [
     isCollapsible: true,
     hideForSuperAdmin: true,
     items: [
-      { href: '/workflows/fresh-box-move', label: 'Fresh Box Storage', permission: ['workflow:execute', 'box:manage'] },
+      { href: '/workflows/fresh-box-move', label: 'Fresh Box Move', permission: ['workflow:execute', 'box:manage'] },
       { href: '/workflows/segregation', label: 'Segregation', permission: ['workflow:execute', 'report:view'] },
       { href: '/workflows/refile', label: 'Refile', permission: ['workflow:execute', 'report:view'] },
       { href: '/workflows/transfer', label: 'Transfer', permission: ['workflow:execute', 'report:view'] },
       { href: '/workflows/merge', label: 'Merge / Split', permission: ['workflow:execute', 'report:view'] },
-      {
-        href: '/workflows/inventory-verification',
-        label: 'Inventory Verification',
-        permission: ['report:view', 'audit:view'],
-      },
-      { href: '/inventory-movements', label: 'Inventory Movement', permission: ['report:view', 'box:manage'] },
     ],
   },
   {
-    category: 'Services',
+    category: 'Work Management',
     isCollapsible: true,
     hideForSuperAdmin: true,
     items: [{ href: '/work-orders', label: 'Work Orders', permission: ['workflow:execute', 'report:view'] }],
@@ -105,13 +119,14 @@ export const NAV_SECTIONS: NavSectionConfig[] = [
     category: 'Reports',
     isCollapsible: true,
     items: [
-      { href: '/reports', label: 'Reports Dashboard', permission: 'report:view' },
+      { href: '/reports', label: 'Inventory Reports', permission: 'report:view' },
       { href: '/audit-logs', label: 'Audit Logs', permission: 'audit:view' },
     ],
   },
   {
     category: 'Devices',
     isCollapsible: true,
+    hideForWarehouseAdmin: true,
     hideForSuperAdmin: true,
     items: [
       { href: '/devices', label: 'Scanner Devices', permission: 'device:view' },
@@ -119,9 +134,9 @@ export const NAV_SECTIONS: NavSectionConfig[] = [
     ],
   },
   {
-    category: 'System Settings',
+    category: 'Account',
     isCollapsible: true,
-    items: [{ href: '/settings', label: 'Settings', permission: 'settings:view' }],
+    items: [{ href: '/settings', label: 'Settings & Profile', permission: 'settings:view' }],
   },
 ];
 
@@ -158,6 +173,7 @@ export function buildRoutePermissionsMap(): Record<string, string | string[]> {
 export function isNavSectionVisible(section: NavSectionConfig, user: PermissionUser | null): boolean {
   if (!user) return false;
   if (section.hideForSuperAdmin && isSuperAdmin(user)) return false;
+  if (section.hideForWarehouseAdmin && isWarehouseAdmin(user)) return false;
   return section.items.some((item) => isNavItemVisible(item, user));
 }
 

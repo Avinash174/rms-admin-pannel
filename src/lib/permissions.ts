@@ -18,8 +18,31 @@ export function isCompanyAdmin(user?: PermissionUser | null): boolean {
 }
 
 export function isWarehouseManager(user?: PermissionUser | null): boolean {
-  return normalizeRoleName(user?.roleName) === 'WAREHOUSE_MANAGER';
+  const role = normalizeRoleName(user?.roleName);
+  return role === 'WAREHOUSE_MANAGER' || role === 'WAREHOUSE_ADMIN';
 }
+
+export function isWarehouseAdmin(user?: PermissionUser | null): boolean {
+  return isWarehouseManager(user);
+}
+
+/** Global master routes strictly blocked for Warehouse Admin / Warehouse Manager */
+export const WAREHOUSE_ADMIN_BLOCKED_ROUTES = [
+  '/companies',
+  '/branches',
+  '/sites',
+  '/warehouses',
+  '/users',
+  '/roles',
+  '/box-types',
+  '/file-types',
+  '/status-master',
+  '/departments',
+  '/clients',
+  '/devices',
+  '/sync',
+  '/gps'
+];
 
 /** Super Admin & Company Admin see company-wide panel, not warehouse-scoped UI */
 export function usesCompanyScope(user?: PermissionUser | null): boolean {
@@ -78,6 +101,9 @@ export function canSwitchCompany(
   if (isSuperAdmin(user) && availableCount > 0) {
     return true;
   }
+  if (isWarehouseAdmin(user)) {
+    return false;
+  }
   return can('company:manage', user) && availableCount > 1;
 }
 
@@ -85,6 +111,9 @@ export function canSwitchBranch(
   user: PermissionUser | null | undefined,
   availableCount: number
 ): boolean {
+  if (isWarehouseAdmin(user)) {
+    return false;
+  }
   return can('branch:view', user) && availableCount > 1;
 }
 
@@ -92,5 +121,8 @@ export function canSwitchWarehouse(
   user: PermissionUser | null | undefined,
   availableCount: number
 ): boolean {
+  if (isWarehouseAdmin(user)) {
+    return false;
+  }
   return can('warehouse:view', user) && availableCount > 1;
 }

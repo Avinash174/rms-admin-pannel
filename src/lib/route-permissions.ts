@@ -1,4 +1,11 @@
-import { canAccessNavItem, PermissionUser, isCompanyAdmin, isSuperAdmin } from '@/lib/permissions';
+import {
+  canAccessNavItem,
+  PermissionUser,
+  isCompanyAdmin,
+  isSuperAdmin,
+  isWarehouseAdmin,
+  WAREHOUSE_ADMIN_BLOCKED_ROUTES
+} from '@/lib/permissions';
 import { buildRoutePermissionsMap } from '@/lib/navigation';
 
 type PermissionUserLike = PermissionUser;
@@ -30,6 +37,16 @@ export function resolveRequiredPermission(pathname: string): string | string[] |
 export function hasRouteAccess(pathname: string, user: PermissionUserLike | null): boolean {
   if (!user) return false;
 
+  // Strict route-level block for Warehouse Admin on global/super-admin masters
+  if (isWarehouseAdmin(user)) {
+    const isBlocked = WAREHOUSE_ADMIN_BLOCKED_ROUTES.some(
+      (blocked) => pathname === blocked || pathname.startsWith(`${blocked}/`)
+    );
+    if (isBlocked) {
+      return false;
+    }
+  }
+
   const required = resolveRequiredPermission(pathname);
   if (!required) return true;
 
@@ -38,17 +55,17 @@ export function hasRouteAccess(pathname: string, user: PermissionUserLike | null
 
 const LANDING_ROUTE_CANDIDATES = [
   '/dashboard',
-  '/warehouses',
   '/rooms',
   '/boxes',
   '/workflows/fresh-box-move',
   '/reports',
+  '/warehouses',
   '/devices',
 ];
 
 export function getDefaultLandingPath(user: PermissionUserLike | null): string {
   if (!user) return '/login';
-  if ((isSuperAdmin(user) || isCompanyAdmin(user)) && hasRouteAccess('/dashboard', user)) {
+  if ((isSuperAdmin(user) || isCompanyAdmin(user) || isWarehouseAdmin(user)) && hasRouteAccess('/dashboard', user)) {
     return '/dashboard';
   }
   for (const path of LANDING_ROUTE_CANDIDATES) {

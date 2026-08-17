@@ -247,11 +247,19 @@ async function fetchWithAuthBase(
 
   const url = baseUrl + endpoint;
 
-  let response = await fetch(url, {
-    cache: 'no-store',
-    ...fetchOptions,
-    headers,
-  });
+  let response: Response;
+  try {
+    response = await fetch(url, {
+      cache: 'no-store',
+      ...fetchOptions,
+      headers,
+    });
+  } catch (networkErr: any) {
+    if (networkErr.message === 'Failed to fetch' || networkErr.name === 'TypeError') {
+      throw new Error('Cannot connect to backend server. Please verify backend is running on port 3002.');
+    }
+    throw networkErr;
+  }
 
   if (response.status === 401) {
     let errorData = null;

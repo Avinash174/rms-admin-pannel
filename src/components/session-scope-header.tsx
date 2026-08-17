@@ -8,6 +8,7 @@ import {
   canSwitchCompany,
   canSwitchWarehouse,
   isSuperAdmin,
+  isWarehouseAdmin,
 } from '@/lib/permissions';
 
 export function SessionScopeHeader() {
@@ -27,7 +28,42 @@ export function SessionScopeHeader() {
   const [switching, setSwitching] = useState<string | null>(null);
   const [error, setError] = useState('');
 
-  if (!user || isSuperAdmin(user) || !company || !warehouse) return null;
+  if (!user) return null;
+
+  if (isSuperAdmin(user)) {
+    return (
+      <div className="hidden lg:flex items-center gap-3">
+        <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-indigo-50 border border-indigo-100/80">
+          <div className="w-2 h-2 rounded-full bg-indigo-500 animate-pulse" />
+          <span className="text-[11px] font-bold uppercase tracking-wider text-indigo-500">Access Scope:</span>
+          <span className="text-xs font-semibold text-indigo-900">Unrestricted (Global Master)</span>
+        </div>
+      </div>
+    );
+  }
+
+  const isWarehouseUser = isWarehouseAdmin(user);
+
+  if (isWarehouseUser && warehouse) {
+    return (
+      <div className="hidden lg:flex items-center gap-3">
+        <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-emerald-50 border border-emerald-100">
+          <div className="w-2 h-2 rounded-full bg-emerald-500" />
+          <span className="text-[11px] font-bold uppercase tracking-wider text-emerald-600">Access Scope:</span>
+          <span className="text-xs font-bold text-emerald-950">
+            {warehouse.name} {warehouse.code ? `(${warehouse.code})` : ''}
+          </span>
+        </div>
+        {company && (
+          <span className="text-xs text-slate-500 font-medium">
+            {company.name} {branch ? `• ${branch.name}` : ''}
+          </span>
+        )}
+      </div>
+    );
+  }
+
+  if (!company || !warehouse) return null;
 
   const showCompanySwitch = canSwitchCompany(user, availableCompanies.length);
   const showBranchSwitch = canSwitchBranch(user, availableBranches.length);

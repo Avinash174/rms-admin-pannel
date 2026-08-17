@@ -20,6 +20,7 @@ import { useAuth } from '@/contexts/auth-context';
 import { RoleNameKey } from '@/lib/types/user';
 import { User } from '@/lib/types/user';
 import { CreateUserData, createUserSchema } from '@/lib/validations/user';
+import { isWarehouseAdmin } from '@/lib/permissions';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
 import { PageHeaderCard } from '@/components/page-header-card';
@@ -56,6 +57,21 @@ const ALL_ROLES: { value: RoleNameKey; label: string }[] = [
 
 export default function UsersPage() {
   const { user: authUser } = useAuth();
+
+  if (isWarehouseAdmin(authUser)) {
+    return (
+      <div className="flex h-96 flex-col items-center justify-center text-center p-8 bg-white rounded-2xl border border-slate-200">
+        <div className="w-12 h-12 rounded-full bg-red-50 flex items-center justify-center text-red-600 mb-4">
+          <AlertCircle className="w-6 h-6" />
+        </div>
+        <h2 className="text-xl font-bold text-slate-900">Access Restricted</h2>
+        <p className="mt-2 text-sm text-slate-600 max-w-md">
+          User Master and user management are restricted to Super Administrators. Warehouse Administrators do not have access to user accounts.
+        </p>
+      </div>
+    );
+  }
+
   const [page, setPage] = useState(1);
   const [searchTerm, setSearchTerm] = useState('');
   const [roleFilter, setRoleFilter] = useState<string>('ALL');

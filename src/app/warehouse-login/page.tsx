@@ -2,33 +2,37 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import Link from 'next/link';
 import { useAuth } from '@/contexts/auth-context';
 import { getDefaultLandingPath } from '@/lib/route-permissions';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { RmsBrand } from '@/components/rms-brand';
-import { Eye, EyeOff } from 'lucide-react';
+import { Eye, EyeOff, Warehouse, ShieldAlert, ArrowRight } from 'lucide-react';
+import Link from 'next/link';
 
-export default function LoginPage() {
+export default function WarehouseLoginPage() {
   const router = useRouter();
-  const { login, logout, user, isLoading: authLoading } = useAuth();
+  const { login, logout, user, warehouse, isLoading: authLoading } = useAuth();
   const [email, setEmail] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
+  const [noWarehouseAssigned, setNoWarehouseAssigned] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
     if (!authLoading && user) {
-      router.replace(getDefaultLandingPath(user));
+      if (warehouse?.id) {
+        router.replace('/dashboard');
+      }
     }
-  }, [authLoading, user, router]);
+  }, [authLoading, user, warehouse, router]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
+    setNoWarehouseAssigned(false);
     setIsLoading(true);
 
     try {
@@ -36,22 +40,21 @@ export default function LoginPage() {
         throw new Error('Email and password are required.');
       }
 
-      // Call auth context login which calls real backend API and handles storage
       const session = await login({ email, password });
 
-      const isSuper = session.user.roleName === 'SUPER_ADMIN' || session.user.roleName?.includes('SUPER');
-      if (!isSuper && (!session.warehouse || !session.warehouse.id)) {
+      if (!session.warehouse || !session.warehouse.id) {
+        setNoWarehouseAssigned(true);
         await logout();
         setError('No warehouse has been assigned to your account. Please contact your system administrator.');
         return;
       }
 
-      router.replace(getDefaultLandingPath(session.user));
+      router.replace('/dashboard');
     } catch (err: any) {
       if (err.message === 'Failed to fetch' || err.name === 'TypeError') {
-        setError('Cannot connect to the backend server. Please make sure the backend is running on port 3002 (cd backend && npm run dev).');
+        setError('Cannot connect to backend server. Please verify backend service on port 3002.');
       } else {
-        setError(err.message || 'Login failed. Please check your credentials.');
+        setError(err.message || 'Authentication failed. Please check your credentials.');
       }
     } finally {
       setIsLoading(false);
@@ -59,27 +62,34 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-50 via-blue-50/40 to-slate-100 px-4">
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-900 via-slate-800 to-indigo-950 px-4">
       <div className="w-full max-w-md">
-        <div className="bg-white rounded-2xl shadow-xl shadow-slate-200/60 border border-slate-100 p-8">
-          <div className="mb-8 flex flex-col items-center">
+        <div className="bg-white/95 backdrop-blur-xl rounded-2xl shadow-2xl shadow-indigo-950/50 border border-white/20 p-8">
+          <div className="mb-6 flex flex-col items-center">
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-50 border border-blue-200/60 mb-4">
+              <Warehouse className="w-4 h-4 text-blue-600" />
+              <span className="text-xs font-semibold uppercase tracking-wider text-blue-700">
+                Warehouse Portal
+              </span>
+            </div>
             <RmsBrand variant="login" />
-            <div className="mt-6 text-center">
-              <h2 className="text-xl font-semibold text-slate-900">Welcome Back</h2>
-              <p className="mt-1 text-sm text-slate-500">Sign in to your RMS admin account</p>
+            <div className="mt-4 text-center">
+              <h2 className="text-xl font-bold text-slate-900">Warehouse Administrator Login</h2>
+              <p className="mt-1 text-sm text-slate-500">Access your assigned warehouse management dashboard</p>
             </div>
           </div>
 
-          <form onSubmit={handleSubmit} className="space-y-6">
+          <form onSubmit={handleSubmit} className="space-y-5">
             <div className="space-y-2">
-              <Label htmlFor="email">Email</Label>
+              <Label htmlFor="email">Email Address</Label>
               <Input
                 id="email"
                 type="email"
-                placeholder="you@example.com"
+                placeholder="warehouse.admin@example.com"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 disabled={isLoading}
+                autoComplete="email"
               />
             </div>
 
@@ -93,6 +103,7 @@ export default function LoginPage() {
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   disabled={isLoading}
+                  autoComplete="current-password"
                   className="pr-10"
                 />
                 <button
@@ -107,33 +118,32 @@ export default function LoginPage() {
             </div>
 
             {error && (
-              <div className="bg-red-50 border border-red-200 text-red-600 px-4 py-3 rounded-lg text-sm">
-                {error}
+              <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm flex items-start gap-2">
+                <ShieldAlert className="w-5 h-5 shrink-0 text-red-500 mt-0.5" />
+                <div>
+                  <p className="font-semibold">{noWarehouseAssigned ? 'Access Denied' : 'Login Error'}</p>
+                  <p className="text-xs text-red-600 mt-0.5">{error}</p>
+                </div>
               </div>
             )}
 
             <Button
               type="submit"
-              className="w-full h-11 text-base"
+              className="w-full h-11 text-base bg-blue-600 hover:bg-blue-700 text-white shadow-lg shadow-blue-500/25"
               disabled={isLoading}
             >
-              {isLoading ? 'Signing in...' : 'Sign In'}
+              {isLoading ? 'Authenticating...' : 'Sign In to Warehouse'}
             </Button>
           </form>
 
-          <div className="mt-6 pt-4 border-t border-slate-100 flex flex-col sm:flex-row items-center justify-between gap-2 text-xs text-slate-500">
-            <span>Warehouse Administrator?</span>
+          <div className="mt-6 pt-5 border-t border-slate-100 flex flex-col sm:flex-row items-center justify-between gap-2 text-xs text-slate-500">
+            <span>Are you a Super Admin?</span>
             <Link
-              href="/warehouse-login"
-              className="font-semibold text-blue-600 hover:text-blue-700 hover:underline"
+              href="/login"
+              className="font-semibold text-blue-600 hover:text-blue-700 inline-flex items-center gap-1 hover:underline"
             >
-              Warehouse Login &rarr;
+              Super Admin Login <ArrowRight className="w-3.5 h-3.5" />
             </Link>
-          </div>
-
-          <div className="mt-4 text-center text-sm text-slate-500">
-            <p className="font-medium text-slate-600">Records Management System</p>
-            <p className="text-xs text-slate-400 mt-1">RMS Admin Panel · v1.0</p>
           </div>
         </div>
       </div>

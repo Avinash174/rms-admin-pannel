@@ -8,6 +8,8 @@ import {
   Sparkles, Key
 } from 'lucide-react';
 import { getRoles, getPermissions, createRole, deleteRole, assignPermissions } from '@/lib/api/role';
+import { useAuth } from '@/contexts/auth-context';
+import { isWarehouseAdmin } from '@/lib/permissions';
 import { toast } from 'sonner';
 import { PageHeaderCard } from '@/components/page-header-card';
 
@@ -40,6 +42,22 @@ const ROLE_NAME_OPTIONS = [
 ];
 
 export default function RolesPage() {
+  const { user: authUser } = useAuth();
+
+  if (isWarehouseAdmin(authUser)) {
+    return (
+      <div className="flex h-96 flex-col items-center justify-center text-center p-8 bg-white rounded-2xl border border-slate-200">
+        <div className="w-12 h-12 rounded-full bg-red-50 flex items-center justify-center text-red-600 mb-4">
+          <AlertTriangle className="w-6 h-6" />
+        </div>
+        <h2 className="text-xl font-bold text-slate-900">Access Restricted</h2>
+        <p className="mt-2 text-sm text-slate-600 max-w-md">
+          Role & Permission management is restricted to Super Administrators. Warehouse Administrators cannot access or manage system roles.
+        </p>
+      </div>
+    );
+  }
+
   const queryClient = useQueryClient();
   const [selectedRoleId, setSelectedRoleId] = useState<string | null>(null);
   const [search, setSearch] = useState('');

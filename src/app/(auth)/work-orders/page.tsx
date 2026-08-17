@@ -36,7 +36,10 @@ export default function WorkOrdersPage() {
     queryKey: ['users-list'],
     queryFn: async () => {
       const res = await fetchWithAuth('/users');
-      return res.data || [];
+      if (Array.isArray(res.data)) return res.data;
+      if (Array.isArray(res.data?.users)) return res.data.users;
+      if (Array.isArray(res.users)) return res.users;
+      return [];
     }
   });
 
@@ -119,7 +122,7 @@ export default function WorkOrdersPage() {
 
             <div className="text-xs text-slate-600 space-y-1">
               <div><strong>Priority:</strong> <span className="uppercase text-slate-800 font-semibold">{wo.priority}</span></div>
-              <div><strong>Assigned To:</strong> {wo.assignedUser?.fullName || 'Unassigned'}</div>
+              <div><strong>Assigned To:</strong> {wo.assignedUser?.fullName || (wo.assignedUser ? `${wo.assignedUser.firstName || ''} ${wo.assignedUser.lastName || ''}`.trim() : null) || wo.assignedUser?.email || 'Unassigned'}</div>
               <div><strong>Items Count:</strong> {wo.items?.length || 0} Barcodes</div>
             </div>
 
@@ -176,9 +179,15 @@ export default function WorkOrdersPage() {
                   <label className="font-semibold text-slate-700">Assign To User</label>
                   <select value={form.assignedUserId} onChange={(e) => setForm({ ...form, assignedUserId: e.target.value })} className="w-full border rounded-xl h-9 px-3 mt-1">
                     <option value="">-- Unassigned --</option>
-                    {users.map((u: any) => (
-                      <option key={u.id} value={u.id}>{u.fullName} ({u.employeeCode})</option>
-                    ))}
+                    {users.map((u: any) => {
+                      const name = u.fullName || `${u.firstName || ''} ${u.lastName || ''}`.trim() || u.email || 'User';
+                      const code = u.employeeCode ? ` (${u.employeeCode})` : '';
+                      return (
+                        <option key={u.id} value={u.id}>
+                          {name}{code}
+                        </option>
+                      );
+                    })}
                   </select>
                 </div>
                 <div>

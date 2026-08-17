@@ -32,7 +32,26 @@ export default function DashboardPage() {
     );
   }
 
-  if (usesWarehouseScope(user, warehouse?.id) || isWarehouseManager(user)) {
+  if (isWarehouseManager(user)) {
+    if (!warehouse?.id) {
+      return (
+        <div className="flex h-96 flex-col items-center justify-center text-center p-8 bg-white rounded-2xl border border-slate-200">
+          <div className="w-12 h-12 rounded-full bg-amber-50 flex items-center justify-center text-amber-600 mb-4">
+            <XCircle className="w-6 h-6" />
+          </div>
+          <h2 className="text-xl font-bold text-slate-900">No Warehouse Assigned</h2>
+          <p className="mt-2 text-sm text-slate-600 max-w-md">
+            Your account is configured as a Warehouse Administrator, but no warehouse has been assigned to you yet. Please contact your Super Administrator.
+          </p>
+        </div>
+      );
+    }
+    return (
+      <WarehouseManagerDashboard company={company} branch={branch} warehouse={warehouse} />
+    );
+  }
+
+  if (usesWarehouseScope(user, warehouse?.id)) {
     return (
       <WarehouseManagerDashboard company={company} branch={branch} warehouse={warehouse} />
     );
