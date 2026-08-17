@@ -49,7 +49,6 @@ export const NAV_ICONS: Record<string, LucideIcon> = {
   '/barcodes': QrCode,
   '/status-master': Activity,
   '/departments': Building2,
-  '/vendors': Users,
   '/clients': Users,
   '/users': UserCheck,
   '/roles': Shield,

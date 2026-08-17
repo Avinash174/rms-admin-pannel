@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
-import { Plus, Loader2, AlertCircle, RefreshCw, Key, Search, Users, UserCheck, UserX, Info, Sparkles, X } from 'lucide-react';
+import { Plus, Loader2, AlertCircle, RefreshCw, Key, Search, Users, UserCheck, UserX, Info, Sparkles, X, Save, Check, ShieldCheck } from 'lucide-react';
 import { DataTable } from '@/components/ui/data-table';
 import { ConfirmDialog } from '@/components/ui/confirm-dialog';
 import { columns } from './columns';
@@ -483,82 +483,86 @@ export default function UsersPage() {
         )}
       </div>
 
-      {/* Create Dialog */}
-      {/* ===== Add User — Right Slide-Over ===== */}
+      {/* ===== Add User — Right Slide-Over Drawer ===== */}
       {/* Backdrop */}
       <div
         onClick={() => setIsCreateDialogOpen(false)}
-        className={`fixed inset-0 z-40 bg-slate-900/40 backdrop-blur-sm transition-opacity duration-300 ${isCreateDialogOpen ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'}`}
+        className={`fixed inset-0 z-40 bg-slate-900/40 backdrop-blur-xs transition-opacity duration-300 ${
+          isCreateDialogOpen ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'
+        }`}
       />
 
-      {/* Drawer Panel */}
-      <div className={`fixed inset-y-0 right-0 z-[60] h-screen w-full max-w-[440px] bg-white shadow-2xl flex flex-col transform transition-transform duration-300 ease-in-out ${isCreateDialogOpen ? 'translate-x-0' : 'translate-x-full'}`}>
-
-        {/* Sticky Header */}
-        <div className="relative overflow-hidden bg-gradient-to-br from-indigo-600 via-violet-600 to-purple-700 px-6 pt-6 pb-8 shrink-0">
-          <div className="absolute inset-0 opacity-20 bg-[radial-gradient(circle_at_top_right,white,transparent_60%)]" />
-          <div className="relative flex items-start justify-between">
-            <div className="space-y-0.5">
-              <div className="flex items-center gap-2">
-                <div className="p-1.5 bg-white/20 rounded-lg">
-                  <Plus className="h-4 w-4 text-white" />
-                </div>
-                <h2 className="text-white text-lg font-bold tracking-tight">Add User</h2>
-              </div>
-              <p className="text-white/70 text-xs mt-1">Create a new user account for your organisation.</p>
-            </div>
-            <button
-              onClick={() => setIsCreateDialogOpen(false)}
-              className="text-white/70 hover:text-white p-1.5 rounded-lg hover:bg-white/10 transition-colors mt-0.5"
-            >
-              <X className="h-5 w-5" />
-            </button>
+      {/* Slide-Over Drawer Panel */}
+      <div
+        className={`fixed top-0 right-0 bottom-0 z-50 w-full max-w-lg bg-slate-50 shadow-2xl flex flex-col transform transition-transform duration-300 ease-in-out border-l border-slate-200/80 ${
+          isCreateDialogOpen ? 'translate-x-0' : 'translate-x-full pointer-events-none'
+        }`}
+      >
+        {/* Drawer Header */}
+        <div className="relative bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 px-6 py-5 shrink-0 text-white border-b border-slate-800 flex items-center justify-between shadow-sm">
+          <div>
+            <span className="inline-flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider text-indigo-300 bg-indigo-500/15 px-2.5 py-0.5 rounded-full border border-indigo-400/20">
+              <Plus className="h-3 w-3 text-indigo-400" />
+              Add New User
+            </span>
+            <h2 className="text-white text-base font-extrabold tracking-tight mt-1">Create User Account</h2>
           </div>
+          <button
+            onClick={() => setIsCreateDialogOpen(false)}
+            className="text-slate-400 hover:text-white p-1.5 rounded-xl hover:bg-white/10 transition-colors"
+            title="Close"
+          >
+            <X className="h-5 w-5" />
+          </button>
         </div>
 
         {/* Scrollable Form Body */}
-        <div className="flex-1 overflow-y-auto px-6 py-5">
-          <form id="create-user-form" onSubmit={createForm.handleSubmit(handleCreateSubmit)} className="space-y-6">
+        <div className="flex-1 min-h-0 overflow-y-auto p-6 space-y-4">
+          <form id="create-user-form" onSubmit={createForm.handleSubmit(handleCreateSubmit)} className="space-y-4 pb-4">
 
-            {/* Identity */}
-            <div className="space-y-3">
-              <h5 className="text-[10px] font-bold text-slate-400 uppercase tracking-widest flex items-center gap-2">
-                <span className="h-px flex-1 bg-slate-100" />Identity<span className="h-px flex-1 bg-slate-100" />
-              </h5>
+            {/* Identity Card */}
+            <div className="bg-white rounded-2xl p-5 border border-slate-200/80 shadow-xs space-y-4">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2 text-xs font-bold text-slate-800 uppercase tracking-wider">
+                  <div className="w-2 h-2 rounded-full bg-indigo-600" />
+                  Account Identity
+                </div>
+                <span className="text-[11px] text-slate-400 font-medium">User Credentials</span>
+              </div>
 
               <div className="grid gap-1.5">
-                <Label htmlFor="create-username" className="text-xs text-slate-500 font-medium">Username</Label>
+                <Label htmlFor="create-username" className="text-xs font-semibold text-slate-700">Username</Label>
                 <Input
                   id="create-username"
                   {...createForm.register('username')}
-                  placeholder="jdoe"
-                  className="h-10 rounded-xl font-mono border-slate-200 focus:ring-2 focus:ring-violet-500/25 text-sm"
+                  placeholder="e.g. jdoe"
+                  className="h-10 rounded-xl font-mono border-slate-200 bg-slate-50/50 focus:bg-white focus:ring-2 focus:ring-indigo-500/20 text-xs font-medium"
                 />
                 {createForm.formState.errors.username && (
                   <p className="text-xs font-semibold text-rose-500">{createForm.formState.errors.username.message}</p>
                 )}
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-2 gap-3.5">
                 <div className="grid gap-1.5">
-                  <Label htmlFor="create-firstName" className="text-xs text-slate-500 font-medium">First Name</Label>
+                  <Label htmlFor="create-firstName" className="text-xs font-semibold text-slate-700">First Name</Label>
                   <Input
                     id="create-firstName"
                     {...createForm.register('firstName')}
                     placeholder="John"
-                    className="h-10 rounded-xl border-slate-200 focus:ring-2 focus:ring-violet-500/25 text-sm"
+                    className="h-10 rounded-xl border-slate-200 bg-slate-50/50 focus:bg-white focus:ring-2 focus:ring-indigo-500/20 text-xs font-medium"
                   />
                   {createForm.formState.errors.firstName && (
                     <p className="text-xs font-semibold text-rose-500">{createForm.formState.errors.firstName.message}</p>
                   )}
                 </div>
                 <div className="grid gap-1.5">
-                  <Label htmlFor="create-lastName" className="text-xs text-slate-500 font-medium">Last Name</Label>
+                  <Label htmlFor="create-lastName" className="text-xs font-semibold text-slate-700">Last Name</Label>
                   <Input
                     id="create-lastName"
                     {...createForm.register('lastName')}
                     placeholder="Doe"
-                    className="h-10 rounded-xl border-slate-200 focus:ring-2 focus:ring-violet-500/25 text-sm"
+                    className="h-10 rounded-xl border-slate-200 bg-slate-50/50 focus:bg-white focus:ring-2 focus:ring-indigo-500/20 text-xs font-medium"
                   />
                   {createForm.formState.errors.lastName && (
                     <p className="text-xs font-semibold text-rose-500">{createForm.formState.errors.lastName.message}</p>
@@ -567,13 +571,13 @@ export default function UsersPage() {
               </div>
 
               <div className="grid gap-1.5">
-                <Label htmlFor="create-email" className="text-xs text-slate-500 font-medium">Email</Label>
+                <Label htmlFor="create-email" className="text-xs font-semibold text-slate-700">Email Address</Label>
                 <Input
                   id="create-email"
                   type="email"
                   {...createForm.register('email')}
                   placeholder="john.doe@example.com"
-                  className="h-10 rounded-xl border-slate-200 focus:ring-2 focus:ring-violet-500/25 text-sm"
+                  className="h-10 rounded-xl border-slate-200 bg-slate-50/50 focus:bg-white focus:ring-2 focus:ring-indigo-500/20 text-xs font-medium"
                 />
                 {createForm.formState.errors.email && (
                   <p className="text-xs font-semibold text-rose-500">{createForm.formState.errors.email.message}</p>
@@ -581,12 +585,12 @@ export default function UsersPage() {
               </div>
 
               <div className="grid gap-1.5">
-                <Label htmlFor="create-phone" className="text-xs text-slate-500 font-medium">Phone</Label>
+                <Label htmlFor="create-phone" className="text-xs font-semibold text-slate-700">Phone Number</Label>
                 <Input
                   id="create-phone"
                   {...createForm.register('phone')}
                   placeholder="+1 234-567-8900"
-                  className="h-10 rounded-xl border-slate-200 focus:ring-2 focus:ring-violet-500/25 text-sm"
+                  className="h-10 rounded-xl border-slate-200 bg-slate-50/50 focus:bg-white focus:ring-2 focus:ring-indigo-500/20 text-xs font-medium"
                 />
                 {createForm.formState.errors.phone && (
                   <p className="text-xs font-semibold text-rose-500">{createForm.formState.errors.phone.message}</p>
@@ -594,14 +598,18 @@ export default function UsersPage() {
               </div>
             </div>
 
-            {/* Role & Warehouses */}
-            <div className="space-y-3">
-              <h5 className="text-[10px] font-bold text-slate-400 uppercase tracking-widest flex items-center gap-2">
-                <span className="h-px flex-1 bg-slate-100" />Role & Access<span className="h-px flex-1 bg-slate-100" />
-              </h5>
+            {/* Role & Access Card */}
+            <div className="bg-white rounded-2xl p-5 border border-slate-200/80 shadow-xs space-y-4">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2 text-xs font-bold text-slate-800 uppercase tracking-wider">
+                  <div className="w-2 h-2 rounded-full bg-purple-600" />
+                  Role & Permissions
+                </div>
+                <span className="text-[11px] text-slate-400 font-medium">Access Level</span>
+              </div>
 
               <div className="grid gap-1.5">
-                <Label htmlFor="create-role" className="text-xs text-slate-500 font-medium">Role</Label>
+                <Label htmlFor="create-role" className="text-xs font-semibold text-slate-700">System Role</Label>
                 <Select
                   value={createForm.watch('role')}
                   onValueChange={(value: RoleNameKey) => {
@@ -611,7 +619,7 @@ export default function UsersPage() {
                     }
                   }}
                 >
-                  <SelectTrigger id="create-role" className="h-10 rounded-xl border-slate-200 text-sm">
+                  <SelectTrigger id="create-role" className="h-10 rounded-xl border-slate-200 bg-slate-50/50 text-xs font-medium">
                     <SelectValue placeholder="Select role" />
                   </SelectTrigger>
                   <SelectContent className="z-[100]">
@@ -628,42 +636,60 @@ export default function UsersPage() {
               </div>
 
               {showWarehousePicker && (
-                <div className="grid gap-1.5">
-                  <Label className="text-xs text-slate-500 font-medium">Warehouses</Label>
-                  <div className="max-h-36 overflow-y-auto border border-slate-200 rounded-xl p-3 space-y-2 bg-slate-50/50">
+                <div className="grid gap-2 pt-1">
+                  <div className="flex items-center justify-between">
+                    <Label className="text-xs font-semibold text-slate-700">Assigned Warehouses</Label>
+                    <span className="text-[11px] font-bold text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded-full">
+                      {selectedWarehouseIds.length} Selected
+                    </span>
+                  </div>
+                  <div className="max-h-40 overflow-y-auto border border-slate-200 rounded-xl p-3 space-y-1.5 bg-slate-50/50">
                     {warehouses.length === 0 ? (
-                      <p className="text-xs text-slate-400">No warehouses available</p>
+                      <p className="text-xs text-slate-400 text-center py-2">No warehouses available</p>
                     ) : (
-                      warehouses.map((wh) => (
-                        <label key={wh.id} className="flex items-center gap-2.5 text-sm cursor-pointer py-0.5">
-                          <input
-                            type="checkbox"
-                            checked={selectedWarehouseIds.includes(wh.id)}
-                            onChange={() => toggleWarehouse(wh.id)}
-                            className="rounded border-slate-300 text-violet-600 focus:ring-violet-500"
-                          />
-                          <span className="text-slate-700">{wh.code} — {wh.name}</span>
-                        </label>
-                      ))
+                      warehouses.map((wh) => {
+                        const isChecked = selectedWarehouseIds.includes(wh.id);
+                        return (
+                          <label
+                            key={wh.id}
+                            className={`flex items-center gap-3 text-xs cursor-pointer py-2 px-2.5 rounded-xl transition-all ${
+                              isChecked ? 'bg-indigo-50/70 border border-indigo-200/60 font-semibold text-indigo-900' : 'hover:bg-slate-100/70 text-slate-700'
+                            }`}
+                          >
+                            <input
+                              type="checkbox"
+                              checked={isChecked}
+                              onChange={() => toggleWarehouse(wh.id)}
+                              className="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 h-4 w-4"
+                            />
+                            <span className="truncate">{wh.code} — {wh.name}</span>
+                          </label>
+                        );
+                      })
                     )}
                   </div>
                 </div>
               )}
             </div>
 
-            {/* Security */}
-            <div className="space-y-3">
-              <h5 className="text-[10px] font-bold text-slate-400 uppercase tracking-widest flex items-center gap-2">
-                <span className="h-px flex-1 bg-slate-100" />Security<span className="h-px flex-1 bg-slate-100" />
-              </h5>
+            {/* Security Card */}
+            <div className="bg-white rounded-2xl p-5 border border-slate-200/80 shadow-xs space-y-4">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2 text-xs font-bold text-slate-800 uppercase tracking-wider">
+                  <div className="w-2 h-2 rounded-full bg-amber-600" />
+                  Account Security
+                </div>
+                <span className="text-[11px] text-slate-400 font-medium">Initial Password</span>
+              </div>
+
               <div className="grid gap-1.5">
-                <Label htmlFor="create-password" className="text-xs text-slate-500 font-medium">Password</Label>
+                <Label htmlFor="create-password" className="text-xs font-semibold text-slate-700">Password</Label>
                 <Input
                   id="create-password"
                   type="password"
                   {...createForm.register('password')}
-                  placeholder="••••••••"
-                  className="h-10 rounded-xl border-slate-200 focus:ring-2 focus:ring-violet-500/25 text-sm"
+                  placeholder="Set account password"
+                  className="h-10 rounded-xl border-slate-200 bg-slate-50/50 focus:bg-white focus:ring-2 focus:ring-indigo-500/20 text-xs font-medium"
                 />
                 {createForm.formState.errors.password && (
                   <p className="text-xs font-semibold text-rose-500">{createForm.formState.errors.password.message}</p>
@@ -674,13 +700,13 @@ export default function UsersPage() {
           </form>
         </div>
 
-        {/* Sticky Footer */}
-        <div className="shrink-0 border-t border-slate-100 bg-white px-6 py-4 flex items-center justify-end gap-3">
+        {/* Drawer Sticky Footer Actions */}
+        <div className="shrink-0 bg-white border-t border-slate-200 px-6 py-4 flex items-center justify-end gap-3 shadow-md z-10">
           <Button
             type="button"
             variant="outline"
             onClick={() => setIsCreateDialogOpen(false)}
-            className="rounded-xl h-10 px-5 text-slate-600"
+            className="rounded-xl h-10 px-5 text-slate-700 border-slate-300 bg-white hover:bg-slate-50 text-xs font-semibold"
           >
             Cancel
           </Button>
@@ -688,36 +714,41 @@ export default function UsersPage() {
             type="submit"
             form="create-user-form"
             disabled={createMutation.isPending}
-            className="bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-700 hover:to-violet-700 text-white rounded-xl h-10 px-6 shadow-md transition-all"
+            className="bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 text-white rounded-xl h-10 px-6 text-xs font-bold shadow-md shadow-indigo-500/25 transition-all"
           >
             {createMutation.isPending && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
             Create User
           </Button>
         </div>
+
       </div>
 
-      {/* ===== Edit Profile — Right Slide-Over ===== */}
+      {/* ===== Edit User Profile — Right Slide-Over Drawer ===== */}
       {/* Backdrop */}
       <div
         onClick={() => setIsEditDialogOpen(false)}
-        className={`fixed inset-0 z-40 bg-slate-950/40 backdrop-blur-sm transition-opacity duration-300 ${isEditDialogOpen ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'}`}
+        className={`fixed inset-0 z-40 bg-slate-900/40 backdrop-blur-xs transition-opacity duration-300 ${
+          isEditDialogOpen ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'
+        }`}
       />
 
-      {/* Drawer Panel */}
-      <div className={`fixed inset-y-0 right-0 z-[60] h-screen w-full max-w-[460px] bg-slate-50 shadow-2xl flex flex-col transform transition-transform duration-300 ease-out ${isEditDialogOpen ? 'translate-x-0' : 'translate-x-full'}`}>
-
-        {/* Header with User Info Banner */}
-        <div className="relative overflow-hidden bg-gradient-to-br from-slate-900 via-blue-950 to-indigo-900 p-6 shrink-0 text-white border-b border-slate-800">
-          <div className="absolute inset-0 opacity-15 bg-[radial-gradient(circle_at_top_right,white,transparent_70%)] pointer-events-none" />
-          
-          {/* Top Bar: Title & Close */}
-          <div className="relative flex items-center justify-between mb-5">
-            <span className="text-[11px] font-bold uppercase tracking-widest text-blue-300 bg-blue-500/20 px-2.5 py-1 rounded-full border border-blue-400/20">
+      {/* Slide-Over Drawer Panel */}
+      <div
+        className={`fixed top-0 right-0 bottom-0 z-50 w-full max-w-lg bg-slate-50 shadow-2xl flex flex-col transform transition-transform duration-300 ease-out border-l border-slate-200/80 ${
+          isEditDialogOpen ? 'translate-x-0' : 'translate-x-full pointer-events-none'
+        }`}
+      >
+        {/* Drawer Header */}
+        <div className="relative overflow-hidden bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 p-6 shrink-0 text-white border-b border-slate-800 shadow-sm">
+          <div className="relative flex items-center justify-between mb-4">
+            <span className="inline-flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider text-blue-300 bg-blue-500/15 px-3 py-1 rounded-full border border-blue-400/20">
+              <Users className="h-3 w-3 text-blue-400" />
               Edit User Profile
             </span>
             <button
               onClick={() => setIsEditDialogOpen(false)}
               className="text-slate-400 hover:text-white p-1.5 rounded-xl hover:bg-white/10 transition-colors"
+              title="Close"
             >
               <X className="h-5 w-5" />
             </button>
@@ -725,13 +756,16 @@ export default function UsersPage() {
 
           {/* Integrated User Avatar + Info */}
           <div className="relative flex items-center gap-4">
-            <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-blue-500 to-indigo-600 text-white p-0.5 shadow-lg shadow-blue-900/40 shrink-0 ring-2 ring-white/10">
-              <div className="w-full h-full rounded-[14px] bg-slate-900/40 backdrop-blur-sm flex items-center justify-center text-lg font-black tracking-wider">
-                {editInitials || <Users className="w-6 h-6" />}
+            <div className="relative">
+              <div className="w-13 h-13 rounded-2xl bg-gradient-to-tr from-blue-600 to-indigo-600 text-white p-0.5 shadow-lg shadow-blue-900/40 shrink-0 ring-2 ring-white/10">
+                <div className="w-full h-full rounded-[14px] bg-slate-900/50 backdrop-blur-xs flex items-center justify-center text-lg font-black tracking-wider">
+                  {editInitials || <Users className="w-6 h-6" />}
+                </div>
               </div>
+              <span className={`absolute -bottom-1 -right-1 w-3.5 h-3.5 rounded-full border-2 border-slate-900 ${editIsActive ? 'bg-emerald-500 ring-2 ring-emerald-500/30' : 'bg-rose-500 ring-2 ring-rose-500/30'}`} />
             </div>
             <div className="min-w-0 flex-1">
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 flex-wrap">
                 <h4 className="text-base font-extrabold text-white truncate">
                   {selectedUser?.firstName} {selectedUser?.lastName}
                 </h4>
@@ -741,80 +775,91 @@ export default function UsersPage() {
                   {editIsActive ? 'Active' : 'Inactive'}
                 </span>
               </div>
-              <p className="text-xs text-slate-300 font-mono mt-0.5 truncate">
-                {selectedUser?.employeeCode ? `EMP: ${selectedUser.employeeCode}` : selectedUser?.email}
-              </p>
+              <div className="flex items-center gap-2 text-xs text-slate-300 mt-1">
+                <span className="font-mono text-slate-400">{selectedUser?.employeeCode ? `ID: ${selectedUser.employeeCode}` : selectedUser?.email}</span>
+                <span className="text-slate-600">•</span>
+                <span className="text-blue-300 font-semibold uppercase text-[10px]">{selectedUser?.roleName?.replaceAll('_', ' ') || 'USER'}</span>
+              </div>
             </div>
           </div>
         </div>
 
         {/* Scrollable Form Body */}
-        <div className="flex-1 overflow-y-auto p-6 space-y-5">
-          <form id="edit-user-form" onSubmit={createForm.handleSubmit(handleEditSubmit)} className="space-y-5">
+        <div className="flex-1 min-h-0 overflow-y-auto p-6 space-y-4">
+          <form id="edit-user-form" onSubmit={createForm.handleSubmit(handleEditSubmit)} className="space-y-4 pb-4">
 
             {/* Identity Card */}
-            <div className="bg-white rounded-2xl p-4 border border-slate-200/80 shadow-xs space-y-4">
-              <div className="flex items-center gap-2 text-xs font-bold text-slate-800 uppercase tracking-wider">
-                <div className="w-1.5 h-4 bg-blue-600 rounded-full" />
-                Identity Details
+            <div className="bg-white rounded-2xl p-5 border border-slate-200/80 shadow-xs space-y-4">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2 text-xs font-bold text-slate-800 uppercase tracking-wider">
+                  <div className="w-2 h-2 rounded-full bg-blue-600" />
+                  Identity & Contact
+                </div>
+                <span className="text-[11px] text-slate-400 font-medium">Personal Details</span>
               </div>
               
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-2 gap-3.5">
                 <div className="grid gap-1.5">
-                  <Label htmlFor="edit-firstName" className="text-[11px] text-slate-500 font-semibold">First Name</Label>
+                  <Label htmlFor="edit-firstName" className="text-xs font-semibold text-slate-700">First Name</Label>
                   <Input
                     id="edit-firstName"
                     {...createForm.register('firstName')}
                     placeholder="First Name"
-                    className="h-9.5 rounded-xl border-slate-200 bg-slate-50/50 focus:bg-white focus:ring-2 focus:ring-blue-500/20 text-xs font-medium"
+                    className="h-10 rounded-xl border-slate-200 bg-slate-50/50 focus:bg-white focus:ring-2 focus:ring-blue-500/20 text-xs font-medium"
                   />
                 </div>
                 <div className="grid gap-1.5">
-                  <Label htmlFor="edit-lastName" className="text-[11px] text-slate-500 font-semibold">Last Name</Label>
+                  <Label htmlFor="edit-lastName" className="text-xs font-semibold text-slate-700">Last Name</Label>
                   <Input
                     id="edit-lastName"
                     {...createForm.register('lastName')}
                     placeholder="Last Name"
-                    className="h-9.5 rounded-xl border-slate-200 bg-slate-50/50 focus:bg-white focus:ring-2 focus:ring-blue-500/20 text-xs font-medium"
+                    className="h-10 rounded-xl border-slate-200 bg-slate-50/50 focus:bg-white focus:ring-2 focus:ring-blue-500/20 text-xs font-medium"
                   />
                 </div>
               </div>
 
               <div className="grid gap-1.5">
-                <Label htmlFor="edit-email" className="text-[11px] text-slate-500 font-semibold">Email Address</Label>
+                <div className="flex items-center justify-between">
+                  <Label htmlFor="edit-email" className="text-xs font-semibold text-slate-700">Email Address</Label>
+                  <span className="text-[10px] font-semibold text-slate-400 bg-slate-100 px-2 py-0.5 rounded-md">Primary Login</span>
+                </div>
                 <div className="relative">
                   <Input
                     id="edit-email"
                     type="email"
                     {...createForm.register('email')}
                     placeholder="Email"
-                    className="h-9.5 rounded-xl bg-slate-100 text-slate-500 cursor-not-allowed border-slate-200 pr-10 text-xs font-medium"
+                    className="h-10 rounded-xl bg-slate-100/80 text-slate-600 cursor-not-allowed border-slate-200 pr-10 text-xs font-medium"
                     disabled
                   />
-                  <Key className="absolute right-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400" />
+                  <Key className="absolute right-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
                 </div>
               </div>
 
               <div className="grid gap-1.5">
-                <Label htmlFor="edit-phone" className="text-[11px] text-slate-500 font-semibold">Phone Number</Label>
+                <Label htmlFor="edit-phone" className="text-xs font-semibold text-slate-700">Phone Number</Label>
                 <Input
                   id="edit-phone"
                   {...createForm.register('phone')}
-                  placeholder="Phone number"
-                  className="h-9.5 rounded-xl border-slate-200 bg-slate-50/50 focus:bg-white focus:ring-2 focus:ring-blue-500/20 text-xs font-medium"
+                  placeholder="+1 234 567 890"
+                  className="h-10 rounded-xl border-slate-200 bg-slate-50/50 focus:bg-white focus:ring-2 focus:ring-blue-500/20 text-xs font-medium"
                 />
               </div>
             </div>
 
             {/* Role & Access Card */}
-            <div className="bg-white rounded-2xl p-4 border border-slate-200/80 shadow-xs space-y-4">
-              <div className="flex items-center gap-2 text-xs font-bold text-slate-800 uppercase tracking-wider">
-                <div className="w-1.5 h-4 bg-indigo-600 rounded-full" />
-                Role & Warehouses
+            <div className="bg-white rounded-2xl p-5 border border-slate-200/80 shadow-xs space-y-4">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2 text-xs font-bold text-slate-800 uppercase tracking-wider">
+                  <div className="w-2 h-2 rounded-full bg-indigo-600" />
+                  Role & Warehouse Access
+                </div>
+                <span className="text-[11px] text-slate-400 font-medium">Access Control</span>
               </div>
 
               <div className="grid gap-1.5">
-                <Label className="text-[11px] text-slate-500 font-semibold">System Role</Label>
+                <Label className="text-xs font-semibold text-slate-700">System Role</Label>
                 <Select
                   value={createForm.watch('role')}
                   onValueChange={(value: RoleNameKey) => {
@@ -824,7 +869,7 @@ export default function UsersPage() {
                     }
                   }}
                 >
-                  <SelectTrigger className="h-9.5 rounded-xl border-slate-200 bg-slate-50/50 text-xs font-medium">
+                  <SelectTrigger className="h-10 rounded-xl border-slate-200 bg-slate-50/50 text-xs font-medium">
                     <SelectValue placeholder="Select role" />
                   </SelectTrigger>
                   <SelectContent className="z-[100]">
@@ -838,63 +883,126 @@ export default function UsersPage() {
               </div>
 
               {WAREHOUSE_ASSIGNMENT_ROLES.includes(createForm.watch('role')) && (
-                <div className="grid gap-1.5">
-                  <Label className="text-[11px] text-slate-500 font-semibold">Assigned Warehouses</Label>
-                  <div className="max-h-40 overflow-y-auto border border-slate-200 rounded-xl p-3 space-y-2 bg-slate-50/50">
-                    {warehouses.map((wh) => (
-                      <label key={wh.id} className="flex items-center gap-2.5 text-xs cursor-pointer py-1 hover:bg-slate-100/50 px-1 rounded-lg transition-colors">
-                        <input
-                          type="checkbox"
-                          checked={(createForm.watch('warehouseIds') || []).includes(wh.id)}
-                          onChange={() => toggleWarehouse(wh.id)}
-                          className="rounded border-slate-300 text-blue-600 focus:ring-blue-500"
-                        />
-                        <span className="text-slate-700 font-medium">{wh.code} — {wh.name}</span>
-                      </label>
-                    ))}
+                <div className="grid gap-2 pt-1">
+                  <div className="flex items-center justify-between">
+                    <Label className="text-xs font-semibold text-slate-700">Assigned Warehouses</Label>
+                    <span className="text-[11px] font-bold text-blue-600 bg-blue-50 px-2 py-0.5 rounded-full">
+                      {(createForm.watch('warehouseIds') || []).length} Selected
+                    </span>
+                  </div>
+                  <div className="max-h-44 overflow-y-auto border border-slate-200 rounded-xl p-3 space-y-1.5 bg-slate-50/50">
+                    {warehouses.length === 0 ? (
+                      <p className="text-xs text-slate-400 text-center py-2">No warehouses found</p>
+                    ) : (
+                      warehouses.map((wh) => {
+                        const isChecked = (createForm.watch('warehouseIds') || []).includes(wh.id);
+                        return (
+                          <label
+                            key={wh.id}
+                            className={`flex items-center gap-3 text-xs cursor-pointer py-2 px-2.5 rounded-xl transition-all ${
+                              isChecked ? 'bg-blue-50/70 border border-blue-200/60 font-semibold text-blue-900' : 'hover:bg-slate-100/70 text-slate-700'
+                            }`}
+                          >
+                            <input
+                              type="checkbox"
+                              checked={isChecked}
+                              onChange={() => toggleWarehouse(wh.id)}
+                              className="rounded border-slate-300 text-blue-600 focus:ring-blue-500 h-4 w-4"
+                            />
+                            <span className="truncate">{wh.code} — {wh.name}</span>
+                          </label>
+                        );
+                      })
+                    )}
                   </div>
                 </div>
               )}
             </div>
 
-            {/* Access Status Card */}
-            <div className="bg-white rounded-2xl p-4 border border-slate-200/80 shadow-xs space-y-3">
-              <div className="flex items-center gap-2 text-xs font-bold text-slate-800 uppercase tracking-wider">
-                <div className="w-1.5 h-4 bg-emerald-600 rounded-full" />
-                Account Status
+            {/* Account Status & Security Card */}
+            <div className="bg-white rounded-2xl p-5 border border-slate-200/80 shadow-xs space-y-3.5">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2 text-xs font-bold text-slate-800 uppercase tracking-wider">
+                  <ShieldCheck className="h-4 w-4 text-emerald-600" />
+                  Account Status & Security
+                </div>
+                <span className="text-[11px] text-slate-400 font-medium">Access Control</span>
               </div>
 
-              <div className="grid grid-cols-2 gap-2.5 p-1 bg-slate-100 rounded-xl border border-slate-200/60">
-                {([
-                  { value: true, label: 'Active', active: 'bg-emerald-600 text-white shadow-md shadow-emerald-600/20 font-bold' },
-                  { value: false, label: 'Inactive', active: 'bg-rose-600 text-white shadow-md shadow-rose-600/20 font-bold' },
-                ] as const).map((opt) => (
-                  <button
-                    key={String(opt.value)}
-                    type="button"
-                    onClick={() => selectedUser && updateMutation.mutate({ id: selectedUser.id, data: { isActive: opt.value } })}
-                    className={`h-9 rounded-lg text-xs transition-all ${
-                      editIsActive === opt.value
-                        ? opt.active
-                        : 'text-slate-600 hover:text-slate-900 hover:bg-white/60 font-medium'
+              {/* Status Switch Card */}
+              <div className="flex items-center justify-between p-3.5 rounded-xl border border-slate-200/80 bg-slate-50/50">
+                <div className="space-y-0.5">
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-bold text-slate-800">Account Access</span>
+                    <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                      editIsActive 
+                        ? 'bg-emerald-100/80 text-emerald-800 border border-emerald-300/60' 
+                        : 'bg-rose-100/80 text-rose-800 border border-rose-300/60'
+                    }`}>
+                      <span className={`h-1.5 w-1.5 rounded-full ${editIsActive ? 'bg-emerald-500' : 'bg-rose-500'}`} />
+                      {editIsActive ? 'Active' : 'Suspended'}
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-slate-500">
+                    {editIsActive ? 'User can log in and perform warehouse operations' : 'User access is temporarily deactivated'}
+                  </p>
+                </div>
+
+                {/* iOS/Tailwind Style Toggle Switch */}
+                <button
+                  type="button"
+                  onClick={() => selectedUser && updateMutation.mutate({ id: selectedUser.id, data: { isActive: !editIsActive } })}
+                  className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-emerald-500/20 ${
+                    editIsActive ? 'bg-emerald-600' : 'bg-slate-300'
+                  }`}
+                  role="switch"
+                  aria-checked={editIsActive}
+                >
+                  <span
+                    className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow-md ring-0 transition duration-200 ease-in-out ${
+                      editIsActive ? 'translate-x-5' : 'translate-x-0'
                     }`}
-                  >
-                    {opt.label}
-                  </button>
-                ))}
+                  />
+                </button>
+              </div>
+
+              {/* Password Management Card */}
+              <div className="flex items-center justify-between p-3.5 rounded-xl border border-slate-200/80 bg-slate-50/50">
+                <div className="flex items-center gap-3">
+                  <div className="h-8 w-8 rounded-lg bg-indigo-50 text-indigo-600 flex items-center justify-center">
+                    <Key className="h-4 w-4" />
+                  </div>
+                  <div>
+                    <h5 className="text-xs font-bold text-slate-800">Password & Credentials</h5>
+                    <p className="text-[11px] text-slate-500">Reset or set a new password for this user</p>
+                  </div>
+                </div>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    if (selectedUser) {
+                      setIsPasswordDialogOpen(true);
+                    }
+                  }}
+                  className="rounded-xl h-8 px-3 text-xs font-bold border-indigo-200 text-indigo-700 bg-white hover:bg-indigo-50 hover:text-indigo-800 transition-all shadow-xs"
+                >
+                  Reset Password
+                </Button>
               </div>
             </div>
 
           </form>
         </div>
 
-        {/* Sticky Footer */}
-        <div className="shrink-0 border-t border-slate-200 bg-white px-6 py-4 flex items-center justify-end gap-3 shadow-lg relative z-20">
+        {/* Drawer Sticky Footer Actions */}
+        <div className="shrink-0 bg-white border-t border-slate-200 px-6 py-4 flex items-center justify-end gap-3 shadow-md z-10">
           <Button
             type="button"
             variant="outline"
             onClick={() => setIsEditDialogOpen(false)}
-            className="rounded-xl h-10 px-5 text-slate-600 border-slate-200 text-xs font-semibold hover:bg-slate-50"
+            className="rounded-xl h-10 px-5 text-slate-700 border-slate-300 bg-white hover:bg-slate-50 text-xs font-semibold"
           >
             Cancel
           </Button>
@@ -902,12 +1010,13 @@ export default function UsersPage() {
             type="submit"
             form="edit-user-form"
             disabled={updateMutation.isPending}
-            className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white rounded-xl h-10 px-6 text-xs font-bold shadow-md shadow-blue-500/20 transition-all"
+            className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white rounded-xl h-10 px-6 text-xs font-bold shadow-md shadow-blue-500/25 transition-all"
           >
             {updateMutation.isPending && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
             Save Changes
           </Button>
         </div>
+
       </div>
 
 
@@ -973,7 +1082,7 @@ export default function UsersPage() {
             </div>
 
             {selectedUserForDetail && (
-              <div className="flex-1 overflow-y-auto p-6 space-y-6">
+              <div className="flex-1 min-h-0 overflow-y-auto p-6 space-y-6">
                 
                 <div className="flex flex-col items-center text-center p-6 bg-gradient-to-b from-blue-50/30 to-indigo-50/10 rounded-2xl border border-slate-100">
                   <div className="w-16 h-16 rounded-full bg-blue-600 text-white flex items-center justify-center font-bold text-lg shadow-md mb-3">

@@ -180,7 +180,7 @@ export function SuperAdminDashboard({ company }: { company?: EntityRef | null })
             </div>
           </div>
 
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <div className="p-4 rounded-xl bg-slate-50 border border-slate-100">
               <div className="flex items-center gap-2 text-slate-500 mb-1">
                 <GitBranch className="h-4 w-4 text-purple-600" />
@@ -203,14 +203,6 @@ export function SuperAdminDashboard({ company }: { company?: EntityRef | null })
                 <span className="text-xs font-semibold">Clients</span>
               </div>
               <p className="text-2xl font-bold text-slate-900">{isLoading ? "—" : summary?.totalClients ?? 0}</p>
-            </div>
-
-            <div className="p-4 rounded-xl bg-slate-50 border border-slate-100">
-              <div className="flex items-center gap-2 text-slate-500 mb-1">
-                <Building2 className="h-4 w-4 text-slate-600" />
-                <span className="text-xs font-semibold">Vendors</span>
-              </div>
-              <p className="text-2xl font-bold text-slate-900">{isLoading ? "—" : summary?.totalVendors ?? 0}</p>
             </div>
           </div>
 

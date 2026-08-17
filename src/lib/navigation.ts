@@ -67,7 +67,6 @@ export const NAV_SECTIONS: NavSectionConfig[] = [
     items: [
       { href: '/departments', label: 'Departments', permission: 'settings:view' },
       { href: '/clients', label: 'Clients Master', permission: 'client:view' },
-      { href: '/vendors', label: 'Vendor Master', permission: 'settings:view' },
     ],
   },
   {

@@ -306,42 +306,99 @@ export default function RolesPage() {
         </div>
       )}
 
-      {/* Create Role Modal */}
-      {showCreate && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: 'rgba(15,23,42,0.5)', backdropFilter: 'blur(4px)' }}>
-          <div className="bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-sm p-6">
-            <div className="flex items-center justify-between mb-5">
-              <div className="flex items-center gap-2.5">
-                <div className="p-2 bg-violet-50 rounded-xl"><Plus className="h-4 w-4 text-violet-600" /></div>
-                <h3 className="text-sm font-bold text-slate-900">Create New Role</h3>
+      {/* ===== Create Role — Right Slide-Over Drawer ===== */}
+      {/* Backdrop */}
+      <div
+        onClick={() => setShowCreate(false)}
+        className={`fixed inset-0 z-40 bg-slate-900/40 backdrop-blur-xs transition-opacity duration-300 ${
+          showCreate ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'
+        }`}
+      />
+
+      {/* Slide-Over Drawer Panel */}
+      <div
+        className={`fixed top-0 right-0 bottom-0 z-50 w-full max-w-md bg-slate-50 shadow-2xl flex flex-col transform transition-transform duration-300 ease-in-out border-l border-slate-200/80 ${
+          showCreate ? 'translate-x-0' : 'translate-x-full pointer-events-none'
+        }`}
+      >
+        {/* Drawer Header */}
+        <div className="relative bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 px-6 py-5 shrink-0 text-white border-b border-slate-800 flex items-center justify-between shadow-sm">
+          <div>
+            <span className="inline-flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider text-indigo-300 bg-indigo-500/15 px-2.5 py-0.5 rounded-full border border-indigo-400/20">
+              <Shield className="h-3 w-3 text-indigo-400" />
+              Role Management
+            </span>
+            <h2 className="text-white text-base font-extrabold tracking-tight mt-1">Create New Role</h2>
+          </div>
+          <button
+            onClick={() => setShowCreate(false)}
+            className="text-slate-400 hover:text-white p-1.5 rounded-xl hover:bg-white/10 transition-colors"
+            title="Close"
+          >
+            <X className="h-5 w-5" />
+          </button>
+        </div>
+
+        {/* Scrollable Form Body */}
+        <div className="flex-1 min-h-0 overflow-y-auto p-6 space-y-4">
+          <div className="bg-white rounded-2xl p-5 border border-slate-200/80 shadow-xs space-y-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2 text-xs font-bold text-slate-800 uppercase tracking-wider">
+                <div className="w-2 h-2 rounded-full bg-indigo-600" />
+                Role Definition
               </div>
-              <button onClick={() => setShowCreate(false)} className="text-slate-400 hover:text-slate-600 p-1.5 rounded-lg hover:bg-slate-100"><X className="h-4 w-4" /></button>
+              <span className="text-[11px] text-slate-400 font-medium">Access Type</span>
             </div>
-            <div className="space-y-4">
-              <div>
-                <label className="text-xs font-semibold text-slate-700 block mb-1.5">Role Type</label>
-                <select value={newRoleName} onChange={e => setNewRoleName(e.target.value)} className="w-full h-9 border border-slate-200 rounded-xl px-3 text-xs bg-white focus:outline-none focus:border-violet-400">
-                  {ROLE_NAME_OPTIONS.map(r => <option key={r} value={r}>{r}</option>)}
-                </select>
-              </div>
-              <div>
-                <label className="text-xs font-semibold text-slate-700 block mb-1.5">Display Label</label>
-                <input type="text" placeholder="e.g. Warehouse Supervisor" value={newRoleLabel} onChange={e => setNewRoleLabel(e.target.value)}
-                  className="w-full h-9 border border-slate-200 rounded-xl px-3 text-xs focus:outline-none focus:border-violet-400" />
-              </div>
+
+            <div className="space-y-1.5">
+              <label className="text-xs font-semibold text-slate-700">Role Type</label>
+              <select
+                value={newRoleName}
+                onChange={e => setNewRoleName(e.target.value)}
+                className="w-full h-10 border border-slate-200 bg-slate-50/50 rounded-xl px-3 text-xs font-medium focus:bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
+              >
+                {ROLE_NAME_OPTIONS.map(r => (
+                  <option key={r} value={r}>{r}</option>
+                ))}
+              </select>
+              <p className="text-[11px] text-slate-400">System identifier for permission mapping</p>
             </div>
-            <div className="flex items-center justify-end gap-2 mt-6">
-              <button onClick={() => setShowCreate(false)} className="px-4 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-100 rounded-xl">Cancel</button>
-              <button onClick={() => createMutation.mutate()} disabled={createMutation.isPending || !newRoleName}
-                className="flex items-center gap-1.5 px-4 py-2 text-white text-xs font-semibold rounded-xl disabled:opacity-50"
-                style={{ background: '#7c3aed' }}>
-                {createMutation.isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Check className="h-3.5 w-3.5" />}
-                Create Role
-              </button>
+
+            <div className="space-y-1.5">
+              <label className="text-xs font-semibold text-slate-700">Display Label</label>
+              <input
+                type="text"
+                placeholder="e.g. Warehouse Supervisor"
+                value={newRoleLabel}
+                onChange={e => setNewRoleLabel(e.target.value)}
+                className="w-full h-10 border border-slate-200 bg-slate-50/50 rounded-xl px-3 text-xs font-medium focus:bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
+              />
+              <p className="text-[11px] text-slate-400">Friendly name displayed across the admin panel</p>
             </div>
           </div>
         </div>
-      )}
+
+        {/* Drawer Sticky Footer Actions */}
+        <div className="shrink-0 bg-white border-t border-slate-200 px-6 py-4 flex items-center justify-end gap-3 shadow-md z-10">
+          <button
+            type="button"
+            onClick={() => setShowCreate(false)}
+            className="rounded-xl h-10 px-5 text-slate-700 border border-slate-300 bg-white hover:bg-slate-50 text-xs font-semibold"
+          >
+            Cancel
+          </button>
+          <button
+            type="button"
+            onClick={() => createMutation.mutate()}
+            disabled={createMutation.isPending || !newRoleName}
+            className="bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 text-white rounded-xl h-10 px-6 text-xs font-bold shadow-md shadow-indigo-500/25 transition-all flex items-center gap-1.5 disabled:opacity-50"
+          >
+            {createMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}
+            Create Role
+          </button>
+        </div>
+
+      </div>
     </div>
   );
 }
