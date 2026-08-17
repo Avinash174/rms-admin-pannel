@@ -18,6 +18,8 @@ interface DataTableProps<TData, TValue> {
     total: number
     totalPages: number
   }
+  rowSelection?: Record<string, boolean>
+  onRowSelectionChange?: React.Dispatch<React.SetStateAction<Record<string, boolean>>>
   onPageChange?: (page: number) => void
   onEdit?: (row: TData, isToggle?: boolean) => void
   onDelete?: (row: TData) => void
@@ -31,6 +33,8 @@ export function DataTable<TData, TValue>({
   columns,
   data,
   meta,
+  rowSelection,
+  onRowSelectionChange,
   onPageChange,
   onEdit,
   onDelete,
@@ -43,6 +47,9 @@ export function DataTable<TData, TValue>({
     pageIndex: 0,
     pageSize: meta?.pageSize || 20,
   })
+  const [internalRowSelection, setInternalRowSelection] = React.useState<Record<string, boolean>>({})
+  const rowSelectionState = rowSelection !== undefined ? rowSelection : internalRowSelection
+  const setRowSelectionState = onRowSelectionChange !== undefined ? onRowSelectionChange : setInternalRowSelection
 
   const table = useReactTable({
     data,
@@ -51,7 +58,10 @@ export function DataTable<TData, TValue>({
     pageCount: meta?.totalPages || 1,
     state: {
       pagination,
+      rowSelection: rowSelectionState,
     },
+    enableRowSelection: true,
+    onRowSelectionChange: setRowSelectionState,
     onPaginationChange: setPagination,
     meta: {
       onEdit,

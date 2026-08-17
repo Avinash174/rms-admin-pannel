@@ -57,3 +57,36 @@ export async function getLocationByBarcode(barcode: string): Promise<Location> {
 export async function getAllLocations(): Promise<{ data: Location[] }> {
   return fetchWithAuth('/locations');
 }
+
+export interface BulkGenerateLocationsRequest {
+  shelfId: string;
+  levelId?: string;
+  prefix?: string;
+  startingNumber?: number;
+  quantity: number;
+  padding?: number;
+  barcodePrefix?: string;
+}
+
+export async function bulkGenerateLocations(data: BulkGenerateLocationsRequest): Promise<any> {
+  const response = await fetchWithAuth('/locations/bulk-generate', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
+  return response.data;
+}
+
+export async function bulkActionLocations(ids: string[], action: 'ACTIVATE' | 'DEACTIVATE' | 'DELETE'): Promise<any> {
+  return fetchWithAuth('/locations/bulk-action', {
+    method: 'POST',
+    body: JSON.stringify({ ids, action }),
+  });
+}
+
+export async function bulkImportLocations(shelfId: string, rows: { name: string; barcode?: string; levelId?: string }[]): Promise<any> {
+  const response = await fetchWithAuth('/locations/bulk-import', {
+    method: 'POST',
+    body: JSON.stringify({ shelfId, rows }),
+  });
+  return response.data;
+}

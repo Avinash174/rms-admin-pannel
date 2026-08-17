@@ -1,6 +1,7 @@
 import { ColumnDef } from '@tanstack/react-table';
 import { Location } from '@/lib/types/location';
 import { Calendar, MapPin } from 'lucide-react';
+import { Checkbox } from '@/components/ui/checkbox';
 
 function getAvatarGradient(name: string) {
   let hash = 0;
@@ -27,6 +28,27 @@ function getInitials(name: string) {
 }
 
 export const columns: ColumnDef<Location>[] = [
+  {
+    id: 'select',
+    header: ({ table }) => (
+      <Checkbox
+        checked={table.getIsAllPageRowsSelected()}
+        onCheckedChange={(value: boolean) => table.toggleAllPageRowsSelected(!!value)}
+        aria-label="Select all"
+        className="translate-y-[2px]"
+      />
+    ),
+    cell: ({ row }) => (
+      <Checkbox
+        checked={row.getIsSelected()}
+        onCheckedChange={(value: boolean) => row.toggleSelected(!!value)}
+        aria-label="Select row"
+        className="translate-y-[2px]"
+      />
+    ),
+    enableSorting: false,
+    enableHiding: false,
+  },
   {
     accessorKey: 'barcode',
     header: () => <span className="text-xs font-bold tracking-wider text-slate-500 uppercase">Barcode</span>,
