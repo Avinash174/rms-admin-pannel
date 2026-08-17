@@ -3,7 +3,10 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
-import { Plus, Loader2, AlertCircle, RefreshCw, X, Building, MapPin, Phone, CheckCircle2, Info, Search } from 'lucide-react';
+import { 
+  Plus, Loader2, AlertCircle, RefreshCw, X, Building, MapPin, Phone, 
+  CheckCircle2, Info, Search, Eye, EyeOff, UserCheck, Lock, Mail, User 
+} from 'lucide-react';
 import { DataTable } from '@/components/ui/data-table';
 import { ConfirmDialog } from '@/components/ui/confirm-dialog';
 import { columns } from './columns';
@@ -26,6 +29,8 @@ export default function WarehousesPage() {
   const [isFormDrawerOpen, setIsFormDrawerOpen] = useState(false);
   const [formMode, setFormMode] = useState<'CREATE' | 'EDIT'>('CREATE');
   const [selectedWarehouse, setSelectedWarehouse] = useState<Warehouse | null>(null);
+  const [hasAdminCredentials, setHasAdminCredentials] = useState(true);
+  const [showAdminPassword, setShowAdminPassword] = useState(false);
 
   // Details panel state
   const [selectedWarehouseForDetail, setSelectedWarehouseForDetail] = useState<Warehouse | null>(null);
@@ -109,6 +114,12 @@ export default function WarehousesPage() {
       phone: '',
       siteId: '',
       isActive: true,
+      admin: {
+        fullName: '',
+        email: '',
+        password: '',
+        phone: '',
+      },
     },
   });
 
@@ -157,7 +168,29 @@ export default function WarehousesPage() {
 
   const handleFormSubmit = (data: CreateWarehouseData) => {
     if (formMode === 'CREATE') {
-      createMutation.mutate(data);
+      const payload: any = {
+        name: data.name,
+        code: data.code,
+        siteId: data.siteId,
+        address: data.address || undefined,
+        city: data.city || undefined,
+        state: data.state || undefined,
+        country: data.country || undefined,
+        zipCode: data.zipCode,
+        phone: data.phone || undefined,
+        isActive: data.isActive,
+      };
+
+      if (hasAdminCredentials && data.admin?.email && data.admin?.password) {
+        payload.admin = {
+          fullName: data.admin.fullName?.trim() || `${data.name.trim()} Admin`,
+          email: data.admin.email.trim(),
+          password: data.admin.password,
+          phone: data.admin.phone?.trim() || undefined,
+        };
+      }
+
+      createMutation.mutate(payload);
     } else if (selectedWarehouse) {
       updateMutation.mutate({ id: selectedWarehouse.id, data });
     }
@@ -476,6 +509,77 @@ export default function WarehousesPage() {
                     onCheckedChange={(checked) => form.setValue('isActive', checked)}
                   />
                 </div>
+
+                {formMode === 'CREATE' && (
+                  <div className="rounded-2xl border border-blue-100 bg-blue-50/30 p-4 space-y-4">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <div className="h-7 w-7 rounded-lg bg-blue-600 text-white flex items-center justify-center">
+                          <UserCheck className="h-4 w-4" />
+                        </div>
+                        <div>
+                          <p className="text-xs font-bold text-slate-900">Warehouse Admin Credentials</p>
+                          <p className="text-[11px] text-slate-500">Auto-create admin user assigned to this warehouse</p>
+                        </div>
+                      </div>
+                      <Switch
+                        checked={hasAdminCredentials}
+                        onCheckedChange={setHasAdminCredentials}
+                      />
+                    </div>
+
+                    {hasAdminCredentials && (
+                      <div className="space-y-3 pt-2 border-t border-blue-100/60">
+                        <div className="space-y-1.5">
+                          <Label className="text-xs font-semibold text-slate-700">Admin Full Name</Label>
+                          <Input
+                            placeholder="e.g. Warehouse Manager"
+                            className="h-10 bg-white rounded-xl border-slate-200 text-xs"
+                            {...form.register('admin.fullName')}
+                          />
+                        </div>
+
+                        <div className="space-y-1.5">
+                          <Label className="text-xs font-semibold text-slate-700">Admin Email Address *</Label>
+                          <Input
+                            type="email"
+                            placeholder="warehouse.admin@example.com"
+                            className="h-10 bg-white rounded-xl border-slate-200 text-xs"
+                            {...form.register('admin.email')}
+                          />
+                        </div>
+
+                        <div className="space-y-1.5">
+                          <Label className="text-xs font-semibold text-slate-700">Admin Password *</Label>
+                          <div className="relative">
+                            <Input
+                              type={showAdminPassword ? 'text' : 'password'}
+                              placeholder="••••••••"
+                              className="h-10 bg-white rounded-xl border-slate-200 text-xs pr-9"
+                              {...form.register('admin.password')}
+                            />
+                            <button
+                              type="button"
+                              onClick={() => setShowAdminPassword(!showAdminPassword)}
+                              className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                            >
+                              {showAdminPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                            </button>
+                          </div>
+                        </div>
+
+                        <div className="space-y-1.5">
+                          <Label className="text-xs font-semibold text-slate-700">Phone / Mobile (Optional)</Label>
+                          <Input
+                            placeholder="+1 234-567-8902"
+                            className="h-10 bg-white rounded-xl border-slate-200 text-xs"
+                            {...form.register('admin.phone')}
+                          />
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
 
               </div>
 

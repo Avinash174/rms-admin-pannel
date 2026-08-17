@@ -32,6 +32,12 @@ export interface CreateWarehouseRequest {
   phone?: string;
   siteId?: string;
   isActive?: boolean;
+  admin?: {
+    fullName: string;
+    email: string;
+    password: string;
+    phone?: string;
+  };
 }
 
 export interface UpdateWarehouseRequest {

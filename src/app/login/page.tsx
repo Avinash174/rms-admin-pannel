@@ -39,8 +39,12 @@ export default function LoginPage() {
       // Call auth context login which calls real backend API and handles storage
       const session = await login({ email, password });
 
-      const isSuper = session.user.roleName === 'SUPER_ADMIN' || session.user.roleName?.includes('SUPER');
-      if (!isSuper && (!session.warehouse || !session.warehouse.id)) {
+      const isEnterpriseAdmin =
+        session.user.roleName === 'SUPER_ADMIN' ||
+        session.user.roleName === 'COMPANY_ADMIN' ||
+        session.user.roleName?.includes('SUPER');
+
+      if (!isEnterpriseAdmin && (!session.warehouse || !session.warehouse.id)) {
         await logout();
         setError('No warehouse has been assigned to your account. Please contact your system administrator.');
         return;

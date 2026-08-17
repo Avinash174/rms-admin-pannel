@@ -11,6 +11,12 @@ export const createWarehouseSchema = z.object({
   phone: z.string().regex(/^\+?[0-9]{7,15}$/, 'Phone must be 7-15 digits with optional leading +').optional().or(z.literal('')),
   siteId: z.string().min(1, 'Site is required'),
   isActive: z.boolean(),
+  admin: z.object({
+    fullName: z.string().min(1, 'Admin full name is required'),
+    email: z.string().email('Valid admin email is required'),
+    password: z.string().min(6, 'Password must be at least 6 characters'),
+    phone: z.string().optional()
+  }).optional()
 });
 
 export const updateWarehouseSchema = z.object({

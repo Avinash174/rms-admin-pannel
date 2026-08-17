@@ -11,6 +11,12 @@ export interface CreateCompanyRequest {
   name: string;
   code: string;
   isActive?: boolean;
+  admin?: {
+    fullName: string;
+    email: string;
+    password: string;
+    phone?: string;
+  };
 }
 
 export interface UpdateCompanyRequest {
