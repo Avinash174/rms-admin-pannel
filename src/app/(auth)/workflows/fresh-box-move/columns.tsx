@@ -1,7 +1,7 @@
 import { ColumnDef } from '@tanstack/react-table';
 import { Clock, Package, CheckCircle2, XCircle, Calendar, ArrowRight, User } from 'lucide-react';
 
-interface FreshBoxMove {
+export interface FreshBoxMove {
   id: string;
   boxBarcode: string;
   boxName?: string;

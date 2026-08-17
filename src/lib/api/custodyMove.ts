@@ -51,3 +51,19 @@ export async function listTransfers(page: number = 1, pageSize: number = 20): Pr
   }
   throw new Error('Failed to list transfers');
 }
+
+export async function listSegregations(page: number = 1, pageSize: number = 20): Promise<any> {
+  const response = await fetchWithAuth(`/workflows/custody-move/segregations?page=${page}&pageSize=${pageSize}`);
+  if (response.success && response.data) {
+    return response.data;
+  }
+  throw new Error('Failed to list segregations');
+}
+
+export async function listMerges(page: number = 1, pageSize: number = 20): Promise<any> {
+  const response = await fetchWithAuth(`/workflows/custody-move/merges?page=${page}&pageSize=${pageSize}`);
+  if (response.success && response.data) {
+    return response.data;
+  }
+  throw new Error('Failed to list merges');
+}

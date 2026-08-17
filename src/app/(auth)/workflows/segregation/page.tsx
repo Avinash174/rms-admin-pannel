@@ -11,50 +11,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { columns, Segregation } from './columns';
 import { PageHeaderCard } from '@/components/page-header-card';
-
-const mockData: Segregation[] = [
-  {
-    id: '1',
-    segregationCode: 'SEG-2024-001',
-    boxBarcode: 'BOX-001',
-    boxName: 'Finance Records 2024',
-    sourceLocation: 'LOC-001',
-    destinationLocation: 'LOC-010',
-    status: 'COMPLETED',
-    reason: 'Retention period expired',
-    reasonCode: 'RET_EXP',
-    assignedTo: 'John Doe',
-    startedAt: '2024-01-15T09:00:00Z',
-    completedAt: '2024-01-15T09:30:00Z',
-    createdAt: '2024-01-15T08:55:00Z',
-  },
-  {
-    id: '2',
-    segregationCode: 'SEG-2024-002',
-    boxBarcode: 'BOX-005',
-    boxName: 'Legal Documents 2020',
-    sourceLocation: 'LOC-003',
-    destinationLocation: 'LOC-011',
-    status: 'IN_PROGRESS',
-    reason: 'Legal hold required',
-    reasonCode: 'LEGAL_HOLD',
-    assignedTo: 'Jane Smith',
-    startedAt: '2024-01-15T10:00:00Z',
-    createdAt: '2024-01-15T09:50:00Z',
-  },
-  {
-    id: '3',
-    segregationCode: 'SEG-2024-003',
-    boxBarcode: 'BOX-009',
-    boxName: 'Audit Files 2018',
-    sourceLocation: 'LOC-005',
-    destinationLocation: 'LOC-012',
-    status: 'PENDING',
-    reason: 'Compliance archive',
-    reasonCode: 'COMP_ARC',
-    createdAt: '2024-01-15T11:00:00Z',
-  },
-];
+import { listSegregations } from '@/lib/api/custodyMove';
 
 export default function SegregationPage() {
   const [page, setPage] = useState(1);
@@ -66,10 +23,7 @@ export default function SegregationPage() {
 
   const { data, isLoading, error, refetch } = useQuery({
     queryKey: ['segregations', page],
-    queryFn: async () => {
-      await new Promise(resolve => setTimeout(resolve, 300));
-      return { data: mockData, meta: { page, pageSize: 20, total: mockData.length, totalPages: 1 } };
-    },
+    queryFn: () => listSegregations(page, 20),
   });
 
   if (isLoading) {
@@ -98,10 +52,10 @@ export default function SegregationPage() {
     );
   }
 
-  const items = data?.data || [];
+  const items: Segregation[] = data?.data || [];
   const meta = data?.meta;
 
-  const filtered = items.filter((item) => {
+  const filtered = items.filter((item: Segregation) => {
     const matchesSearch = item.segregationCode.toLowerCase().includes(searchTerm.toLowerCase()) ||
       (item.boxName && item.boxName.toLowerCase().includes(searchTerm.toLowerCase())) ||
       item.boxBarcode.toLowerCase().includes(searchTerm.toLowerCase());
@@ -110,8 +64,8 @@ export default function SegregationPage() {
   });
 
   const total = items.length;
-  const completed = items.filter(i => i.status === 'COMPLETED').length;
-  const active = items.filter(i => i.status === 'IN_PROGRESS' || i.status === 'PENDING').length;
+  const completed = items.filter((i: Segregation) => i.status === 'COMPLETED').length;
+  const active = items.filter((i: Segregation) => i.status === 'IN_PROGRESS' || i.status === 'PENDING').length;
 
   return (
     <div className="w-full space-y-8 px-4 sm:px-6 lg:px-8 pb-16">

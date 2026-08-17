@@ -10,49 +10,10 @@ import {
 import { DataTable } from '@/components/ui/data-table';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { columns } from './columns';
+import { columns, FreshBoxMove } from './columns';
 import { startFreshBoxMoveSession, submitFreshBoxMoveScan, endFreshBoxMoveSession, getFreshBoxMoveSessionDetails, listFreshBoxMoveSessions } from '@/lib/api/freshBoxMove';
 import { FreshBoxMoveSession } from '@/lib/types/freshBoxMove';
 import { PageHeaderCard } from '@/components/page-header-card';
-
-interface FreshBoxMove {
-  id: string;
-  boxBarcode: string;
-  boxName?: string;
-  sourceLocation: string;
-  destinationLocation: string;
-  status: 'PENDING' | 'IN_PROGRESS' | 'COMPLETED' | 'FAILED';
-  assignedTo?: string;
-  startedAt?: string;
-  completedAt?: string;
-  createdAt: string;
-}
-
-const mockData: FreshBoxMove[] = [
-  {
-    id: '1',
-    boxBarcode: 'BOX-001',
-    boxName: 'Finance Records 2024',
-    sourceLocation: 'LOC-001',
-    destinationLocation: 'LOC-002',
-    status: 'COMPLETED',
-    assignedTo: 'John Doe',
-    startedAt: '2026-07-03T09:00:00Z',
-    completedAt: '2026-07-03T09:15:00Z',
-    createdAt: '2026-07-03T08:55:00Z',
-  },
-  {
-    id: '2',
-    boxBarcode: 'BOX-002',
-    boxName: 'HR Documents Pack A',
-    sourceLocation: 'LOC-003',
-    destinationLocation: 'LOC-005',
-    status: 'IN_PROGRESS',
-    assignedTo: 'Jane Smith',
-    startedAt: '2026-07-03T10:00:00Z',
-    createdAt: '2026-07-03T09:50:00Z',
-  },
-];
 
 export default function FreshBoxMovePage() {
   const [page, setPage] = useState(1);

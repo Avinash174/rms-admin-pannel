@@ -12,50 +12,7 @@ import { Input } from '@/components/ui/input';
 import { columns, Merge } from './columns';
 import { PageHeaderCard } from '@/components/page-header-card';
 import { GitMerge } from 'lucide-react';
-
-const mockData: Merge[] = [
-  {
-    id: '1',
-    mergeCode: 'MERGE-2024-001',
-    sourceBoxBarcode: 'BOX-003',
-    sourceBoxName: 'Q3 Documents',
-    destinationBoxBarcode: 'BOX-001',
-    destinationBoxName: 'Finance Records 2024',
-    status: 'COMPLETED',
-    reason: 'Box consolidation',
-    fileCount: 15,
-    assignedTo: 'John Doe',
-    startedAt: '2024-01-15T09:00:00Z',
-    completedAt: '2024-01-15T09:45:00Z',
-    createdAt: '2024-01-15T08:55:00Z',
-  },
-  {
-    id: '2',
-    mergeCode: 'MERGE-2024-002',
-    sourceBoxBarcode: 'BOX-006',
-    sourceBoxName: 'Old HR Files',
-    destinationBoxBarcode: 'BOX-004',
-    destinationBoxName: 'HR Documents 2024',
-    status: 'IN_PROGRESS',
-    reason: 'Department reorganization',
-    fileCount: 22,
-    assignedTo: 'Jane Smith',
-    startedAt: '2024-01-15T10:00:00Z',
-    createdAt: '2024-01-15T09:50:00Z',
-  },
-  {
-    id: '3',
-    mergeCode: 'MERGE-2024-003',
-    sourceBoxBarcode: 'BOX-008',
-    sourceBoxName: 'Archive 2019',
-    destinationBoxBarcode: 'BOX-009',
-    destinationBoxName: 'Archive Consolidated',
-    status: 'PENDING',
-    reason: 'Annual archiving',
-    fileCount: 8,
-    createdAt: '2024-01-15T10:30:00Z',
-  },
-];
+import { listMerges } from '@/lib/api/custodyMove';
 
 export default function MergePage() {
   const [page, setPage] = useState(1);
@@ -67,10 +24,7 @@ export default function MergePage() {
 
   const { data, isLoading, error, refetch } = useQuery({
     queryKey: ['merges', page],
-    queryFn: async () => {
-      await new Promise(resolve => setTimeout(resolve, 300));
-      return { data: mockData, meta: { page, pageSize: 20, total: mockData.length, totalPages: 1 } };
-    },
+    queryFn: () => listMerges(page, 20),
   });
 
   if (isLoading) {
@@ -99,10 +53,10 @@ export default function MergePage() {
     );
   }
 
-  const items = data?.data || [];
+  const items: Merge[] = data?.data || [];
   const meta = data?.meta;
 
-  const filtered = items.filter((item) => {
+  const filtered = items.filter((item: Merge) => {
     const matchesSearch = item.mergeCode.toLowerCase().includes(searchTerm.toLowerCase()) ||
       (item.sourceBoxName && item.sourceBoxName.toLowerCase().includes(searchTerm.toLowerCase())) ||
       item.sourceBoxBarcode.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -113,9 +67,9 @@ export default function MergePage() {
   });
 
   const total = items.length;
-  const completed = items.filter(i => i.status === 'COMPLETED').length;
-  const active = items.filter(i => i.status === 'IN_PROGRESS' || i.status === 'PENDING').length;
-  const totalFiles = items.reduce((acc, i) => acc + (i.fileCount || 0), 0);
+  const completed = items.filter((i: Merge) => i.status === 'COMPLETED').length;
+  const active = items.filter((i: Merge) => i.status === 'IN_PROGRESS' || i.status === 'PENDING').length;
+  const totalFiles = items.reduce((acc: number, i: Merge) => acc + (i.fileCount || 0), 0);
 
   return (
     <div className="w-full space-y-8 px-4 sm:px-6 lg:px-8 pb-16">

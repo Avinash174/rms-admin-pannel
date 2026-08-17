@@ -7,55 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { PageHeaderCard } from '@/components/page-header-card';
 import { toast } from 'sonner';
-
-interface SyncStatus {
-  id: string;
-  deviceId: string;
-  deviceName: string;
-  lastSyncAt?: string;
-  status: 'SYNCED' | 'SYNCING' | 'OFFLINE' | 'ERROR';
-  pendingChanges: number;
-  lastError?: string;
-  appVersion?: string;
-  batteryLevel?: number;
-  createdAt: string;
-}
-
-const mockData: SyncStatus[] = [
-  {
-    id: '1',
-    deviceId: 'DEV-001',
-    deviceName: 'Scanner Handheld 1',
-    lastSyncAt: new Date(Date.now() - 300000).toISOString(),
-    status: 'SYNCED',
-    pendingChanges: 0,
-    appVersion: 'v2.4.1',
-    batteryLevel: 88,
-    createdAt: new Date().toISOString(),
-  },
-  {
-    id: '2',
-    deviceId: 'DEV-002',
-    deviceName: 'Scanner Handheld 2',
-    lastSyncAt: new Date(Date.now() - 60000).toISOString(),
-    status: 'SYNCING',
-    pendingChanges: 14,
-    appVersion: 'v2.4.1',
-    batteryLevel: 64,
-    createdAt: new Date().toISOString(),
-  },
-  {
-    id: '3',
-    deviceId: 'DEV-003',
-    deviceName: 'Tablet Docking Station',
-    lastSyncAt: new Date(Date.now() - 7200000).toISOString(),
-    status: 'OFFLINE',
-    pendingChanges: 32,
-    appVersion: 'v2.3.0',
-    batteryLevel: 25,
-    createdAt: new Date().toISOString(),
-  },
-];
+import { getSyncDeviceStatuses, DeviceSyncStatus } from '@/lib/api/sync';
 
 export default function SyncMonitoringPage() {
   const [page, setPage] = useState(1);
@@ -64,9 +16,7 @@ export default function SyncMonitoringPage() {
 
   const { data, refetch, isFetching } = useQuery({
     queryKey: ['sync-status', page],
-    queryFn: async () => {
-      return { data: mockData, meta: { page, pageSize: 20, total: 3, totalPages: 1 } };
-    },
+    queryFn: () => getSyncDeviceStatuses(page, 20),
   });
 
   const handleRefresh = async () => {
@@ -102,15 +52,16 @@ export default function SyncMonitoringPage() {
     return 'bg-rose-500';
   };
 
-  const items = (data?.data || []).filter((item) => {
+  const allItems = data?.data || [];
+  const items = allItems.filter((item) => {
     const matchesSearch = !searchTerm || item.deviceName.toLowerCase().includes(searchTerm.toLowerCase()) || item.deviceId.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesStatus = statusFilter === 'ALL' || item.status === statusFilter;
     return matchesSearch && matchesStatus;
   });
 
-  const syncedCount = mockData.filter(d => d.status === 'SYNCED').length;
-  const syncingCount = mockData.filter(d => d.status === 'SYNCING').length;
-  const offlineCount = mockData.filter(d => d.status === 'OFFLINE').length;
+  const syncedCount = allItems.filter(d => d.status === 'SYNCED').length;
+  const syncingCount = allItems.filter(d => d.status === 'SYNCING').length;
+  const offlineCount = allItems.filter(d => d.status === 'OFFLINE').length;
 
   return (
     <div className="w-full space-y-6 p-6 pb-16">
