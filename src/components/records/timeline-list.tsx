@@ -1,7 +1,7 @@
 import { RecordTimelineEntry } from '@/lib/api/records';
 
 export function TimelineList({ entries }: { entries: RecordTimelineEntry[] }) {
-  if (entries.length === 0) {
+  if (!entries || entries.length === 0) {
     return <p className="text-sm text-slate-400 py-4 text-center">No timeline entries</p>;
   }
 

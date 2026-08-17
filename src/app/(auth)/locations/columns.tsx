@@ -2,6 +2,7 @@ import { ColumnDef } from '@tanstack/react-table';
 import { Location } from '@/lib/types/location';
 import { Calendar, MapPin } from 'lucide-react';
 import { Checkbox } from '@/components/ui/checkbox';
+import { VisualBarcode } from '@/components/records/visual-barcode';
 
 function getAvatarGradient(name: string) {
   let hash = 0;
@@ -61,26 +62,29 @@ export const columns: ColumnDef<Location>[] = [
 
       return (
         <div 
-          className="flex items-center gap-4 py-1.5 cursor-pointer group"
+          className="flex items-center gap-3.5 py-1.5 cursor-pointer group"
           onClick={() => meta?.onCustomAction?.(location)}
         >
           <div
-            className="flex items-center justify-center w-11 h-11 rounded-2xl text-xs font-bold tracking-wider shadow-sm transition-all duration-300 group-hover:scale-105 group-hover:shadow-md"
+            className="flex items-center justify-center w-10 h-10 rounded-2xl text-xs font-bold tracking-wider shadow-sm transition-all duration-300 group-hover:scale-105 group-hover:shadow-md shrink-0"
             style={{ 
               background: style.background, 
               color: style.color,
               border: style.border
             }}
           >
-            {initials || <MapPin className="w-5 h-5" />}
+            {initials || <MapPin className="w-4 h-4" />}
           </div>
-          <div className="flex flex-col">
-            <span className="font-mono font-bold text-slate-900 text-sm leading-snug group-hover:text-blue-600 transition-colors duration-200">
+          <div className="flex flex-col gap-1 items-start">
+            <span className="font-mono font-bold text-slate-900 text-sm leading-tight group-hover:text-blue-600 transition-colors duration-200">
               {barcode}
             </span>
-            <span className="text-[11px] text-slate-400 font-semibold mt-0.5">
-              Name: {location.name || '-'}
-            </span>
+            <VisualBarcode code={barcode} width={130} height={20} showText={false} />
+            {location.name && (
+              <span className="text-[11px] text-slate-400 font-semibold">
+                Name: {location.name}
+              </span>
+            )}
           </div>
         </div>
       );

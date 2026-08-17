@@ -24,6 +24,7 @@ import {
   ArrowRight
 } from 'lucide-react';
 import * as XLSX from 'xlsx';
+import { VisualBarcode } from '@/components/records/visual-barcode';
 import { DataTable } from '@/components/ui/data-table';
 import { ConfirmDialog } from '@/components/ui/confirm-dialog';
 import { columns } from './columns';
@@ -720,11 +721,16 @@ export default function LocationsPage() {
               {/* Live Preview */}
               <div className="space-y-2 pt-2">
                 <Label className="text-xs text-slate-500 font-bold uppercase tracking-wider">Preview Generated Sample</Label>
-                <div className="p-4 bg-slate-50 border border-slate-200/80 rounded-2xl space-y-1.5">
+                <div className="p-4 bg-slate-50 border border-slate-200/80 rounded-2xl space-y-3">
                   {previewBarcodes.map((code, idx) => (
-                    <div key={idx} className="flex items-center gap-2 text-xs font-mono text-slate-700">
-                      <span className="w-2 h-2 rounded-full bg-indigo-500" />
-                      <span>{code}</span>
+                    <div key={idx} className="flex items-center justify-between p-2 bg-white rounded-xl border border-slate-100 shadow-2xs">
+                      <div className="flex items-center gap-2 text-xs font-mono font-bold text-slate-800">
+                        <span className="w-2 h-2 rounded-full bg-indigo-500" />
+                        <span>{code}</span>
+                      </div>
+                      {!code.includes('...') && (
+                        <VisualBarcode code={code} width={100} height={18} showText={false} />
+                      )}
                     </div>
                   ))}
                 </div>
@@ -966,8 +972,13 @@ export default function LocationsPage() {
                     {selectedLocationForDetail.barcode}
                   </div>
                   <h4 className="text-base font-extrabold text-slate-900">{selectedLocationForDetail.name || 'Unnamed'}</h4>
+                  
+                  <div className="my-3 p-3 bg-white rounded-2xl border border-slate-200/80 shadow-xs flex items-center justify-center">
+                    <VisualBarcode code={selectedLocationForDetail.barcode} width={200} height={40} showText={true} />
+                  </div>
+
                   <span
-                    className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-xl text-xs font-bold border mt-3 ${
+                    className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-xl text-xs font-bold border ${
                       selectedLocationForDetail.isActive
                         ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
                         : 'bg-rose-50 text-rose-700 border-rose-200'

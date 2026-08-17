@@ -158,6 +158,52 @@ export async function getRecordFileTimeline(id: string): Promise<RecordTimelineE
   return response.data || [];
 }
 
+export async function createRecordFile(data: { boxId: string; barcode: string; title?: string; status?: 'ACTIVE' | 'ARCHIVED' | 'DESTROYED' }) {
+  const response = await fetchWithAuth('/file-records', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
+  return response.data;
+}
+
+export async function deleteRecordFile(id: string): Promise<void> {
+  await fetchWithAuth(`/file-records/${id}`, {
+    method: 'DELETE',
+  });
+}
+
+export interface BulkGenerateFilesRequest {
+  boxId: string;
+  prefix?: string;
+  startingNumber?: number;
+  quantity: number;
+  padding?: number;
+  titlePrefix?: string;
+}
+
+export async function bulkGenerateRecordFiles(data: BulkGenerateFilesRequest): Promise<any> {
+  const response = await fetchWithAuth('/file-records/bulk-generate', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
+  return response.data;
+}
+
+export async function bulkActionRecordFiles(ids: string[], action: 'ACTIVATE' | 'ARCHIVE' | 'DELETE'): Promise<any> {
+  return fetchWithAuth('/file-records/bulk-action', {
+    method: 'POST',
+    body: JSON.stringify({ ids, action }),
+  });
+}
+
+export async function bulkImportRecordFiles(boxId: string, rows: { barcode: string; label?: string; boxBarcode?: string }[]): Promise<any> {
+  const response = await fetchWithAuth('/file-records/bulk-import', {
+    method: 'POST',
+    body: JSON.stringify({ boxId, rows }),
+  });
+  return response.data;
+}
+
 export interface BarcodeLookupResult {
   entityType: 'LOCATION' | 'BOX' | 'FILE';
   entity: Record<string, unknown>;
