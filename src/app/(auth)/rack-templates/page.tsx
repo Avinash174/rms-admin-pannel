@@ -176,7 +176,13 @@ export default function RackTemplatesPage() {
     return { total: meta?.total ?? templates.length, active, inactive: (meta?.total ?? templates.length) - active };
   }, [templates, meta]);
 
-  const invalidate = () => queryClient.invalidateQueries({ queryKey: ['rack-templates'] });
+  const invalidate = () => {
+    queryClient.invalidateQueries({ queryKey: ['rack-templates'] });
+    queryClient.invalidateQueries({ queryKey: ['racks'] });
+    queryClient.invalidateQueries({ queryKey: ['racks-list'] });
+    queryClient.invalidateQueries({ queryKey: ['levels-list'] });
+    queryClient.invalidateQueries({ queryKey: ['locations'] });
+  };
 
   const createMutation = useMutation({
     mutationFn: createRackTemplate,
