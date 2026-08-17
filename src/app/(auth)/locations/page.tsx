@@ -17,6 +17,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { HierarchyFilters, useEffectiveHierarchyIds } from '@/components/masters/hierarchy-filters';
+import { PageHeaderCard } from '@/components/page-header-card';
 
 export default function LocationsPage() {
   const [page, setPage] = useState(1);
@@ -174,11 +175,12 @@ export default function LocationsPage() {
     <div className="w-full space-y-6 px-4 sm:px-6 lg:px-0 pb-16">
       
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div>
-          <h1 className="text-2xl sm:text-3xl font-bold text-slate-900 tracking-tight">Location Management</h1>
-          <p className="text-sm text-slate-500 mt-1">Manage physical folder storage locations & barcodes within shelf levels.</p>
-        </div>
+      <PageHeaderCard
+        title="Location Management"
+        description="Manage physical folder storage locations & barcodes within shelf levels."
+        badge="Warehouse Structure · Locations"
+        icon={MapPin}
+      >
         <Button 
           onClick={() => {
             setFormMode('CREATE');
@@ -191,12 +193,12 @@ export default function LocationsPage() {
             });
             setIsFormDrawerOpen(true);
           }}
-          className="bg-blue-600 hover:bg-blue-700 text-white rounded-xl shadow-md hover:shadow-blue-500/20 transition-all duration-300 self-start sm:self-center h-11 px-5"
+          className="bg-blue-600 hover:bg-blue-500 text-white rounded-xl shadow-md transition-all h-10 px-4 text-xs font-semibold"
         >
           <Plus className="w-4 h-4 mr-2 stroke-[2.5]" />
           Add Location
         </Button>
-      </div>
+      </PageHeaderCard>
 
       <HierarchyFilters
         depth="shelf"

@@ -5,7 +5,7 @@ import { useQuery } from '@tanstack/react-query';
 import { Loader2, RefreshCw, Smartphone, CheckCircle, Clock, XCircle, Wifi, WifiOff, History, BatteryCharging, AlertTriangle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-
+import { PageHeaderCard } from '@/components/page-header-card';
 import { toast } from 'sonner';
 
 interface SyncStatus {
@@ -115,20 +115,16 @@ export default function SyncMonitoringPage() {
   return (
     <div className="w-full space-y-6 p-6 pb-16">
       {/* Top Header Card */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white p-5 rounded-2xl border border-slate-200/80 shadow-sm">
-        <div className="flex items-center gap-3">
-          <div className="p-3 bg-indigo-50 rounded-xl text-indigo-600">
-            <History className="h-6 w-6" />
-          </div>
-          <div>
-            <h1 className="text-xl font-bold text-slate-900">Sync Monitor & Offline Buffer</h1>
-            <p className="text-xs text-slate-500">Real-time sync queue monitoring for mobile scanner devices & offline event logs</p>
-          </div>
-        </div>
-        <Button variant="outline" className="rounded-xl h-9 text-xs" onClick={handleRefresh} disabled={isFetching}>
-          <RefreshCw className={`w-3.5 h-3.5 mr-1.5 ${isFetching ? 'animate-spin text-indigo-600' : ''}`} /> Refresh Sync State
+      <PageHeaderCard
+        title="Sync Monitor & Offline Buffer"
+        description="Real-time sync queue monitoring for mobile scanner devices & offline event logs"
+        badge="Edge & Telemetry · Sync Engine"
+        icon={History}
+      >
+        <Button variant="outline" className="border-white/20 bg-white/10 text-white hover:bg-white/20 rounded-xl h-10 px-3.5 text-xs font-medium transition backdrop-blur-md" onClick={handleRefresh} disabled={isFetching}>
+          <RefreshCw className={`w-3.5 h-3.5 mr-1.5 ${isFetching ? 'animate-spin text-indigo-300' : ''}`} /> Refresh Sync State
         </Button>
-      </div>
+      </PageHeaderCard>
 
       {/* KPI Stats Cards Bar */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">

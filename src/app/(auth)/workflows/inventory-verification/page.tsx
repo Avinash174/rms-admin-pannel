@@ -11,6 +11,7 @@ import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
 import { columns } from './columns';
 import { getOperation, listOperations, OperationSummary } from '@/lib/api/operations';
+import { PageHeaderCard } from '@/components/page-header-card';
 
 function scanStatus(scan: {
   isExpected?: boolean;
@@ -62,20 +63,16 @@ export default function InventoryVerificationPage() {
   return (
     <div className="w-full space-y-6 p-6 pb-16">
       {/* Top Header Card */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white p-5 rounded-2xl border border-slate-200/80 shadow-sm">
-        <div className="flex items-center gap-3">
-          <div className="p-3 bg-indigo-50 rounded-xl text-indigo-600">
-            <CheckCircle2 className="h-6 w-6" />
-          </div>
-          <div>
-            <h1 className="text-xl font-bold text-slate-900">Inventory Verification & Audit Review</h1>
-            <p className="text-xs text-slate-500">Review physical warehouse inventory audits, missing file flags & foreign box scans</p>
-          </div>
-        </div>
-        <Button variant="outline" className="rounded-xl h-9 text-xs" onClick={handleRefresh} disabled={isFetching}>
-          <RefreshCw className={`w-3.5 h-3.5 mr-1.5 ${isFetching ? 'animate-spin text-indigo-600' : ''}`} /> Refresh Verification Sessions
+      <PageHeaderCard
+        title="Inventory Verification & Audit Review"
+        description="Review physical warehouse inventory audits, missing file flags & foreign box scans"
+        badge="Quality Assurance · Inventory Audit"
+        icon={CheckCircle2}
+      >
+        <Button variant="outline" className="border-white/20 bg-white/10 text-white hover:bg-white/20 rounded-xl h-10 px-3.5 text-xs font-medium transition backdrop-blur-md" onClick={handleRefresh} disabled={isFetching}>
+          <RefreshCw className={`w-3.5 h-3.5 mr-1.5 ${isFetching ? 'animate-spin text-blue-300' : ''}`} /> Refresh Verification Sessions
         </Button>
-      </div>
+      </PageHeaderCard>
 
       {/* KPI Stats Cards Bar */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">

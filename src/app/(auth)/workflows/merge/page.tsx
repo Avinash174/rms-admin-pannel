@@ -10,6 +10,8 @@ import { DataTable } from '@/components/ui/data-table';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { columns, Merge } from './columns';
+import { PageHeaderCard } from '@/components/page-header-card';
+import { GitMerge } from 'lucide-react';
 
 const mockData: Merge[] = [
   {
@@ -119,17 +121,12 @@ export default function MergePage() {
     <div className="w-full space-y-8 px-4 sm:px-6 lg:px-8 pb-16">
 
       {/* Page Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border-b border-slate-100 pb-6">
-        <div className="space-y-1.5">
-          <div className="flex items-center gap-2">
-            <h1 className="text-3xl font-extrabold text-slate-900 tracking-tight">Box Merge</h1>
-            <span className="flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-violet-50 text-violet-700 border border-violet-100">
-              <Sparkles className="w-3.5 h-3.5" /> Active Workflow
-            </span>
-          </div>
-          <p className="text-sm text-slate-500">Consolidate documents from source boxes into destination boxes with full audit trail.</p>
-        </div>
-      </div>
+      <PageHeaderCard
+        title="Box Merge"
+        description="Consolidate documents from source boxes into destination boxes with full audit trail."
+        badge="Workflow Live · Box Merge"
+        icon={GitMerge}
+      />
 
       {/* Metrics Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">

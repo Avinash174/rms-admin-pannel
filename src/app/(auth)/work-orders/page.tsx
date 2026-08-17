@@ -5,6 +5,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Sliders, Plus, Trash2, RefreshCw, X, CheckCircle, Clock, AlertTriangle, UserCheck } from 'lucide-react';
 import { fetchWithAuth } from '@/lib/api/auth';
 import { toast } from 'sonner';
+import { PageHeaderCard } from '@/components/page-header-card';
 
 export default function WorkOrdersPage() {
   const queryClient = useQueryClient();
@@ -86,23 +87,19 @@ export default function WorkOrdersPage() {
 
   return (
     <div className="space-y-6 p-6">
-      <div className="flex items-center justify-between bg-white p-5 rounded-2xl border border-slate-200/80 shadow-sm">
-        <div className="flex items-center gap-3">
-          <div className="p-3 bg-violet-50 rounded-xl text-violet-600">
-            <Sliders className="h-6 w-6" />
-          </div>
-          <div>
-            <h1 className="text-xl font-bold text-slate-900">Work Orders Master</h1>
-            <p className="text-xs text-slate-500">Create & track operational work orders for Pickups, Returns, Transfer & Destruction</p>
-          </div>
-        </div>
-        <div className="flex items-center gap-2">
-          <button onClick={handleRefresh} disabled={isFetching} className="p-2 text-slate-600 hover:bg-slate-100 rounded-xl" title="Refresh">
-            <RefreshCw className={`h-4 w-4 ${isFetching ? 'animate-spin text-violet-600' : ''}`} />
-          </button>
-          <button onClick={() => setIsOpen(true)} className="px-4 py-2 bg-violet-600 hover:bg-violet-700 text-white rounded-xl text-xs font-semibold flex items-center gap-1.5"><Plus className="h-4 w-4" /> + Create Work Order</button>
-        </div>
-      </div>
+      <PageHeaderCard
+        title="Work Orders Master"
+        description="Create & track operational work orders for Pickups, Returns, Transfer & Destruction"
+        badge="Operations & Logistics · Work Orders"
+        icon={Sliders}
+      >
+        <button onClick={handleRefresh} disabled={isFetching} className="p-2 text-slate-200 hover:text-white hover:bg-white/10 rounded-xl transition" title="Refresh">
+          <RefreshCw className={`h-4 w-4 ${isFetching ? 'animate-spin text-violet-300' : ''}`} />
+        </button>
+        <button onClick={() => setIsOpen(true)} className="px-4 py-2 bg-violet-600 hover:bg-violet-500 text-white rounded-xl text-xs font-semibold flex items-center gap-1.5 shadow-md transition">
+          <Plus className="h-4 w-4" /> Create Work Order
+        </button>
+      </PageHeaderCard>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         {workOrders.map((wo: any) => (

@@ -9,6 +9,7 @@ import {
 import { getLiveWarehouseUsers } from '@/lib/api/gps';
 import { getWarehouses } from '@/lib/api/warehouse';
 import { Button } from '@/components/ui/button';
+import { PageHeaderCard } from '@/components/page-header-card';
 
 export default function GpsPage() {
   const [selectedWarehouseId, setSelectedWarehouseId] = useState<string>('1');
@@ -45,32 +46,24 @@ export default function GpsPage() {
     <div className="w-full space-y-8 px-4 sm:px-6 lg:px-8 pb-16">
       
       {/* Page Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border-b border-slate-100 pb-6">
-        <div className="space-y-1.5">
-          <div className="flex items-center gap-2">
-            <h1 className="text-3xl font-extrabold text-slate-900 tracking-tight">GPS Telemetry</h1>
-            <span className="flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-blue-50 text-blue-700 border border-blue-100">
-              <Sparkles className="w-3.5 h-3.5 text-blue-600" /> Live Tracker
-            </span>
-          </div>
-          <p className="text-sm text-slate-500">Monitor live coordinate locations of scanning operators, track device telemetry, and audit path histories.</p>
-        </div>
-        
-        {/* Warehouse Selector */}
-        <div className="flex flex-col gap-1.5 self-start sm:self-center">
-          <select
-            value={selectedWarehouseId}
-            onChange={(e) => setSelectedWarehouseId(e.target.value)}
-            className="h-11 px-4 rounded-xl border border-slate-200 focus:ring-2 focus:ring-blue-500/10 focus:border-blue-500 bg-white text-xs font-bold text-slate-800 shadow-sm"
-          >
-            {warehouses.map((wh) => (
-              <option key={wh.id} value={wh.id}>
-                {wh.name} ({wh.code})
-              </option>
-            ))}
-          </select>
-        </div>
-      </div>
+      <PageHeaderCard
+        title="GPS Telemetry"
+        description="Monitor live coordinate locations of scanning operators, track device telemetry, and audit path histories."
+        badge="Hardware & Edge · Telemetry"
+        icon={Map}
+      >
+        <select
+          value={selectedWarehouseId}
+          onChange={(e) => setSelectedWarehouseId(e.target.value)}
+          className="h-10 px-3 rounded-xl border border-white/20 bg-white/10 text-white backdrop-blur-md text-xs font-bold shadow-md"
+        >
+          {warehouses.map((w) => (
+            <option key={w.id} value={w.id} className="bg-slate-900 text-white">
+              {w.name} ({w.code})
+            </option>
+          ))}
+        </select>
+      </PageHeaderCard>
 
       {gpsError ? (
         <div className="flex flex-col items-center justify-center h-80 space-y-4 bg-white rounded-2xl border border-slate-100 shadow-sm">

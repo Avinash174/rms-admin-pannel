@@ -12,6 +12,7 @@ import { useForm } from 'react-hook-form';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { PageHeaderCard } from '@/components/page-header-card';
 
 export default function ReasonCodesPage() {
   const [isFormDrawerOpen, setIsFormDrawerOpen] = useState(false);
@@ -95,27 +96,23 @@ export default function ReasonCodesPage() {
     <div className="w-full space-y-6 px-4 sm:px-6 lg:px-0 pb-16">
       
       {/* Page Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div className="space-y-1.5">
-          <div className="flex items-center gap-2">
-            <h1 className="text-2xl sm:text-3xl font-bold text-slate-900 tracking-tight">Reason Codes</h1>
-            <span className="flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-blue-50 text-blue-700 border border-blue-100">
-              <Sparkles className="w-3.5 h-3.5 text-blue-600" /> System Settings
-            </span>
-          </div>
-          <p className="text-sm text-slate-500">Configure lookup codes for manual overrides, load rejections, and inventory adjustments.</p>
-        </div>
+      <PageHeaderCard
+        title="Reason Codes"
+        description="Configure lookup codes for manual overrides, load rejections, and inventory adjustments."
+        badge="Asset Standards · Reason Codes"
+        icon={Tag}
+      >
         <Button
           onClick={() => {
             resetForm({ code: '', description: '', category: 'REJECTION' });
             setIsFormDrawerOpen(true);
           }}
-          className="bg-blue-600 hover:bg-blue-700 text-white rounded-xl shadow-md hover:shadow-blue-500/20 transition-all duration-300 self-start sm:self-center h-11 px-5"
+          className="bg-blue-600 hover:bg-blue-500 text-white rounded-xl shadow-md transition-all h-10 px-4 text-xs font-semibold"
         >
           <Plus className="w-4 h-4 mr-2 stroke-[2.5]" />
           Create Reason Code
         </Button>
-      </div>
+      </PageHeaderCard>
 
       {/* Metrics Section */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">

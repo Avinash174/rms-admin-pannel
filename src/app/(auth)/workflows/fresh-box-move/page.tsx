@@ -13,6 +13,7 @@ import { Input } from '@/components/ui/input';
 import { columns } from './columns';
 import { startFreshBoxMoveSession, submitFreshBoxMoveScan, endFreshBoxMoveSession, getFreshBoxMoveSessionDetails, listFreshBoxMoveSessions } from '@/lib/api/freshBoxMove';
 import { FreshBoxMoveSession } from '@/lib/types/freshBoxMove';
+import { PageHeaderCard } from '@/components/page-header-card';
 
 interface FreshBoxMove {
   id: string;
@@ -152,17 +153,12 @@ export default function FreshBoxMovePage() {
     <div className="w-full space-y-8 px-4 sm:px-6 lg:px-8 pb-16">
       
       {/* Page Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border-b border-slate-100 pb-6">
-        <div className="space-y-1.5">
-          <div className="flex items-center gap-2">
-            <h1 className="text-3xl font-extrabold text-slate-900 tracking-tight">Fresh Box Moving</h1>
-            <span className="flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-blue-50 text-blue-700 border border-blue-100">
-              <Sparkles className="w-3.5 h-3.5 text-blue-600" /> Active Workflow
-            </span>
-          </div>
-          <p className="text-sm text-slate-500">Monitor and track barcodes, check source shelves, audit assigned operators, and authorize box relocations.</p>
-        </div>
-      </div>
+      <PageHeaderCard
+        title="Fresh Box Moving"
+        description="Monitor and track barcodes, check source shelves, audit assigned operators, and authorize box relocations."
+        badge="Workflow Live · Fresh Box Move"
+        icon={Package}
+      />
 
       {/* Metrics Board (Standardized Cards) */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">

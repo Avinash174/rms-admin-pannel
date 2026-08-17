@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { Activity, Plus, RefreshCw, CheckCircle2, ShieldAlert, PackageCheck, Truck, Flame, Archive, AlertCircle, Trash2, X } from 'lucide-react';
 import { toast } from 'sonner';
+import { PageHeaderCard } from '@/components/page-header-card';
 
 interface StatusItem {
   id: string;
@@ -54,35 +55,29 @@ export default function StatusMasterPage() {
 
   return (
     <div className="space-y-6 p-6">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white p-5 rounded-2xl border border-slate-200/80 shadow-sm">
-        <div className="flex items-center gap-3">
-          <div className="p-3 bg-indigo-50 rounded-xl text-indigo-600">
-            <Activity className="h-6 w-6" />
-          </div>
-          <div>
-            <h1 className="text-xl font-bold text-slate-900">Status Master</h1>
-            <p className="text-xs text-slate-500">Configure system-wide inventory, box, file & location lifecycle status codes</p>
-          </div>
-        </div>
-        <div className="flex items-center gap-2">
-          <button onClick={() => toast.success("Status master refreshed")} className="p-2 text-slate-600 hover:bg-slate-100 rounded-xl" title="Refresh">
-            <RefreshCw className="h-4 w-4" />
-          </button>
-          <select
-            value={filterCategory}
-            onChange={(e) => setFilterCategory(e.target.value)}
-            className="h-9 border rounded-xl text-xs font-semibold px-3 bg-slate-50 text-slate-700"
-          >
-            <option value="ALL">All Categories</option>
-            <option value="INVENTORY">Inventory Statuses</option>
-            <option value="BOX">Box Statuses</option>
-            <option value="FILE">File Statuses</option>
-          </select>
-          <button onClick={() => setIsOpen(true)} className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-semibold flex items-center gap-1.5 shadow-xs">
-            <Plus className="h-4 w-4" /> + Add Status Code
-          </button>
-        </div>
-      </div>
+      <PageHeaderCard
+        title="Status Master"
+        description="Configure system-wide inventory, box, file & location lifecycle status codes"
+        badge="Asset Standards · Status Master"
+        icon={Activity}
+      >
+        <button onClick={() => toast.success("Status master refreshed")} className="p-2 text-slate-200 hover:text-white hover:bg-white/10 rounded-xl transition" title="Refresh">
+          <RefreshCw className="h-4 w-4" />
+        </button>
+        <select
+          value={filterCategory}
+          onChange={(e) => setFilterCategory(e.target.value)}
+          className="h-10 border border-white/20 rounded-xl text-xs font-semibold px-3 bg-white/10 text-white backdrop-blur-md"
+        >
+          <option value="ALL" className="bg-slate-900 text-white">All Categories</option>
+          <option value="INVENTORY" className="bg-slate-900 text-white">Inventory Statuses</option>
+          <option value="BOX" className="bg-slate-900 text-white">Box Statuses</option>
+          <option value="FILE" className="bg-slate-900 text-white">File Statuses</option>
+        </select>
+        <button onClick={() => setIsOpen(true)} className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-xs font-semibold flex items-center gap-1.5 shadow-md transition">
+          <Plus className="h-4 w-4" /> Add Status Code
+        </button>
+      </PageHeaderCard>
 
       {/* Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">

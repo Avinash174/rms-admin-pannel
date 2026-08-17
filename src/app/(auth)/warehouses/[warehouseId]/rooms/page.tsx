@@ -18,6 +18,8 @@ import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { useParams } from 'next/navigation';
 import { getWarehouses } from '@/lib/api/warehouse';
+import { PageHeaderCard } from '@/components/page-header-card';
+import { Layers } from 'lucide-react';
 
 export default function RoomsPage() {
   const params = useParams();
@@ -182,11 +184,12 @@ export default function RoomsPage() {
     <div className="w-full space-y-6 px-4 sm:px-6 lg:px-0 pb-16">
       
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div>
-          <h1 className="text-2xl sm:text-3xl font-bold text-slate-900 tracking-tight">Room Management</h1>
-          <p className="text-sm text-slate-500 mt-1">Manage physical storage room structures within warehouses.</p>
-        </div>
+      <PageHeaderCard
+        title="Room Management"
+        description="Manage physical storage room structures within warehouses."
+        badge="Warehouse Structure · Rooms"
+        icon={Layers}
+      >
         <Button 
           onClick={() => {
             setFormMode('CREATE');
@@ -201,12 +204,12 @@ export default function RoomsPage() {
             });
             setIsFormDrawerOpen(true);
           }}
-          className="bg-blue-600 hover:bg-blue-700 text-white rounded-xl shadow-md hover:shadow-blue-500/20 transition-all duration-300 self-start sm:self-center h-11 px-5"
+          className="bg-blue-600 hover:bg-blue-500 text-white rounded-xl shadow-md transition-all h-10 px-4 text-xs font-semibold"
         >
           <Plus className="w-4 h-4 mr-2 stroke-[2.5]" />
           Add Room
         </Button>
-      </div>
+      </PageHeaderCard>
 
       {/* Metrics Section */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">

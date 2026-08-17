@@ -15,6 +15,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { PageHeaderCard } from '@/components/page-header-card';
+import { FileCheck } from 'lucide-react';
 
 export default function RefilePage() {
   const [page, setPage] = useState(1);
@@ -72,12 +74,12 @@ export default function RefilePage() {
 
   return (
     <div className="space-y-6 px-4 sm:px-6 lg:px-0 pb-12">
-      <div>
-        <h1 className="text-2xl font-bold text-slate-900">Refile Review</h1>
-        <p className="text-sm text-slate-500 mt-1">
-          Review refile operations. Rejected entries indicate the operator scanned the wrong location or box.
-        </p>
-      </div>
+      <PageHeaderCard
+        title="Refile Review"
+        description="Review refile operations. Rejected entries indicate the operator scanned the wrong location or box."
+        badge="Workflow Live · Refile"
+        icon={FileCheck}
+      />
 
       <div className="flex flex-col lg:flex-row gap-3 bg-white p-4 rounded-2xl border">
         <div className="relative flex-1 max-w-sm">

@@ -5,6 +5,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { ArrowRightLeft, ShieldAlert, CheckCircle2, FileText, Upload, RefreshCw, X, History } from 'lucide-react';
 import { fetchWithAuth } from '@/lib/api/auth';
 import { toast } from 'sonner';
+import { PageHeaderCard } from '@/components/page-header-card';
 
 export default function InventoryMovementsPage() {
   const queryClient = useQueryClient();
@@ -55,45 +56,37 @@ export default function InventoryMovementsPage() {
   return (
     <div className="space-y-6 p-6">
       {/* Action Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white p-5 rounded-2xl border border-slate-200/80 shadow-sm">
-        <div className="flex items-center gap-3">
-          <div className="p-3 bg-amber-50 rounded-xl text-amber-600">
-            <ArrowRightLeft className="h-6 w-6" />
-          </div>
-          <div>
-            <h1 className="text-xl font-bold text-slate-900">Inventory Movement & Destruction</h1>
-            <p className="text-xs text-slate-500">Record Temporary Out, Returns, Permanent Out & Document Destruction with proof upload</p>
-          </div>
-        </div>
-
-        {/* Action Buttons */}
-        <div className="flex flex-wrap items-center gap-2">
-          <button
-            onClick={() => setActiveModal('TEMP_OUT')}
-            className="px-3.5 py-2 bg-amber-500 hover:bg-amber-600 text-white rounded-xl text-xs font-semibold shadow-xs"
-          >
-            ⚡ Temporary Out
-          </button>
-          <button
-            onClick={() => setActiveModal('RETURN')}
-            className="px-3.5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-semibold shadow-xs"
-          >
-            ↩ Return Item
-          </button>
-          <button
-            onClick={() => setActiveModal('PERM_OUT')}
-            className="px-3.5 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-semibold shadow-xs"
-          >
-            📦 Permanent Out
-          </button>
-          <button
-            onClick={() => setActiveModal('DESTROY')}
-            className="px-3.5 py-2 bg-rose-600 hover:bg-rose-700 text-white rounded-xl text-xs font-semibold shadow-xs"
-          >
-            🔥 Destroy Record
-          </button>
-        </div>
-      </div>
+      <PageHeaderCard
+        title="Inventory Movement & Destruction"
+        description="Record Temporary Out, Returns, Permanent Out & Document Destruction with proof upload"
+        badge="Operations & Logistics · Movements"
+        icon={ArrowRightLeft}
+      >
+        <button
+          onClick={() => setActiveModal('TEMP_OUT')}
+          className="px-3.5 py-2 bg-amber-500 hover:bg-amber-400 text-white rounded-xl text-xs font-semibold shadow-md transition"
+        >
+          ⚡ Temporary Out
+        </button>
+        <button
+          onClick={() => setActiveModal('RETURN')}
+          className="px-3.5 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-semibold shadow-md transition"
+        >
+          ↩ Return Item
+        </button>
+        <button
+          onClick={() => setActiveModal('PERM_OUT')}
+          className="px-3.5 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-xs font-semibold shadow-md transition"
+        >
+          📦 Permanent Out
+        </button>
+        <button
+          onClick={() => setActiveModal('DESTROY')}
+          className="px-3.5 py-2 bg-rose-600 hover:bg-rose-500 text-white rounded-xl text-xs font-semibold shadow-md transition"
+        >
+          🔥 Destroy Record
+        </button>
+      </PageHeaderCard>
 
       {/* Movement History Log */}
       <div className="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-sm space-y-4">

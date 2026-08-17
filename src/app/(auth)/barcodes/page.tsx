@@ -11,7 +11,9 @@ import {
   CheckCircle2,
   AlertCircle,
   Database,
+  QrCode,
 } from 'lucide-react';
+import { PageHeaderCard } from '@/components/page-header-card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
@@ -152,12 +154,12 @@ export default function BarcodesPage() {
 
   return (
     <div className="space-y-6 px-4 sm:px-6 lg:px-0 pb-12">
-      <div>
-        <h1 className="text-2xl font-bold text-slate-900">Barcode Management</h1>
-        <p className="text-sm text-slate-500 mt-1">
-          Import records, upload segregation plans, and look up barcodes.
-        </p>
-      </div>
+      <PageHeaderCard
+        title="Barcode Management"
+        description="Import records, upload segregation plans, and look up barcodes."
+        badge="Asset Intelligence · Barcodes"
+        icon={QrCode}
+      />
 
       <div className="flex gap-2 border-b border-slate-200">
         {tabs.map((t) => (

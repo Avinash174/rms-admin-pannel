@@ -2,12 +2,13 @@
 
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { Loader2, AlertCircle, RefreshCw, Search, X } from 'lucide-react';
+import { Loader2, AlertCircle, RefreshCw, Search, X, ArrowRightLeft } from 'lucide-react';
 import { DataTable } from '@/components/ui/data-table';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { columns } from './columns';
 import { getOperation, listOperations, OperationSummary } from '@/lib/api/operations';
+import { PageHeaderCard } from '@/components/page-header-card';
 
 export default function TransferPage() {
   const [page, setPage] = useState(1);
@@ -59,12 +60,12 @@ export default function TransferPage() {
 
   return (
     <div className="space-y-6 px-4 sm:px-6 lg:px-0 pb-12">
-      <div>
-        <h1 className="text-2xl font-bold text-slate-900">Transfer / Segregation Review</h1>
-        <p className="text-sm text-slate-500 mt-1">
-          Review segregation sessions — files moved out of old boxes into new boxes.
-        </p>
-      </div>
+      <PageHeaderCard
+        title="Transfer / Segregation Review"
+        description="Review segregation sessions — files moved out of old boxes into new boxes."
+        badge="Workflow Live · Transfer & Segregation"
+        icon={ArrowRightLeft}
+      />
 
       <div className="bg-white p-4 rounded-2xl border max-w-sm">
         <div className="relative">
