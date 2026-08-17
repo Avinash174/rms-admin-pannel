@@ -1,9 +1,14 @@
 "use client";
 
 import { useState } from 'react';
-import { Building2, ChevronDown, Loader2 } from 'lucide-react';
+import { Building2, ChevronDown, Loader2, User } from 'lucide-react';
 import { useAuth } from '@/contexts/auth-context';
-import { isSuperAdmin } from '@/lib/permissions';
+import {
+  canSwitchBranch,
+  canSwitchCompany,
+  canSwitchWarehouse,
+  isSuperAdmin,
+} from '@/lib/permissions';
 
 export function SessionScopeHeader() {
   const {
@@ -22,9 +27,11 @@ export function SessionScopeHeader() {
   const [switching, setSwitching] = useState<string | null>(null);
   const [error, setError] = useState('');
 
-  const canSwitchCompany = isSuperAdmin(user) && availableCompanies.length > 1;
-  const canSwitchBranch = availableBranches.length > 1;
-  const canSwitchWarehouse = availableWarehouses.length > 1;
+  if (!user || isSuperAdmin(user) || !company || !warehouse) return null;
+
+  const showCompanySwitch = canSwitchCompany(user, availableCompanies.length);
+  const showBranchSwitch = canSwitchBranch(user, availableBranches.length);
+  const showWarehouseSwitch = canSwitchWarehouse(user, availableWarehouses.length);
 
   const handleSwitch = async (type: 'company' | 'branch' | 'warehouse', id: string) => {
     setError('');
@@ -40,65 +47,115 @@ export function SessionScopeHeader() {
     }
   };
 
-  if (!user || !company || !warehouse) return null;
+  const roleLabel = user.roleName?.replaceAll('_', ' ') || 'User';
+  const displayName =
+    user.fullName ||
+    `${user.firstName}${user.lastName ? ` ${user.lastName}` : ''}`.trim();
 
   return (
-    <div className="hidden lg:flex flex-col min-w-0 max-w-md">
-      <div className="flex items-center gap-2 text-sm font-semibold text-slate-900 truncate">
-        <Building2 className="w-4 h-4 text-blue-600 shrink-0" />
-        {canSwitchCompany ? (
-          <select
-            value={company.id}
-            disabled={switching === 'company'}
-            onChange={(e) => handleSwitch('company', e.target.value)}
-            className="bg-transparent border-none text-sm font-semibold text-slate-900 focus:outline-none focus:ring-0 cursor-pointer truncate max-w-[180px]"
-          >
-            {availableCompanies.map((c) => (
-              <option key={c.id} value={c.id}>{c.name}</option>
-            ))}
-          </select>
-        ) : (
-          <span className="truncate">{company.name}</span>
-        )}
-        {switching === 'company' && <Loader2 className="w-3 h-3 animate-spin text-slate-400" />}
-      </div>
+    <div className="hidden lg:flex flex-col min-w-0 flex-1">
+      <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm">
+        <ScopeRow label="Company">
+          {showCompanySwitch ? (
+            <ScopeSelect
+              value={company.id}
+              disabled={switching === 'company'}
+              onChange={(id) => handleSwitch('company', id)}
+              options={availableCompanies}
+            />
+          ) : (
+            <span className="font-semibold text-slate-900 truncate max-w-[160px]">{company.name}</span>
+          )}
+          {switching === 'company' && <Loader2 className="w-3 h-3 animate-spin text-slate-400" />}
+        </ScopeRow>
 
-      <div className="flex items-center gap-2 text-xs text-slate-500 mt-0.5">
-        {canSwitchBranch && branch ? (
-          <select
-            value={branch.id}
-            disabled={switching === 'branch'}
-            onChange={(e) => handleSwitch('branch', e.target.value)}
-            className="bg-transparent border-none text-xs text-slate-500 focus:outline-none cursor-pointer truncate max-w-[140px]"
-          >
-            {availableBranches.map((b) => (
-              <option key={b.id} value={b.id}>{b.name}</option>
-            ))}
-          </select>
-        ) : (
-          <span className="truncate">{branch?.name ?? '—'}</span>
-        )}
+        <ChevronDown className="w-3 h-3 text-slate-300 rotate-[-90deg] shrink-0" />
 
-        <span className="text-slate-300">·</span>
+        <ScopeRow label="Branch">
+          {showBranchSwitch && branch ? (
+            <ScopeSelect
+              value={branch.id}
+              disabled={switching === 'branch'}
+              onChange={(id) => handleSwitch('branch', id)}
+              options={availableBranches}
+            />
+          ) : (
+            <span className="text-slate-600 truncate max-w-[140px]">{branch?.name ?? '—'}</span>
+          )}
+          {switching === 'branch' && <Loader2 className="w-3 h-3 animate-spin text-slate-400" />}
+        </ScopeRow>
 
-        {canSwitchWarehouse ? (
-          <select
-            value={warehouse.id}
-            disabled={switching === 'warehouse'}
-            onChange={(e) => handleSwitch('warehouse', e.target.value)}
-            className="bg-transparent border-none text-xs text-slate-500 focus:outline-none cursor-pointer truncate max-w-[140px]"
-          >
-            {availableWarehouses.map((w) => (
-              <option key={w.id} value={w.id}>{w.name}</option>
-            ))}
-          </select>
-        ) : (
-          <span className="truncate">{warehouse.name}</span>
-        )}
+        <ChevronDown className="w-3 h-3 text-slate-300 rotate-[-90deg] shrink-0" />
+
+        <ScopeRow label="Warehouse">
+          {showWarehouseSwitch ? (
+            <ScopeSelect
+              value={warehouse.id}
+              disabled={switching === 'warehouse'}
+              onChange={(id) => handleSwitch('warehouse', id)}
+              options={availableWarehouses}
+            />
+          ) : (
+            <span className="text-slate-600 truncate max-w-[140px]">{warehouse.name}</span>
+          )}
+          {switching === 'warehouse' && <Loader2 className="w-3 h-3 animate-spin text-slate-400" />}
+        </ScopeRow>
+
+        <ChevronDown className="w-3 h-3 text-slate-300 rotate-[-90deg] shrink-0" />
+
+        <ScopeRow label="User">
+          <span className="inline-flex items-center gap-1 text-slate-700 truncate max-w-[140px]">
+            <User className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+            {displayName}
+          </span>
+        </ScopeRow>
+
+        <ChevronDown className="w-3 h-3 text-slate-300 rotate-[-90deg] shrink-0" />
+
+        <ScopeRow label="Role">
+          <span className="text-xs font-semibold uppercase tracking-wide text-blue-600">{roleLabel}</span>
+        </ScopeRow>
       </div>
 
       {error && <p className="text-xs text-red-500 mt-1">{error}</p>}
     </div>
+  );
+}
+
+function ScopeRow({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <div className="flex items-center gap-1.5 min-w-0">
+      <Building2 className="w-3.5 h-3.5 text-blue-600 shrink-0 hidden xl:block" />
+      <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 shrink-0">{label}</span>
+      {children}
+    </div>
+  );
+}
+
+function ScopeSelect({
+  value,
+  disabled,
+  onChange,
+  options,
+}: {
+  value: string;
+  disabled?: boolean;
+  onChange: (id: string) => void;
+  options: Array<{ id: string; name: string }>;
+}) {
+  return (
+    <select
+      value={value}
+      disabled={disabled}
+      onChange={(e) => onChange(e.target.value)}
+      className="bg-transparent border-none text-sm font-medium text-slate-800 focus:outline-none focus:ring-0 cursor-pointer truncate max-w-[140px]"
+    >
+      {options.map((opt) => (
+        <option key={opt.id} value={opt.id}>
+          {opt.name}
+        </option>
+      ))}
+    </select>
   );
 }
 
@@ -118,9 +175,11 @@ export function SessionScopeMobile() {
 
   const [switching, setSwitching] = useState(false);
 
-  if (!company || !warehouse) return null;
+  if (!company || !warehouse || !user || isSuperAdmin(user)) return null;
 
-  const canSwitchCompany = isSuperAdmin(user) && availableCompanies.length > 1;
+  const showCompanySwitch = canSwitchCompany(user, availableCompanies.length);
+  const showBranchSwitch = canSwitchBranch(user, availableBranches.length);
+  const showWarehouseSwitch = canSwitchWarehouse(user, availableWarehouses.length);
 
   const handleChange = async (e: React.ChangeEvent<HTMLSelectElement>) => {
     const { name, value } = e.target;
@@ -136,8 +195,13 @@ export function SessionScopeMobile() {
 
   return (
     <div className="lg:hidden px-4 py-3 bg-slate-50 border-b border-slate-200 space-y-2">
-      <p className="text-xs font-semibold text-slate-700 truncate">{company.name}</p>
-      {canSwitchCompany && (
+      <p className="text-xs font-semibold text-slate-700 truncate">
+        {company.name} · {branch?.name ?? '—'} · {warehouse.name}
+      </p>
+      <p className="text-[10px] text-slate-500 uppercase tracking-wide">
+        {user.fullName || user.email} · {user.roleName?.replaceAll('_', ' ')}
+      </p>
+      {showCompanySwitch && (
         <select
           name="company"
           value={company.id}
@@ -146,11 +210,13 @@ export function SessionScopeMobile() {
           className="w-full text-xs border border-slate-200 rounded-lg px-2 py-1.5 bg-white"
         >
           {availableCompanies.map((c) => (
-            <option key={c.id} value={c.id}>{c.name}</option>
+            <option key={c.id} value={c.id}>
+              {c.name}
+            </option>
           ))}
         </select>
       )}
-      {availableBranches.length > 1 && branch && (
+      {showBranchSwitch && branch && (
         <select
           name="branch"
           value={branch.id}
@@ -159,11 +225,13 @@ export function SessionScopeMobile() {
           className="w-full text-xs border border-slate-200 rounded-lg px-2 py-1.5 bg-white"
         >
           {availableBranches.map((b) => (
-            <option key={b.id} value={b.id}>{b.name}</option>
+            <option key={b.id} value={b.id}>
+              {b.name}
+            </option>
           ))}
         </select>
       )}
-      {availableWarehouses.length > 1 && (
+      {showWarehouseSwitch && (
         <select
           name="warehouse"
           value={warehouse.id}
@@ -172,14 +240,11 @@ export function SessionScopeMobile() {
           className="w-full text-xs border border-slate-200 rounded-lg px-2 py-1.5 bg-white"
         >
           {availableWarehouses.map((w) => (
-            <option key={w.id} value={w.id}>{w.name}</option>
+            <option key={w.id} value={w.id}>
+              {w.name}
+            </option>
           ))}
         </select>
-      )}
-      {!canSwitchCompany && availableBranches.length <= 1 && availableWarehouses.length <= 1 && (
-        <p className="text-xs text-slate-500">
-          {branch?.name ?? '—'} · {warehouse.name}
-        </p>
       )}
     </div>
   );

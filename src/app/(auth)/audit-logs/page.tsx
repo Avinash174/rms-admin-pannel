@@ -15,6 +15,7 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { PageHeaderCard } from "@/components/page-header-card";
 import { toast } from "sonner";
 import { DataTable } from "@/components/ui/data-table";
 import { columns } from "./columns";
@@ -110,21 +111,18 @@ export default function AuditLogsPage() {
 
   return (
     <div className="space-y-6 p-6 pb-16">
-      {/* Header Bar */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white p-5 rounded-2xl border border-slate-200/80 shadow-sm">
-        <div className="flex items-center gap-3">
-          <div className="p-3 bg-violet-50 rounded-xl text-violet-600">
-            <ScrollText className="h-6 w-6" />
-          </div>
-          <div>
-            <h1 className="text-xl font-bold text-slate-900">Activity & Audit Logs</h1>
-            <p className="text-xs text-slate-500">Immutable audit tracking for system actions, location moves & barcode scans</p>
-          </div>
-        </div>
-        <Button variant="outline" className="rounded-xl h-9 text-xs" onClick={handleRefresh} disabled={isFetching}>
-          <RefreshCw className={`w-3.5 h-3.5 mr-1.5 ${isFetching ? 'animate-spin text-violet-600' : ''}`} /> Refresh Logs
+      {/* Header Hero Banner */}
+      <PageHeaderCard
+        title="Activity & Audit Logs"
+        description="Immutable audit tracking for system actions, location moves & barcode scans."
+        badge="System Live · Telemetry & Security"
+        icon={ScrollText}
+        showAccessScope={true}
+      >
+        <Button variant="outline" className="rounded-xl h-10 text-xs bg-white/10 text-white border-white/15 hover:bg-white/20 backdrop-blur-md font-semibold" onClick={handleRefresh} disabled={isFetching}>
+          <RefreshCw className={`w-3.5 h-3.5 mr-1.5 ${isFetching ? 'animate-spin text-blue-300' : ''}`} /> Refresh Logs
         </Button>
-      </div>
+      </PageHeaderCard>
 
       {/* KPI Stats Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">

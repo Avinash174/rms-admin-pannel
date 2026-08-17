@@ -9,6 +9,12 @@ export interface EntityRef {
   code?: string;
 }
 
+export interface RoleRef {
+  id: string;
+  name: string;
+  label?: string;
+}
+
 export interface SessionUser {
   id: string;
   email: string;
@@ -50,6 +56,7 @@ export interface LoginResponse {
   refreshToken: string;
   expiresAt?: string;
   user: SessionUser;
+  role?: RoleRef;
   company?: EntityRef;
   branch?: EntityRef | null;
   warehouse?: EntityRef;
@@ -57,6 +64,12 @@ export interface LoginResponse {
   availableCompanies?: EntityRef[];
   availableBranches?: EntityRef[];
   availableWarehouses?: EntityRef[];
+  companies?: EntityRef[];
+  branches?: EntityRef[];
+  warehouses?: EntityRef[];
+  currentCompany?: EntityRef;
+  currentBranch?: EntityRef | null;
+  currentWarehouse?: EntityRef;
 }
 
 export interface RefreshTokenRequest {

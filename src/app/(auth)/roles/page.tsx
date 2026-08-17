@@ -9,6 +9,7 @@ import {
 } from 'lucide-react';
 import { getRoles, getPermissions, createRole, deleteRole, assignPermissions } from '@/lib/api/role';
 import { toast } from 'sonner';
+import { PageHeaderCard } from '@/components/page-header-card';
 
 const CATEGORY_META: Record<string, { label: string; color: string; bg: string }> = {
   dashboard:  { label: 'Dashboard',   color: 'text-violet-700',  bg: 'bg-violet-50 border-violet-200'   },
@@ -130,21 +131,22 @@ export default function RolesPage() {
 
   return (
     <div className="h-full flex flex-col gap-0 p-6" style={{ minHeight: 0 }}>
-      {/* Header */}
-      <div className="flex items-center justify-between mb-5">
-        <div className="flex items-center gap-3">
-          <div className="p-2.5 rounded-xl shadow-md" style={{ background: 'linear-gradient(135deg, #7c3aed, #4f46e5)' }}>
-            <Shield className="h-5 w-5 text-white" />
-          </div>
-          <div>
-            <h1 className="text-xl font-bold text-slate-900">Roles & Permissions</h1>
-            <p className="text-xs text-slate-500 mt-0.5">Manage access control for your organisation</p>
-          </div>
-        </div>
-        <button onClick={() => setShowCreate(true)} className="flex items-center gap-1.5 px-4 py-2 text-white text-xs font-semibold rounded-xl transition-colors" style={{ background: '#7c3aed' }}
-          onMouseEnter={e => (e.currentTarget.style.background = '#6d28d9')} onMouseLeave={e => (e.currentTarget.style.background = '#7c3aed')}>
-          <Plus className="h-3.5 w-3.5" /> Create Role
-        </button>
+      {/* Header Hero Banner */}
+      <div className="mb-6">
+        <PageHeaderCard
+          title="Roles & Permissions Master"
+          description="Manage role-based access control, security policies, and granular system permissions."
+          badge="System Live · RBAC Security"
+          icon={Shield}
+          showAccessScope={true}
+        >
+          <button
+            onClick={() => setShowCreate(true)}
+            className="flex items-center gap-2 bg-blue-600 hover:bg-blue-500 text-white px-4 py-2.5 text-xs font-semibold rounded-xl shadow-lg shadow-blue-600/30 transition-all"
+          >
+            <Plus className="h-4 w-4" /> Create Role
+          </button>
+        </PageHeaderCard>
       </div>
 
       {isLoading ? (

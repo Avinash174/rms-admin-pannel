@@ -6,6 +6,7 @@ import { Loader2 } from 'lucide-react';
 import { useAuth } from '@/contexts/auth-context';
 import { isAuthenticated } from '@/lib/api/auth';
 import { hasRouteAccess } from '@/lib/route-permissions';
+import { clearPersistedSession } from '@/lib/session';
 
 export function AuthGuard({ children }: { children: React.ReactNode }) {
   const router = useRouter();
@@ -13,6 +14,12 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
   const { isLoading, user, session } = useAuth();
 
   useEffect(() => {
+    if (!isLoading && !user && isAuthenticated()) {
+      clearPersistedSession();
+      router.replace('/login');
+      return;
+    }
+
     if (!isLoading && !user && !isAuthenticated()) {
       router.replace('/login');
       return;

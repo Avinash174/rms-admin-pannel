@@ -52,7 +52,7 @@ export function HierarchyFilters({
 
   const { data: racksData } = useQuery({
     queryKey: ["racks-all", effectiveRoomId],
-    queryFn: () => getRacks(effectiveRoomId),
+    queryFn: () => getRacks({ roomId: effectiveRoomId }),
     enabled: depth !== "room" && !!effectiveRoomId
   });
 
@@ -167,7 +167,7 @@ export function useEffectiveHierarchyIds(
 
   const { data: racksData } = useQuery({
     queryKey: ["racks-all", effectiveRoomId],
-    queryFn: () => getRacks(effectiveRoomId),
+    queryFn: () => getRacks({ roomId: effectiveRoomId }),
     enabled: depth !== "room" && !!effectiveRoomId
   });
   const racks = racksData?.data || [];

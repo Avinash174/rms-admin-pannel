@@ -5,6 +5,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Users, Plus, Trash2, RefreshCw, X, Mail, Phone, MapPin } from 'lucide-react';
 import { fetchWithAuth } from '@/lib/api/auth';
 import { toast } from 'sonner';
+import { PageHeaderCard } from '@/components/page-header-card';
 
 export default function VendorsPage() {
   const queryClient = useQueryClient();
@@ -45,23 +46,21 @@ export default function VendorsPage() {
 
   return (
     <div className="space-y-6 p-6">
-      <div className="flex items-center justify-between bg-white p-5 rounded-2xl border border-slate-200/80 shadow-sm">
-        <div className="flex items-center gap-3">
-          <div className="p-3 bg-emerald-50 rounded-xl text-emerald-600">
-            <Users className="h-6 w-6" />
-          </div>
-          <div>
-            <h1 className="text-xl font-bold text-slate-900">Vendors Master</h1>
-            <p className="text-xs text-slate-500">Manage external suppliers, logistics vendors & archiving service providers</p>
-          </div>
-        </div>
-        <div className="flex items-center gap-2">
-          <button onClick={handleRefresh} disabled={isFetching} className="p-2 text-slate-600 hover:bg-slate-100 rounded-xl" title="Refresh">
-            <RefreshCw className={`h-4 w-4 ${isFetching ? 'animate-spin text-emerald-600' : ''}`} />
-          </button>
-          <button onClick={() => setIsOpen(true)} className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-semibold flex items-center gap-1.5"><Plus className="h-4 w-4" /> + Add Vendor</button>
-        </div>
-      </div>
+      {/* Header Hero Banner */}
+      <PageHeaderCard
+        title="Vendors Master"
+        description="Manage external suppliers, logistics vendors & archiving service providers."
+        badge="System Live · Vendor Registry"
+        icon={Users}
+        showAccessScope={true}
+      >
+        <button onClick={handleRefresh} disabled={isFetching} className="p-2.5 bg-white/10 hover:bg-white/20 text-white border border-white/15 backdrop-blur-md rounded-xl transition-all" title="Refresh">
+          <RefreshCw className={`h-4 w-4 ${isFetching ? 'animate-spin text-blue-300' : ''}`} />
+        </button>
+        <button onClick={() => setIsOpen(true)} className="flex items-center gap-2 bg-blue-600 hover:bg-blue-500 text-white px-4 py-2.5 text-xs font-semibold rounded-xl shadow-lg shadow-blue-600/30 transition-all">
+          <Plus className="h-4 w-4" /> Add Vendor
+        </button>
+      </PageHeaderCard>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         {vendors.map((v: any) => (

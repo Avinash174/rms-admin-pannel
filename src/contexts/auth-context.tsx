@@ -1,6 +1,7 @@
 "use client";
 
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import {
   login as apiLogin,
   logout as apiLogout,
@@ -28,7 +29,7 @@ interface AuthContextType {
   availableWarehouses: EntityRef[];
   isLoading: boolean;
   isAuthenticated: boolean;
-  login: (data: LoginRequest) => Promise<void>;
+  login: (data: LoginRequest) => Promise<AuthSession>;
   logout: () => Promise<void>;
   refreshSession: () => Promise<void>;
   switchWarehouse: (warehouseId: string) => Promise<void>;
@@ -50,6 +51,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [session, setSession] = useState<AuthSession | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [mounted, setMounted] = useState(false);
+  const queryClient = useQueryClient();
 
   const applySession = useCallback((next: AuthSession) => {
     const normalized = {
@@ -92,7 +94,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         applySession(hydrated);
       } catch {
         const storedUser = stored?.user;
-        if (storedUser && ((storedUser.permissions?.length ?? 0) > 0 || isAdminRole(storedUser))) {
+        const hasStoredPermissions = (storedUser?.permissions?.length ?? 0) > 0;
+        if (storedUser && (hasStoredPermissions || isAdminRole(storedUser))) {
           if (stored?.company && stored?.warehouse && stored?.accessToken) {
             applySession({
               accessToken: stored.accessToken,
@@ -120,9 +123,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     hydrateUser();
   }, [applySession]);
 
-  const handleLogin = async (data: LoginRequest) => {
+  const handleLogin = async (data: LoginRequest): Promise<AuthSession> => {
     const response = await apiLogin(data);
-    applySession({
+    const nextSession: AuthSession = {
       accessToken: response.accessToken,
       refreshToken: response.refreshToken,
       expiresAt: response.expiresAt,
@@ -134,7 +137,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       availableCompanies: response.availableCompanies,
       availableBranches: response.availableBranches,
       availableWarehouses: response.availableWarehouses,
-    });
+    };
+    applySession(nextSession);
+    return nextSession;
   };
 
   const handleLogout = async () => {
@@ -149,19 +154,26 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     applySession(hydrated);
   };
 
+  const invalidateScopedQueries = useCallback(async () => {
+    await queryClient.invalidateQueries();
+  }, [queryClient]);
+
   const handleSwitchWarehouse = async (warehouseId: string) => {
     const next = await apiSwitchWarehouse(warehouseId);
     applySession(next);
+    await invalidateScopedQueries();
   };
 
   const handleSwitchBranch = async (branchId: string) => {
     const next = await apiSwitchBranch(branchId);
     applySession(next);
+    await invalidateScopedQueries();
   };
 
   const handleSwitchCompany = async (companyId: string) => {
     const next = await apiSwitchCompany(companyId);
     applySession(next);
+    await invalidateScopedQueries();
   };
 
   return (

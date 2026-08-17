@@ -17,6 +17,7 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { PageHeaderCard } from "@/components/page-header-card";
 import { getWarehouses } from "@/lib/api/warehouse";
 import {
   downloadReportExport,
@@ -135,23 +136,18 @@ export default function ReportsPage() {
 
   return (
     <div className="space-y-6 p-6 pb-16">
-      {/* Header Bar */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white p-5 rounded-2xl border border-slate-200/80 shadow-sm">
-        <div className="flex items-center gap-3">
-          <div className="p-3 bg-blue-50 rounded-xl text-blue-600">
-            <BarChart3 className="h-6 w-6" />
-          </div>
-          <div>
-            <h1 className="text-xl font-bold text-slate-900">Operational Analytics & Reports</h1>
-            <p className="text-xs text-slate-500">Warehouse occupancy, operator productivity & daily movement breakdown</p>
-          </div>
-        </div>
-        <div className="flex items-center gap-2">
-          <Button variant="outline" className="rounded-xl text-xs h-9" onClick={refetchAll} disabled={isFetchingAll}>
-            <RefreshCw className={`w-3.5 h-3.5 mr-1.5 ${isFetchingAll ? 'animate-spin text-blue-600' : ''}`} /> Refresh Analytics
-          </Button>
-        </div>
-      </div>
+      {/* Header Hero Banner */}
+      <PageHeaderCard
+        title="Operational Analytics & Reports"
+        description="Warehouse occupancy, operator productivity & daily movement breakdown."
+        badge="System Live · Executive Reporting"
+        icon={BarChart3}
+        showAccessScope={true}
+      >
+        <Button variant="outline" className="rounded-xl text-xs h-10 bg-white/10 text-white border-white/15 hover:bg-white/20 backdrop-blur-md font-semibold" onClick={refetchAll} disabled={isFetchingAll}>
+          <RefreshCw className={`w-3.5 h-3.5 mr-1.5 ${isFetchingAll ? 'animate-spin text-blue-300' : ''}`} /> Refresh Analytics
+        </Button>
+      </PageHeaderCard>
 
       {/* KPI Stats Cards Bar */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">

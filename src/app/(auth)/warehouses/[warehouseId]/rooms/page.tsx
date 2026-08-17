@@ -110,6 +110,7 @@ export default function RoomsPage() {
       name: '',
       code: '',
       description: '',
+      location: '',
       warehouseId: warehouseId,
       isActive: true,
     },
@@ -194,6 +195,7 @@ export default function RoomsPage() {
               name: '',
               code: '',
               description: '',
+              location: '',
               warehouseId: warehouseId,
               isActive: true,
             });
@@ -303,6 +305,7 @@ export default function RoomsPage() {
                   name: room.name,
                   code: room.code,
                   description: room.description || '',
+                  location: room.location || '',
                   warehouseId: room.warehouseId,
                   isActive: room.isActive,
                 });
@@ -351,6 +354,12 @@ export default function RoomsPage() {
                     <Input id="code" placeholder="ARA" className="uppercase h-11 rounded-xl border-slate-200" {...form.register('code')} />
                     {form.formState.errors.code && <p className="text-xs text-red-500">{form.formState.errors.code.message}</p>}
                   </div>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="location">Location</Label>
+                  <Input id="location" placeholder="e.g. North Wing, Floor 2, Section A" className="h-11 rounded-xl border-slate-200" {...form.register('location')} />
+                  {form.formState.errors.location && <p className="text-xs text-red-500">{form.formState.errors.location.message}</p>}
                 </div>
 
                 <div className="space-y-2">
@@ -429,6 +438,10 @@ export default function RoomsPage() {
                       <span className="text-xs font-semibold text-slate-700">{selectedRoomForDetail.warehouseName || '-'}</span>
                     </div>
                     <div className="flex justify-between px-4 py-3">
+                      <span className="text-xs font-semibold text-slate-500">Location</span>
+                      <span className="text-xs font-semibold text-slate-700 text-right">{selectedRoomForDetail.location || '-'}</span>
+                    </div>
+                    <div className="flex justify-between px-4 py-3">
                       <span className="text-xs font-semibold text-slate-500">Description</span>
                       <span className="text-xs font-semibold text-slate-700 text-right">{selectedRoomForDetail.description || '-'}</span>
                     </div>
@@ -445,6 +458,7 @@ export default function RoomsPage() {
                         name: selectedRoomForDetail.name,
                         code: selectedRoomForDetail.code,
                         description: selectedRoomForDetail.description || '',
+                        location: selectedRoomForDetail.location || '',
                         warehouseId: selectedRoomForDetail.warehouseId,
                         isActive: selectedRoomForDetail.isActive,
                       });

@@ -154,9 +154,9 @@ function readJson(key: string): EntityRef[] | undefined {
 
 export function mapLoginDataToResponse(data: Record<string, unknown>): LoginResponse {
   const userRaw = (data.user as Record<string, unknown>) || {};
-  const company = data.company as EntityRef | undefined;
-  const branch = (data.branch as EntityRef | null) ?? null;
-  const warehouse = data.warehouse as EntityRef | undefined;
+  const company = (data.currentCompany ?? data.company) as EntityRef | undefined;
+  const branch = ((data.currentBranch ?? data.branch) as EntityRef | null) ?? null;
+  const warehouse = (data.currentWarehouse ?? data.warehouse) as EntityRef | undefined;
   const permissions = (data.permissions as string[]) || (userRaw.permissions as string[]) || [];
 
   let companyId = company?.id ?? '';
@@ -182,13 +182,20 @@ export function mapLoginDataToResponse(data: Record<string, unknown>): LoginResp
     refreshToken: data.refreshToken as string,
     expiresAt: data.expiresAt as string | undefined,
     user,
+    role: data.role as LoginResponse['role'],
     company,
     branch,
     warehouse,
     permissions,
-    availableCompanies: data.availableCompanies as EntityRef[] | undefined,
-    availableBranches: data.availableBranches as EntityRef[] | undefined,
-    availableWarehouses: data.availableWarehouses as EntityRef[] | undefined,
+    availableCompanies: (data.availableCompanies ?? data.companies) as EntityRef[] | undefined,
+    availableBranches: (data.availableBranches ?? data.branches) as EntityRef[] | undefined,
+    availableWarehouses: (data.availableWarehouses ?? data.warehouses) as EntityRef[] | undefined,
+    companies: data.companies as EntityRef[] | undefined,
+    branches: data.branches as EntityRef[] | undefined,
+    warehouses: data.warehouses as EntityRef[] | undefined,
+    currentCompany: (data.currentCompany ?? data.company) as EntityRef | undefined,
+    currentBranch: (data.currentBranch ?? data.branch) as EntityRef | null | undefined,
+    currentWarehouse: (data.currentWarehouse ?? data.warehouse) as EntityRef | undefined,
   };
 }
 

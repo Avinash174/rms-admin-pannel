@@ -16,6 +16,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
+import { PageHeaderCard } from '@/components/page-header-card';
 
 export default function ClientsPage() {
   const [page, setPage] = useState(1);
@@ -163,12 +164,13 @@ export default function ClientsPage() {
   return (
     <div className="w-full space-y-8 px-4 sm:px-6 lg:px-8 pb-16">
       
-      {/* Page Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border-b border-slate-100 pb-6">
-        <div className="space-y-1.5">
-          <h1 className="text-3xl font-extrabold text-slate-900 tracking-tight">Clients</h1>
-          <p className="text-sm text-slate-500">Manage client organizations and contact details.</p>
-        </div>
+      {/* Page Header Hero Banner */}
+      <PageHeaderCard
+        title="Clients Management"
+        description="Manage client organizations, account structures, and contact details."
+        badge="System Live · Client Directory"
+        showAccessScope={true}
+      >
         <Button
           onClick={() => {
             setFormMode('CREATE');
@@ -176,12 +178,12 @@ export default function ClientsPage() {
             form.reset({ name: '', code: '', contactEmail: '', contactPhone: '', isActive: true });
             setIsFormDrawerOpen(true);
           }}
-          className="bg-blue-600 hover:bg-blue-700 text-white rounded-xl shadow-md hover:shadow-blue-500/20 transition-all duration-300 self-start sm:self-center h-11 px-5"
+          className="bg-blue-600 hover:bg-blue-500 text-white rounded-xl shadow-lg shadow-blue-600/30 transition-all duration-300 h-11 px-5 font-semibold"
         >
           <Plus className="w-4 h-4 mr-2 stroke-[2.5]" />
           Create Client
         </Button>
-      </div>
+      </PageHeaderCard>
 
       {/* Toolbar Controls */}
       <div className="flex flex-col md:flex-row gap-4 justify-between items-center bg-white p-4 rounded-2xl border border-slate-100 shadow-sm">

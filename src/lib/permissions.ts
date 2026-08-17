@@ -21,7 +21,21 @@ export function isWarehouseManager(user?: PermissionUser | null): boolean {
   return normalizeRoleName(user?.roleName) === 'WAREHOUSE_MANAGER';
 }
 
-/** Full-access admin roles (bypass permission checks). Warehouse Manager uses explicit permissions. */
+/** Super Admin & Company Admin see company-wide panel, not warehouse-scoped UI */
+export function usesCompanyScope(user?: PermissionUser | null): boolean {
+  return isSuperAdmin(user) || isCompanyAdmin(user);
+}
+
+/** Warehouse panel/dashboard only for operational roles with an assigned warehouse */
+export function usesWarehouseScope(
+  user?: PermissionUser | null,
+  warehouseId?: string | null
+): boolean {
+  if (!user || !warehouseId) return false;
+  return !usesCompanyScope(user);
+}
+
+/** Legacy helper — prefer explicit permission checks via can() */
 export function isAdminRole(user?: PermissionUser | null): boolean {
   const role = normalizeRoleName(user?.roleName);
   return (
@@ -32,8 +46,9 @@ export function isAdminRole(user?: PermissionUser | null): boolean {
   );
 }
 
+/** Permission-driven access — Super Admin has unrestricted access */
 export function can(permission: string, user?: PermissionUser | null): boolean {
-  if (isAdminRole(user)) {
+  if (isSuperAdmin(user)) {
     return true;
   }
   if (!user?.permissions?.length) {
@@ -44,4 +59,38 @@ export function can(permission: string, user?: PermissionUser | null): boolean {
 
 export function canAny(permissions: string[], user?: PermissionUser | null): boolean {
   return permissions.some((permission) => can(permission, user));
+}
+
+export function canAccessNavItem(
+  permission: string | string[] | undefined,
+  user?: PermissionUser | null
+): boolean {
+  if (!user) return false;
+  if (!permission) return true;
+  const perms = Array.isArray(permission) ? permission : [permission];
+  return canAny(perms, user);
+}
+
+export function canSwitchCompany(
+  user: PermissionUser | null | undefined,
+  availableCount: number
+): boolean {
+  if (isSuperAdmin(user) && availableCount > 0) {
+    return true;
+  }
+  return can('company:manage', user) && availableCount > 1;
+}
+
+export function canSwitchBranch(
+  user: PermissionUser | null | undefined,
+  availableCount: number
+): boolean {
+  return can('branch:view', user) && availableCount > 1;
+}
+
+export function canSwitchWarehouse(
+  user: PermissionUser | null | undefined,
+  availableCount: number
+): boolean {
+  return can('warehouse:view', user) && availableCount > 1;
 }

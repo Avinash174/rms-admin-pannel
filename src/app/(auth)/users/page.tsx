@@ -22,6 +22,7 @@ import { User } from '@/lib/types/user';
 import { CreateUserData, createUserSchema } from '@/lib/validations/user';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
+import { PageHeaderCard } from '@/components/page-header-card';
 import {
   Dialog,
   DialogContent,
@@ -291,17 +292,13 @@ export default function UsersPage() {
 
   return (
     <div className="w-full space-y-8 px-4 sm:px-6 lg:px-0 pb-12">
-      {/* Page Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border-b border-slate-100 pb-5">
-        <div>
-          <div className="flex items-center gap-2">
-            <h1 className="text-3xl font-extrabold text-slate-900 tracking-tight">User Management</h1>
-            <span className="flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-blue-50 text-blue-700">
-              <Sparkles className="w-3.5 h-3.5" /> Accounts Dashboard
-            </span>
-          </div>
-          <p className="text-sm text-slate-500 mt-1.5">Manage system access, assign roles, assign warehouses, and reset passwords.</p>
-        </div>
+      {/* Page Header Hero Banner */}
+      <PageHeaderCard
+        title="User Management"
+        description="Manage system access, assign roles, assign warehouses, and reset passwords."
+        badge="System Live · Accounts Dashboard"
+        showAccessScope={true}
+      >
         <Button
           onClick={() => {
             createForm.reset({
@@ -316,12 +313,12 @@ export default function UsersPage() {
             });
             setIsCreateDialogOpen(true);
           }}
-          className="bg-blue-600 hover:bg-blue-700 text-white rounded-xl shadow-md hover:shadow-blue-500/20 transition-all duration-300 self-start sm:self-center h-11 px-5"
+          className="bg-blue-600 hover:bg-blue-500 text-white rounded-xl shadow-lg shadow-blue-600/30 transition-all duration-300 h-11 px-5 font-semibold"
         >
           <Plus className="w-4 h-4 mr-2 stroke-[2.5]" />
           Add User
         </Button>
-      </div>
+      </PageHeaderCard>
 
       {/* Metrics Section */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">

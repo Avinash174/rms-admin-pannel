@@ -146,7 +146,7 @@ export function isAuthenticated(): boolean {
 }
 
 export async function getCurrentUser() {
-  const json = await fetchWithAuth('/auth/me');
+  const json = await fetchWithAuth('/auth/me', { redirectOn401: false });
   if (!json.success || !json.data) {
     throw new Error(json.error?.message || 'Failed to fetch current user');
   }
@@ -222,27 +222,34 @@ function onRefreshed(token: string) {
   refreshSubscribers = [];
 }
 
-export async function fetchWithAuth(endpoint: string, options?: RequestInit): Promise<any> {
+type FetchWithAuthOptions = RequestInit & { redirectOn401?: boolean };
+
+export async function fetchWithAuth(endpoint: string, options?: FetchWithAuthOptions): Promise<any> {
   return fetchWithAuthBase(getApiBaseUrl(), endpoint, options);
 }
 
-export async function fetchWithAuthRoot(endpoint: string, options?: RequestInit): Promise<any> {
+export async function fetchWithAuthRoot(endpoint: string, options?: FetchWithAuthOptions): Promise<any> {
   return fetchWithAuthBase(getApiRootUrl(), endpoint, options);
 }
 
-async function fetchWithAuthBase(baseUrl: string, endpoint: string, options?: RequestInit): Promise<any> {
+async function fetchWithAuthBase(
+  baseUrl: string,
+  endpoint: string,
+  options?: FetchWithAuthOptions
+): Promise<any> {
+  const { redirectOn401 = true, ...fetchOptions } = options ?? {};
   const token = typeof window !== 'undefined' ? localStorage.getItem('access_token') : null;
   const headers = {
     'Content-Type': 'application/json',
     ...(token && { Authorization: 'Bearer ' + token }),
-    ...options?.headers,
+    ...fetchOptions?.headers,
   };
 
   const url = baseUrl + endpoint;
 
   let response = await fetch(url, {
     cache: 'no-store',
-    ...options,
+    ...fetchOptions,
     headers,
   });
 
@@ -265,7 +272,7 @@ async function fetchWithAuthBase(baseUrl: string, endpoint: string, options?: Re
               };
               const retryResponse = await fetch(url, {
                 cache: 'no-store',
-                ...options,
+                ...fetchOptions,
                 headers: retryHeaders,
               });
 
@@ -313,9 +320,9 @@ async function fetchWithAuthBase(baseUrl: string, endpoint: string, options?: Re
       errorData = await response.json();
     } catch (_) {}
 
-    if (response.status === 401) {
+    if (response.status === 401 && redirectOn401) {
       clearPersistedSession();
-      if (typeof window !== 'undefined') {
+      if (typeof window !== 'undefined' && !window.location.pathname.startsWith('/login')) {
         window.location.href = '/login';
       }
     }
@@ -364,9 +371,9 @@ export function hydrateSessionFromMe(me: Record<string, unknown>, existing?: Par
     branch,
     warehouse,
     permissions,
-    availableCompanies: me.availableCompanies as EntityRef[] | undefined,
-    availableBranches: me.availableBranches as EntityRef[] | undefined,
-    availableWarehouses: me.availableWarehouses as EntityRef[] | undefined,
+    availableCompanies: (me.availableCompanies ?? me.companies) as EntityRef[] | undefined,
+    availableBranches: (me.availableBranches ?? me.branches) as EntityRef[] | undefined,
+    availableWarehouses: (me.availableWarehouses ?? me.warehouses) as EntityRef[] | undefined,
   };
 
   persistSession(session);

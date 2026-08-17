@@ -14,8 +14,13 @@ export async function getReportsSummary(warehouseId?: string): Promise<ReportsSu
   throw new Error('Failed to fetch reports summary');
 }
 
-export async function getOperationsByDay(from: string, to: string): Promise<OperationsByDayEntry[]> {
+export async function getOperationsByDay(
+  from: string,
+  to: string,
+  warehouseId?: string
+): Promise<OperationsByDayEntry[]> {
   const params = new URLSearchParams({ from, to });
+  if (warehouseId) params.set('warehouseId', warehouseId);
   const response = await fetchWithAuthRoot(`/reports/operations-by-day?${params.toString()}`);
   if (response.success && Array.isArray(response.data)) {
     return response.data;
@@ -23,8 +28,10 @@ export async function getOperationsByDay(from: string, to: string): Promise<Oper
   throw new Error('Failed to fetch operations by day');
 }
 
-export async function getRecentScans(limit: number = 10): Promise<RecentScanEvent[]> {
-  const response = await fetchWithAuthRoot(`/audit?limit=${limit}`);
+export async function getRecentScans(limit: number = 10, warehouseId?: string): Promise<RecentScanEvent[]> {
+  const params = new URLSearchParams({ limit: String(limit) });
+  if (warehouseId) params.set('warehouseId', warehouseId);
+  const response = await fetchWithAuthRoot(`/audit?${params.toString()}`);
   if (!response.success || !Array.isArray(response.data)) {
     throw new Error('Failed to fetch recent scans');
   }

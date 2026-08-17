@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/auth-context';
-import { isAuthenticated } from '@/lib/api/auth';
+import { getDefaultLandingPath } from '@/lib/route-permissions';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -20,8 +20,8 @@ export default function LoginPage() {
   const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
-    if (!authLoading && (user || isAuthenticated())) {
-      router.replace('/dashboard');
+    if (!authLoading && user) {
+      router.replace(getDefaultLandingPath(user));
     }
   }, [authLoading, user, router]);
 
@@ -36,8 +36,8 @@ export default function LoginPage() {
       }
 
       // Call auth context login which calls real backend API and handles storage
-      await login({ email, password });
-      router.replace('/dashboard');
+      const session = await login({ email, password });
+      router.replace(getDefaultLandingPath(session.user));
     } catch (err: any) {
       if (err.message === 'Failed to fetch' || err.name === 'TypeError') {
         setError('Cannot connect to the backend server. Please make sure the backend is running on port 3002 (cd backend && npm run dev).');

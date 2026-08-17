@@ -1,6 +1,27 @@
 import { DashboardData, DashboardMetrics, ScanActivityData, RecentActivity } from '../types/dashboard';
 import { fetchWithAuth } from './auth';
 
+export async function getSuperAdminSummary() {
+  const response = await fetchWithAuth('/dashboard/super-admin-summary');
+  if (response.success && response.data) {
+    return response.data as SuperAdminSummary;
+  }
+  throw new Error('Failed to fetch super admin summary');
+}
+
+export interface SuperAdminSummary {
+  totalCompanies: number;
+  totalBranches: number;
+  totalSites: number;
+  totalWarehouses: number;
+  totalUsers: number;
+  totalClients: number;
+  totalVendors: number;
+  totalBoxes: number;
+  totalFiles: number;
+  scansToday: number;
+}
+
 export async function getDashboardMetrics(): Promise<DashboardMetrics> {
   const response = await fetchWithAuth('/dashboard/metrics');
   if (response.success && response.data) {

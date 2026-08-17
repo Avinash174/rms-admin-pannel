@@ -2,7 +2,8 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Menu, LogOut, User } from 'lucide-react';
+import { Menu, LogOut, User, Bell } from 'lucide-react';
+import Link from 'next/link';
 import { Sidebar } from './sidebar';
 import { useAuth } from '@/contexts/auth-context';
 import { SessionScopeHeader, SessionScopeMobile } from './session-scope-header';
@@ -40,6 +41,13 @@ export function SidebarWrapper({ children }: { children: React.ReactNode }) {
           </div>
 
           <div className="flex items-center space-x-2 shrink-0">
+            <Link
+              href="/notifications"
+              className="p-2 rounded-xl hover:bg-slate-100 transition-colors text-slate-500 hover:text-slate-700"
+              title="Notifications"
+            >
+              <Bell className="w-5 h-5" />
+            </Link>
             <div className="relative">
               <button
                 onClick={() => setIsUserMenuOpen(!isUserMenuOpen)}

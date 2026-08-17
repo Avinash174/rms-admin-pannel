@@ -20,6 +20,7 @@ import { TimelineList } from '@/components/records/timeline-list';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { PageHeaderCard } from '@/components/page-header-card';
 import {
   Select,
   SelectContent,
@@ -134,12 +135,13 @@ export default function FileRecordsPage() {
 
   return (
     <div className="space-y-6 px-4 sm:px-6 lg:px-0 pb-12">
-      <div>
-        <h1 className="text-2xl font-bold text-slate-900">File Records</h1>
-        <p className="text-sm text-slate-500 mt-1">
-          View and edit file labels. Reassigning home box changes the refile destination.
-        </p>
-      </div>
+      {/* Page Header Hero Banner */}
+      <PageHeaderCard
+        title="File Records Master"
+        description="View and edit file labels. Reassigning home box changes the refile destination."
+        badge="System Live · Physical Document Archive"
+        icon={FileText}
+      />
 
       <div className="flex flex-col lg:flex-row gap-3 bg-white p-4 rounded-2xl border border-slate-100">
         <div className="relative flex-1 max-w-sm">

@@ -1,55 +1,9 @@
-import { can } from '@/lib/permissions';
+import { canAccessNavItem, PermissionUser, isCompanyAdmin, isSuperAdmin } from '@/lib/permissions';
+import { buildRoutePermissionsMap } from '@/lib/navigation';
 
-type PermissionUser = { permissions?: string[]; roleName?: string };
+type PermissionUserLike = PermissionUser;
 
-/** Mirrors sidebar NAV_SECTIONS permission rules */
-const ROUTE_PERMISSIONS: Record<string, string | string[]> = {
-  '/dashboard': 'dashboard:view',
-  '/companies': ['company:view', 'settings:view'],
-  '/branches': ['branch:view', 'settings:view'],
-  '/sites': ['site:view', 'settings:view'],
-  '/warehouses': ['warehouse:view', 'settings:view'],
-  '/warehouses/types': ['warehouse:view', 'settings:view'],
-  '/rooms': ['storage:view', 'settings:view'],
-  '/rows': ['storage:view', 'settings:view'],
-  '/racks': ['storage:view', 'settings:view'],
-  '/rack-templates': ['storage:view', 'settings:view'],
-  '/levels': ['storage:view', 'settings:view'],
-  '/locations': ['storage:view', 'settings:view'],
-  '/shelves': ['storage:view', 'settings:view'],
-  '/box-types': ['box:view', 'settings:view'],
-  '/file-types': ['file:view', 'settings:view'],
-  '/boxes': ['box:view', 'settings:view'],
-  '/file-records': ['file:view', 'settings:view'],
-  '/departments': 'settings:view',
-  '/vendors': 'settings:view',
-  '/clients': ['client:view', 'settings:view'],
-  '/barcodes/master': ['settings:view', 'box:manage'],
-  '/barcodes': ['settings:view', 'box:manage'],
-  '/status-master': 'settings:view',
-  '/work-orders': ['workflow:execute', 'report:view'],
-  '/inventory-movements': ['report:view', 'box:manage'],
-  '/users': ['user:view', 'settings:view'],
-  '/roles': ['role:view', 'settings:view'],
-  '/workflows/fresh-box-move': ['workflow:execute', 'box:manage'],
-  '/workflows/segregation': ['workflow:execute', 'report:view'],
-  '/workflows/refile': ['workflow:execute', 'report:view'],
-  '/workflows/merge': ['workflow:execute', 'report:view'],
-  '/workflows/inventory-verification': ['report:view', 'audit:view'],
-  '/workflows/transfer': ['workflow:execute', 'report:view'],
-  '/operations/refile': ['workflow:execute', 'report:view'],
-  '/operations/inventory': ['report:view', 'audit:view'],
-  '/operations/transfer': ['workflow:execute', 'report:view'],
-  '/reports': 'report:view',
-  '/audit-logs': 'audit:view',
-  '/audit': 'audit:view',
-  '/devices': 'device:view',
-  '/sync': 'sync:manage',
-  '/settings': 'settings:view',
-  '/gps': 'settings:view',
-  '/reason-codes': 'settings:view',
-  '/forbidden': [],
-};
+const ROUTE_PERMISSIONS = buildRoutePermissionsMap();
 
 export function resolveRequiredPermission(pathname: string): string | string[] | null {
   if (pathname === '/forbidden') return null;
@@ -73,12 +27,32 @@ export function resolveRequiredPermission(pathname: string): string | string[] |
   return null;
 }
 
-export function hasRouteAccess(pathname: string, user: PermissionUser | null): boolean {
+export function hasRouteAccess(pathname: string, user: PermissionUserLike | null): boolean {
   if (!user) return false;
 
   const required = resolveRequiredPermission(pathname);
   if (!required) return true;
 
-  const permissions = Array.isArray(required) ? required : [required];
-  return permissions.some((p) => can(p, user));
+  return canAccessNavItem(required, user);
+}
+
+const LANDING_ROUTE_CANDIDATES = [
+  '/dashboard',
+  '/warehouses',
+  '/rooms',
+  '/boxes',
+  '/workflows/fresh-box-move',
+  '/reports',
+  '/devices',
+];
+
+export function getDefaultLandingPath(user: PermissionUserLike | null): string {
+  if (!user) return '/login';
+  if ((isSuperAdmin(user) || isCompanyAdmin(user)) && hasRouteAccess('/dashboard', user)) {
+    return '/dashboard';
+  }
+  for (const path of LANDING_ROUTE_CANDIDATES) {
+    if (hasRouteAccess(path, user)) return path;
+  }
+  return '/forbidden';
 }

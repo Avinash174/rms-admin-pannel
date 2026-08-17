@@ -5,12 +5,9 @@ import { useMutation, useQuery } from "@tanstack/react-query";
 import { toast } from "sonner";
 import {
   Building2,
-  Lock,
-  Server,
   Settings,
   Shield,
   User,
-  CheckCircle2,
   Globe,
   Clock,
   Save,
@@ -19,6 +16,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { PageHeaderCard } from "@/components/page-header-card";
 import { useAuth } from "@/contexts/auth-context";
 import { can, isSuperAdmin } from "@/lib/permissions";
 import { getCompanySettings, updateCompanySettings } from "@/lib/api/setting";
@@ -108,20 +106,16 @@ export default function SettingsPage() {
 
   return (
     <div className="space-y-6 p-6 pb-16">
-      {/* Top Header Card */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white p-5 rounded-2xl border border-slate-200/80 shadow-sm">
-        <div className="flex items-center gap-3">
-          <div className="p-3 bg-slate-900 rounded-xl text-white">
-            <Settings className="h-6 w-6" />
-          </div>
-          <div>
-            <h1 className="text-xl font-bold text-slate-900">System & Account Settings</h1>
-            <p className="text-xs text-slate-500">Global system configurations, company parameters & user security profile</p>
-          </div>
-        </div>
-      </div>
+      {/* Header Hero Banner */}
+      <PageHeaderCard
+        title="Settings & System Preferences"
+        description="Manage company preferences, security policies, and user profile configuration."
+        badge="System Live · Platform Settings"
+        icon={Settings}
+        showAccessScope={true}
+      />
 
-      {/* KPI Overview Cards */}
+      {/* RMS scope overview */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <div className="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-xs flex items-center justify-between">
           <div>
@@ -141,18 +135,18 @@ export default function SettingsPage() {
 
         <div className="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-xs flex items-center justify-between">
           <div>
-            <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Security Tier</span>
-            <h3 className="text-base font-bold text-slate-900 mt-1">{user?.roleName || "USER"}</h3>
+            <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Your Role</span>
+            <h3 className="text-base font-bold text-slate-900 mt-1">{user?.roleName?.replaceAll('_', ' ') || "USER"}</h3>
           </div>
           <div className="p-3 bg-emerald-50 text-emerald-600 rounded-xl"><Shield className="h-6 w-6" /></div>
         </div>
 
         <div className="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-xs flex items-center justify-between">
           <div>
-            <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Database Engine</span>
-            <h3 className="text-base font-bold text-slate-900 mt-1">PostgreSQL + Prisma</h3>
+            <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Location Capacity</span>
+            <h3 className="text-base font-bold text-slate-900 mt-1">{companyPrefs.defaultLocationCapacity} boxes</h3>
           </div>
-          <div className="p-3 bg-violet-50 text-violet-600 rounded-xl"><Server className="h-6 w-6" /></div>
+          <div className="p-3 bg-violet-50 text-violet-600 rounded-xl"><Clock className="h-6 w-6" /></div>
         </div>
       </div>
 

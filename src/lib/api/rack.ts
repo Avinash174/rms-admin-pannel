@@ -1,11 +1,22 @@
 import { Rack, RackListResponse, CreateRackRequest, UpdateRackRequest } from '../types/rack';
 import { fetchWithAuth } from './auth';
 
-// Backend route is flat (`/racks?roomId=...`), not nested under `/rooms/:id/racks`,
-// and does not support pagination — it returns the full array with no `meta`.
-export async function getRacks(roomId: string, page: number = 1, pageSize: number = 20): Promise<RackListResponse> {
-  const response = await fetchWithAuth(`/racks?roomId=${roomId}`);
+type RackListFilters = {
+  roomId?: string;
+  warehouseId?: string;
+  page?: number;
+  pageSize?: number;
+};
+
+export async function getRacks(filters: RackListFilters = {}): Promise<RackListResponse> {
+  const params = new URLSearchParams();
+  if (filters.roomId) params.set('roomId', filters.roomId);
+  if (filters.warehouseId) params.set('warehouseId', filters.warehouseId);
+  const query = params.toString();
+  const response = await fetchWithAuth(`/racks${query ? `?${query}` : ''}`);
   const rows = Array.isArray(response.data) ? response.data : [];
+  const page = filters.page ?? 1;
+  const pageSize = filters.pageSize ?? 20;
   return {
     data: rows,
     meta: {
