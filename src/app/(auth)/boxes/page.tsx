@@ -63,6 +63,7 @@ import {
 } from '@/lib/api/records';
 import {
   getBarcodeStats,
+  getNextBoxBarcode,
   createBarcode,
   bulkGenerateBarcodes,
   importBarcodes,
@@ -209,6 +210,12 @@ export default function BoxesPage() {
     enabled: !!selectedBox?.id && isDetailOpen && detailTab === 'timeline',
   });
 
+  const { data: nextBarcodeData, isLoading: nextBarcodeLoading, refetch: refetchNextBarcode } = useQuery({
+    queryKey: ['next-box-barcode'],
+    queryFn: getNextBoxBarcode,
+    enabled: isCreateOpen,
+  });
+
   // Extract Data
   const boxes = data?.data || [];
   const meta = data?.meta;
@@ -220,7 +227,7 @@ export default function BoxesPage() {
   const createMutation = useMutation({
     mutationFn: async () => {
       return createBarcode({
-        barcode: createForm.barcode,
+        barcode: createForm.barcode || nextBarcodeData,
         type: 'BOX',
         status: createForm.status,
         siteId: createForm.siteId || undefined,
@@ -229,8 +236,8 @@ export default function BoxesPage() {
         remarks: createForm.remarks || undefined
       });
     },
-    onSuccess: () => {
-      toast.success('Box created successfully');
+    onSuccess: (created) => {
+      toast.success(`Box created successfully with barcode: ${created.barcode}`);
       setIsCreateOpen(false);
       setCreateForm({
         barcode: '',
@@ -245,6 +252,7 @@ export default function BoxesPage() {
       });
       queryClient.invalidateQueries({ queryKey: ['record-boxes'] });
       queryClient.invalidateQueries({ queryKey: ['barcode-stats'] });
+      queryClient.invalidateQueries({ queryKey: ['next-box-barcode'] });
       refetch();
       refetchStats();
     },
@@ -331,23 +339,25 @@ export default function BoxesPage() {
 
   // Calculate 8 KPI Stats
   const kpiStats = useMemo(() => {
-    const total = statsData?.boxCount || meta?.total || boxes.length;
+    const totalBoxes = meta?.total ?? boxes.length;
     const active = boxes.filter((b) => b.status === 'ACTIVE').length;
     const inTransit = boxes.filter((b) => b.status === 'IN_TRANSIT').length;
     const totalFiles = boxes.reduce((acc, b) => acc + (b.fileCount || 0), 0);
     const totalCapacity = boxes.reduce((acc, b) => acc + (b.fileCapacity || 20), 0);
     const capacityRatio = totalCapacity > 0 ? Math.round((totalFiles / totalCapacity) * 100) : 0;
+    const boxBarcodes = statsData?.boxCount || 0;
     const assigned = statsData?.assignedCount || 0;
     const unassigned = statsData?.unassignedCount || 0;
     const todayGen = statsData?.todayGenerated || 0;
 
     return {
-      total,
+      total: totalBoxes,
       active,
       inTransit,
       totalFiles,
       totalCapacity,
       capacityRatio,
+      boxBarcodes,
       assigned,
       unassigned,
       todayGen
@@ -507,22 +517,22 @@ export default function BoxesPage() {
       <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-3">
         <div className="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-xs space-y-1">
           <span className="text-[11px] font-medium text-slate-400 uppercase tracking-wider">Total Boxes</span>
-          <div className="text-xl font-bold text-slate-900">{statsLoading ? '-' : kpiStats.total}</div>
+          <div className="text-xl font-bold text-slate-900">{isLoading ? '-' : kpiStats.total}</div>
         </div>
 
         <div className="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-xs space-y-1">
           <span className="text-[11px] font-medium text-emerald-500 uppercase tracking-wider">Active</span>
-          <div className="text-xl font-bold text-emerald-700">{statsLoading ? '-' : kpiStats.active}</div>
+          <div className="text-xl font-bold text-emerald-700">{isLoading ? '-' : kpiStats.active}</div>
         </div>
 
         <div className="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-xs space-y-1">
           <span className="text-[11px] font-medium text-amber-500 uppercase tracking-wider">In Transit</span>
-          <div className="text-xl font-bold text-amber-700">{statsLoading ? '-' : kpiStats.inTransit}</div>
+          <div className="text-xl font-bold text-amber-700">{isLoading ? '-' : kpiStats.inTransit}</div>
         </div>
 
         <div className="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-xs space-y-1">
           <span className="text-[11px] font-medium text-indigo-500 uppercase tracking-wider">Total Files</span>
-          <div className="text-xl font-bold text-indigo-700">{statsLoading ? '-' : kpiStats.totalFiles}</div>
+          <div className="text-xl font-bold text-indigo-700">{isLoading ? '-' : kpiStats.totalFiles}</div>
         </div>
 
         <div className="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-xs space-y-1">
@@ -531,8 +541,8 @@ export default function BoxesPage() {
         </div>
 
         <div className="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-xs space-y-1">
-          <span className="text-[11px] font-medium text-purple-500 uppercase tracking-wider">Assigned</span>
-          <div className="text-xl font-bold text-purple-700">{statsLoading ? '-' : kpiStats.assigned}</div>
+          <span className="text-[11px] font-medium text-purple-500 uppercase tracking-wider">Box Barcodes</span>
+          <div className="text-xl font-bold text-purple-700">{statsLoading ? '-' : kpiStats.boxBarcodes}</div>
         </div>
 
         <div className="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-xs space-y-1">
@@ -1078,22 +1088,37 @@ export default function BoxesPage() {
 
             <div className="p-6 space-y-4 flex-1 overflow-y-auto">
               <div>
-                <Label className="text-xs font-bold text-slate-700">Box Barcode String *</Label>
-                <Input
-                  value={createForm.barcode}
-                  onChange={(e) => setCreateForm({ ...createForm, barcode: e.target.value })}
-                  placeholder="e.g. BOX-0001 or SCAN-BARCODE"
-                  className="mt-1 font-mono rounded-xl"
-                  autoFocus
-                />
+                <div className="flex items-center justify-between">
+                  <Label className="text-xs font-bold text-slate-700">Box Barcode</Label>
+                  <span className="text-[10px] font-semibold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
+                    Auto-Generated
+                  </span>
+                </div>
+                <div className="mt-1 relative">
+                  <Input
+                    value={nextBarcodeLoading ? 'Generating...' : nextBarcodeData || 'BX...'}
+                    readOnly
+                    className="font-mono text-sm font-bold bg-slate-100/80 border-slate-200 text-slate-800 rounded-xl cursor-not-allowed select-all"
+                  />
+                  <div className="text-[11px] text-slate-500 mt-1">
+                    Unique sequential barcode assigned automatically on save.
+                  </div>
+                </div>
               </div>
+
+              {nextBarcodeData && (
+                <div className="p-3 bg-slate-50 border border-slate-200/80 rounded-xl flex flex-col items-center justify-center">
+                  <span className="text-[10px] text-slate-400 uppercase tracking-wider mb-1 font-semibold">Barcode Preview</span>
+                  <VisualBarcode code={nextBarcodeData} width={200} height={38} />
+                </div>
+              )}
 
               <div>
                 <Label className="text-xs font-bold text-slate-700">Initial Status</Label>
                 <select
                   value={createForm.status}
                   onChange={(e) => setCreateForm({ ...createForm, status: e.target.value as BarcodeStatus })}
-                  className="w-full mt-1 h-10 border border-slate-200 rounded-xl px-3 text-xs bg-white"
+                  className="w-full mt-1 h-10 border border-slate-200 rounded-xl px-3 text-xs bg-white font-medium text-slate-800 outline-none"
                 >
                   <option value="ACTIVE">ACTIVE</option>
                   <option value="UNASSIGNED">UNASSIGNED</option>
@@ -1106,7 +1131,7 @@ export default function BoxesPage() {
                 <select
                   value={createForm.siteId}
                   onChange={(e) => setCreateForm({ ...createForm, siteId: e.target.value })}
-                  className="w-full mt-1 h-10 border border-slate-200 rounded-xl px-3 text-xs bg-white"
+                  className="w-full mt-1 h-10 border border-slate-200 rounded-xl px-3 text-xs bg-white font-medium text-slate-800 outline-none"
                 >
                   <option value="">Select Site (Optional)</option>
                   {sites.map((s) => (
@@ -1120,7 +1145,7 @@ export default function BoxesPage() {
                 <select
                   value={createForm.warehouseId}
                   onChange={(e) => setCreateForm({ ...createForm, warehouseId: e.target.value })}
-                  className="w-full mt-1 h-10 border border-slate-200 rounded-xl px-3 text-xs bg-white"
+                  className="w-full mt-1 h-10 border border-slate-200 rounded-xl px-3 text-xs bg-white font-medium text-slate-800 outline-none"
                 >
                   <option value="">Select Warehouse (Optional)</option>
                   {warehouses.map((w) => (
@@ -1135,22 +1160,21 @@ export default function BoxesPage() {
                   value={createForm.remarks}
                   onChange={(e) => setCreateForm({ ...createForm, remarks: e.target.value })}
                   placeholder="Notes..."
-                  className="mt-1 rounded-xl"
+                  className="mt-1 rounded-xl text-xs"
                 />
               </div>
             </div>
 
             <div className="p-4 border-t flex items-center justify-end gap-2 bg-slate-50">
-              <Button variant="outline" onClick={() => setIsCreateOpen(false)} className="rounded-xl">
+              <Button variant="outline" onClick={() => setIsCreateOpen(false)} className="rounded-xl text-xs">
                 Cancel
               </Button>
               <Button
                 onClick={() => {
-                  if (!createForm.barcode.trim()) return toast.error('Box barcode is required');
                   createMutation.mutate();
                 }}
-                disabled={createMutation.isPending}
-                className="bg-blue-600 hover:bg-blue-700 text-white rounded-xl"
+                disabled={createMutation.isPending || nextBarcodeLoading}
+                className="bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-semibold"
               >
                 {createMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : 'Create Box'}
               </Button>

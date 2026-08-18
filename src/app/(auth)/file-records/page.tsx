@@ -29,6 +29,7 @@ import { columns } from './columns';
 import {
   listRecordFiles,
   getRecordFile,
+  getNextFileBarcode,
   updateRecordFile,
   getRecordFileTimeline,
   createRecordFile,
@@ -154,15 +155,25 @@ export default function FileRecordsPage() {
     enabled: !!selectedFile?.id && isDetailOpen && detailTab === 'timeline',
   });
 
+  const { data: nextFileBarcodeData, isLoading: nextFileBarcodeLoading, refetch: refetchNextFileBarcode } = useQuery({
+    queryKey: ['next-file-barcode'],
+    queryFn: getNextFileBarcode,
+    enabled: isCreateOpen,
+  });
+
   // Single Create Mutation
   const createMutation = useMutation({
-    mutationFn: (payload: { boxId: string; barcode: string; title?: string }) =>
-      createRecordFile(payload),
-    onSuccess: () => {
+    mutationFn: (payload: { boxId: string; barcode?: string; title?: string }) =>
+      createRecordFile({
+        ...payload,
+        barcode: payload.barcode || nextFileBarcodeData
+      }),
+    onSuccess: (res: any) => {
       queryClient.invalidateQueries({ queryKey: ['record-files'] });
+      queryClient.invalidateQueries({ queryKey: ['next-file-barcode'] });
       setIsCreateOpen(false);
       setCreateForm({ boxId: '', barcode: '', title: '' });
-      toast.success('File record created successfully');
+      toast.success(`File record created successfully with code: ${res?.barcode || res?.fileCode || nextFileBarcodeData}`);
     },
     onError: (err: any) => toast.error(err.message || 'Failed to create file record'),
   });
@@ -911,15 +922,29 @@ export default function FileRecordsPage() {
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="create-barcode">File Barcode</Label>
+                  <div className="flex items-center justify-between">
+                    <Label htmlFor="create-barcode">File Code / Barcode</Label>
+                    <span className="text-[10px] font-semibold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
+                      Auto-Generated (MAC)
+                    </span>
+                  </div>
                   <Input
                     id="create-barcode"
-                    value={createForm.barcode}
-                    onChange={(e) => setCreateForm({ ...createForm, barcode: e.target.value.toUpperCase() })}
-                    placeholder="e.g. FILE0001"
-                    className="h-11 rounded-xl font-mono uppercase"
+                    value={nextFileBarcodeLoading ? 'Generating...' : nextFileBarcodeData || 'MAC...'}
+                    readOnly
+                    className="h-11 rounded-xl font-mono uppercase bg-slate-100/80 border-slate-200 text-slate-800 font-bold cursor-not-allowed select-all"
                   />
+                  <p className="text-[11px] text-slate-500">
+                    Unique sequential MAC code assigned automatically on save.
+                  </p>
                 </div>
+
+                {nextFileBarcodeData && (
+                  <div className="p-3 bg-slate-50 border border-slate-200/80 rounded-xl flex flex-col items-center justify-center">
+                    <span className="text-[10px] text-slate-400 uppercase tracking-wider mb-1 font-semibold">Barcode Preview</span>
+                    <VisualBarcode code={nextFileBarcodeData} width={200} height={38} />
+                  </div>
+                )}
 
                 <div className="space-y-2">
                   <Label htmlFor="create-title">Document Title / Label</Label>
@@ -938,11 +963,11 @@ export default function FileRecordsPage() {
                   Cancel
                 </Button>
                 <Button
-                  disabled={createMutation.isPending || !createForm.boxId || !createForm.barcode}
+                  disabled={createMutation.isPending || !createForm.boxId || nextFileBarcodeLoading}
                   onClick={() =>
                     createMutation.mutate({
                       boxId: createForm.boxId,
-                      barcode: createForm.barcode,
+                      barcode: nextFileBarcodeData,
                       title: createForm.title || undefined,
                     })
                   }

@@ -95,14 +95,17 @@ export async function updateRecordBox(id: string, data: { label?: string }) {
 }
 
 export async function deleteRecordBox(id: string): Promise<void> {
-  try {
-    await fetchWithAuth(`/boxes/${id}`, {
-      method: 'DELETE',
-    });
-  } catch {
-    await fetchWithAuth(`/barcode/${id}`, {
-      method: 'DELETE',
-    });
+  const boxRes = await fetchWithAuthRoot(`/boxes/${id}`, {
+    method: 'DELETE',
+  });
+  if (boxRes.success) return;
+
+  // Fallback to barcode endpoint if it was a standalone barcode ID
+  const barcodeRes = await fetchWithAuth(`/barcode/${id}`, {
+    method: 'DELETE',
+  });
+  if (!barcodeRes.success) {
+    throw new Error(barcodeRes.message || boxRes.message || 'Failed to delete box');
   }
 }
 
@@ -158,7 +161,12 @@ export async function getRecordFileTimeline(id: string): Promise<RecordTimelineE
   return response.data || [];
 }
 
-export async function createRecordFile(data: { boxId: string; barcode: string; title?: string; status?: 'ACTIVE' | 'ARCHIVED' | 'DESTROYED' }) {
+export async function getNextFileBarcode(): Promise<string> {
+  const response = await fetchWithAuth('/barcode/next-file');
+  return response.data?.barcode || response.data?.fileCode || response.data;
+}
+
+export async function createRecordFile(data: { boxId: string; barcode?: string; title?: string; status?: 'ACTIVE' | 'ARCHIVED' | 'DESTROYED' }) {
   const response = await fetchWithAuth('/file-records', {
     method: 'POST',
     body: JSON.stringify(data),

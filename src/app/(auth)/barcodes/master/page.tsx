@@ -40,6 +40,8 @@ import {
   getBarcodeStats,
   listBarcodes,
   getBarcodeById,
+  getNextBoxBarcode,
+  getNextFileBarcode,
   createBarcode,
   updateBarcode,
   deleteBarcode,
@@ -58,6 +60,7 @@ import {
 import { getSites } from '@/lib/api/site';
 import { getBranches } from '@/lib/api/branch';
 import { getWarehouses } from '@/lib/api/warehouse';
+import { ConfirmDialog } from '@/components/ui/confirm-dialog';
 
 /**
  * Visual 1D Barcode Graphic Component
@@ -191,6 +194,8 @@ export default function BarcodeMasterPage() {
   const [isPrintOpen, setIsPrintOpen] = useState(false);
   const [selectedBarcodeId, setSelectedBarcodeId] = useState<string | null>(null);
   const [editingBarcode, setEditingBarcode] = useState<BarcodeMasterItem | null>(null);
+  const [barcodeToDelete, setBarcodeToDelete] = useState<BarcodeMasterItem | null>(null);
+  const [isDeleteOpen, setIsDeleteOpen] = useState(false);
 
   // Form States - Create
   const [createForm, setCreateForm] = useState<{
@@ -245,6 +250,18 @@ export default function BarcodeMasterPage() {
     queryFn: getBarcodeStats
   });
 
+  const { data: nextBoxBarcodeData, isLoading: nextBoxBarcodeLoading } = useQuery({
+    queryKey: ['next-box-barcode'],
+    queryFn: getNextBoxBarcode,
+    enabled: isCreateOpen && createForm.type === 'BOX',
+  });
+
+  const { data: nextFileBarcodeData, isLoading: nextFileBarcodeLoading } = useQuery({
+    queryKey: ['next-file-barcode'],
+    queryFn: getNextFileBarcode,
+    enabled: isCreateOpen && createForm.type === 'FILE_RECORD',
+  });
+
   const { data: listData, isLoading: listLoading, refetch: refetchList } = useQuery({
     queryKey: ['barcode-list', params],
     queryFn: () => listBarcodes(params)
@@ -281,6 +298,8 @@ export default function BarcodeMasterPage() {
       });
       queryClient.invalidateQueries({ queryKey: ['barcode-list'] });
       queryClient.invalidateQueries({ queryKey: ['barcode-stats'] });
+      queryClient.invalidateQueries({ queryKey: ['record-boxes'] });
+      queryClient.invalidateQueries({ queryKey: ['record-files'] });
       refetchList();
       refetchStats();
     },
@@ -308,8 +327,12 @@ export default function BarcodeMasterPage() {
     mutationFn: deleteBarcode,
     onSuccess: () => {
       toast.success('Barcode deleted successfully');
+      setIsDeleteOpen(false);
+      setBarcodeToDelete(null);
       queryClient.invalidateQueries({ queryKey: ['barcode-list'] });
       queryClient.invalidateQueries({ queryKey: ['barcode-stats'] });
+      queryClient.invalidateQueries({ queryKey: ['record-boxes'] });
+      queryClient.invalidateQueries({ queryKey: ['record-files'] });
       refetchList();
       refetchStats();
     },
@@ -879,9 +902,8 @@ export default function BarcodeMasterPage() {
                               variant="ghost"
                               className="h-8 w-8 text-slate-400 hover:text-rose-600 rounded-lg"
                               onClick={() => {
-                                if (confirm(`Are you sure you want to delete barcode "${item.barcode}"?`)) {
-                                  deleteMutation.mutate(item.id);
-                                }
+                                setBarcodeToDelete(item);
+                                setIsDeleteOpen(true);
                               }}
                               title="Delete Barcode"
                             >
@@ -953,33 +975,73 @@ export default function BarcodeMasterPage() {
             {/* Drawer Body */}
             <div className="flex-1 overflow-y-auto p-6 space-y-5 text-xs">
               <div className="space-y-1.5">
-                <label className="block font-semibold text-slate-700">Barcode String *</label>
-                <Input
-                  placeholder="e.g. BOX000100 or LOC-A-1-01"
-                  value={createForm.barcode}
-                  onChange={(e) => setCreateForm((f) => ({ ...f, barcode: e.target.value }))}
-                  className="rounded-xl font-mono uppercase h-11 border-slate-200"
-                />
-              </div>
-
-              {createForm.barcode && (
-                <div className="flex justify-center my-2">
-                  <VisualBarcode code={createForm.barcode} width={200} height={42} />
-                </div>
-              )}
-
-              <div className="space-y-1.5">
                 <label className="block font-semibold text-slate-700">Asset Type *</label>
                 <select
                   className="w-full border border-slate-200 rounded-xl h-11 px-3 bg-white text-xs font-medium text-slate-800 outline-none"
                   value={createForm.type}
                   onChange={(e) => setCreateForm((f) => ({ ...f, type: e.target.value as BarcodeType }))}
                 >
-                  <option value="BOX">Box Barcode</option>
-                  <option value="FILE_RECORD">File Barcode</option>
+                  <option value="BOX">Box Barcode (BX Sequence)</option>
+                  <option value="FILE_RECORD">File Barcode (MAC Sequence)</option>
                   <option value="LOCATION">Location Barcode</option>
                 </select>
               </div>
+
+              <div className="space-y-1.5">
+                <div className="flex items-center justify-between">
+                  <label className="block font-semibold text-slate-700">
+                    {createForm.type === 'BOX'
+                      ? 'Box Barcode (Auto-Generated)'
+                      : createForm.type === 'FILE_RECORD'
+                      ? 'File Code (Auto-Generated)'
+                      : 'Barcode String *'}
+                  </label>
+                  {(createForm.type === 'BOX' || createForm.type === 'FILE_RECORD') && (
+                    <span className="text-[10px] font-semibold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
+                      Auto-Generated
+                    </span>
+                  )}
+                </div>
+                <Input
+                  placeholder={
+                    createForm.type === 'BOX'
+                      ? (nextBoxBarcodeLoading ? 'Generating...' : nextBoxBarcodeData || 'BX...')
+                      : createForm.type === 'FILE_RECORD'
+                      ? (nextFileBarcodeLoading ? 'Generating...' : nextFileBarcodeData || 'MAC...')
+                      : 'e.g. LOC-A-1-01'
+                  }
+                  value={
+                    createForm.type === 'BOX'
+                      ? (createForm.barcode || (nextBoxBarcodeLoading ? 'Generating...' : nextBoxBarcodeData || ''))
+                      : createForm.type === 'FILE_RECORD'
+                      ? (createForm.barcode || (nextFileBarcodeLoading ? 'Generating...' : nextFileBarcodeData || ''))
+                      : createForm.barcode
+                  }
+                  onChange={(e) => setCreateForm((f) => ({ ...f, barcode: e.target.value }))}
+                  className={`rounded-xl font-mono uppercase h-11 border-slate-200 ${createForm.type === 'BOX' || createForm.type === 'FILE_RECORD' ? 'bg-slate-50 font-bold' : ''}`}
+                />
+                {(createForm.type === 'BOX' || createForm.type === 'FILE_RECORD') && (
+                  <p className="text-[11px] text-slate-400">
+                    Sequential unique {createForm.type === 'BOX' ? 'BX' : 'MAC'} code generated automatically if not overridden.
+                  </p>
+                )}
+              </div>
+
+              {(createForm.barcode ||
+                (createForm.type === 'BOX' && nextBoxBarcodeData) ||
+                (createForm.type === 'FILE_RECORD' && nextFileBarcodeData)) && (
+                <div className="flex flex-col items-center justify-center my-2 p-3 bg-slate-50 border border-slate-100 rounded-xl">
+                  <span className="text-[10px] text-slate-400 uppercase tracking-wider mb-1 font-semibold">Barcode Preview</span>
+                  <VisualBarcode
+                    code={
+                      createForm.barcode ||
+                      (createForm.type === 'BOX' ? nextBoxBarcodeData || '' : createForm.type === 'FILE_RECORD' ? nextFileBarcodeData || '' : '')
+                    }
+                    width={200}
+                    height={42}
+                  />
+                </div>
+              )}
 
               <div className="space-y-1.5">
                 <label className="block font-semibold text-slate-700">Initial Status</label>
@@ -1041,8 +1103,15 @@ export default function BarcodeMasterPage() {
               </Button>
               <Button
                 onClick={() => {
-                  if (!createForm.barcode) return toast.error('Barcode string is required');
-                  createMutation.mutate(createForm);
+                  const autoCode = createForm.type === 'BOX' ? nextBoxBarcodeData : createForm.type === 'FILE_RECORD' ? nextFileBarcodeData : '';
+                  const finalCode = createForm.barcode || autoCode;
+                  if (!finalCode && createForm.type !== 'BOX' && createForm.type !== 'FILE_RECORD') {
+                    return toast.error('Barcode string is required');
+                  }
+                  createMutation.mutate({
+                    ...createForm,
+                    barcode: finalCode || undefined
+                  });
                 }}
                 className="rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-medium"
               >
@@ -1661,6 +1730,25 @@ export default function BarcodeMasterPage() {
           </div>
         </div>
       )}
+
+      {/* Delete Confirmation Dialog */}
+      <ConfirmDialog
+        isOpen={isDeleteOpen}
+        onClose={() => {
+          setIsDeleteOpen(false);
+          setBarcodeToDelete(null);
+        }}
+        onConfirm={() => {
+          if (barcodeToDelete) {
+            deleteMutation.mutate(barcodeToDelete.id);
+          }
+        }}
+        title="Delete Barcode"
+        description={`Are you sure you want to delete barcode "${barcodeToDelete?.barcode}"? This action cannot be undone.`}
+        confirmLabel="Delete"
+        variant="danger"
+        isLoading={deleteMutation.isPending}
+      />
     </div>
   );
 }

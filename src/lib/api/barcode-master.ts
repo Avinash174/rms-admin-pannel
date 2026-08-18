@@ -125,11 +125,27 @@ export async function getBarcodeById(id: string): Promise<BarcodeMasterItem> {
   throw new Error(response.message || 'Failed to fetch barcode details');
 }
 
+export async function getNextBoxBarcode(): Promise<string> {
+  const response = await fetchWithAuth('/barcode/next-box');
+  if (response.success && response.data?.barcode) {
+    return response.data.barcode;
+  }
+  throw new Error(response.message || 'Failed to generate next box barcode');
+}
+
+export async function getNextFileBarcode(): Promise<string> {
+  const response = await fetchWithAuth('/barcode/next-file');
+  if (response.success && response.data?.barcode) {
+    return response.data.barcode;
+  }
+  throw new Error(response.message || 'Failed to generate next file barcode');
+}
+
 export async function createBarcode(data: {
   siteId?: string;
   branchId?: string;
   warehouseId?: string;
-  barcode: string;
+  barcode?: string;
   type: BarcodeType;
   status?: BarcodeStatus;
   remarks?: string;
