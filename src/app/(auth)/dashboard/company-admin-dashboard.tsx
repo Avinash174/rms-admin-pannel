@@ -26,11 +26,9 @@ import {
   Zap,
 } from "lucide-react";
 import { useAuth } from "@/contexts/auth-context";
-import { getBranches } from "@/lib/api/branch";
 import { getWarehouses } from "@/lib/api/warehouse";
 import { getClients } from "@/lib/api/client";
-import { getBoxes } from "@/lib/api/box";
-import { getFileRecords } from "@/lib/api/fileRecord";
+import { getDashboardMetrics } from "@/lib/api/dashboard";
 import { getVisibleCompanyAdminModules } from "@/lib/company-admin-modules";
 import { EntityRef } from "@/lib/types/auth";
 import {
@@ -39,6 +37,21 @@ import {
   ReportsFooterLink,
   useDashboardData,
 } from "./dashboard-shared";
+import {
+  DashboardFilterBar,
+  DashboardFilterState,
+  resolveDateRange,
+} from "@/components/dashboard/dashboard-filter-bar";
+
+const initialFilterState: DashboardFilterState = {
+  companyId: "",
+  warehouseId: "ALL",
+  datePreset: "THIS_WEEK",
+  customFromDate: "",
+  customToDate: "",
+  status: "ALL",
+  operationType: "ALL",
+};
 
 export function CompanyAdminDashboard({
   company,
@@ -49,38 +62,51 @@ export function CompanyAdminDashboard({
 }) {
   const { user, availableBranches, availableWarehouses } = useAuth();
   const hubModules = getVisibleCompanyAdminModules(user);
-  const data = useDashboardData(undefined, true);
+  const [filterState, setFilterState] = useState<DashboardFilterState>(initialFilterState);
   const [isManualRefreshing, setIsManualRefreshing] = useState(false);
 
-  // Fetch scope metrics: branches, warehouses, clients, boxes, file records
-  const scopeQuery = useQuery({
-    queryKey: ["company-admin-scope", company?.id],
-    queryFn: async () => {
-      const [branchesRes, warehousesRes, clientsRes, boxesRes, filesRes] = await Promise.allSettled([
-        getBranches(1, 1),
-        getWarehouses(1, 6),
-        getClients(1, 1),
-        getBoxes(1, 1),
-        getFileRecords(undefined, 1, 1),
-      ]);
+  const dateRange = resolveDateRange(
+    filterState.datePreset,
+    filterState.customFromDate,
+    filterState.customToDate
+  );
 
-      const branches = branchesRes.status === "fulfilled" ? branchesRes.value : null;
-      const warehouses = warehousesRes.status === "fulfilled" ? warehousesRes.value : null;
-      const clients = clientsRes.status === "fulfilled" ? clientsRes.value : null;
-      const boxes = boxesRes.status === "fulfilled" ? boxesRes.value : null;
-      const files = filesRes.status === "fulfilled" ? filesRes.value : null;
-
-      return {
-        branchesCount: branches?.meta?.total ?? branches?.data?.length ?? availableBranches.length,
-        warehousesCount: warehouses?.meta?.total ?? warehouses?.data?.length ?? availableWarehouses.length,
-        clientsCount: clients?.meta?.total ?? clients?.data?.length ?? 0,
-        boxesCount: boxes?.meta?.total ?? boxes?.data?.length ?? 0,
-        filesCount: files?.meta?.total ?? files?.data?.length ?? 0,
-        warehousesList: warehouses?.data ?? [],
-      };
-    },
+  const data = useDashboardData({
+    scopedWarehouseId: filterState.warehouseId !== "ALL" ? filterState.warehouseId : undefined,
+    fromDate: dateRange.fromDate,
+    toDate: dateRange.toDate,
     enabled: true,
+  });
+
+  // Fetch real database aggregated metrics (Branches, Sites, Warehouses, Boxes, Files)
+  const metricsQuery = useQuery({
+    queryKey: [
+      "company-admin-metrics",
+      company?.id,
+      filterState.warehouseId,
+      dateRange.fromDate,
+      dateRange.toDate,
+    ],
+    queryFn: () =>
+      getDashboardMetrics({
+        companyId: company?.id,
+        warehouseId: filterState.warehouseId !== "ALL" ? filterState.warehouseId : undefined,
+        fromDate: dateRange.fromDate,
+        toDate: dateRange.toDate,
+      }),
     staleTime: 30_000,
+  });
+
+  const warehousesQuery = useQuery({
+    queryKey: ["company-admin-warehouses-list", company?.id],
+    queryFn: () => getWarehouses(1, 100),
+    staleTime: 60_000,
+  });
+
+  const clientsQuery = useQuery({
+    queryKey: ["company-admin-clients-count", company?.id],
+    queryFn: () => getClients(1, 1),
+    staleTime: 60_000,
   });
 
   const handleRefreshAll = async () => {
@@ -89,21 +115,32 @@ export function CompanyAdminDashboard({
       data.summaryQuery.refetch(),
       data.operationsQuery.refetch(),
       data.scansQuery.refetch(),
-      scopeQuery.refetch(),
+      metricsQuery.refetch(),
+      warehousesQuery.refetch(),
+      clientsQuery.refetch(),
     ]);
     setTimeout(() => setIsManualRefreshing(false), 600);
   };
 
-  if (data.summaryQuery.error) {
-    return <DashboardError onRetry={() => data.summaryQuery.refetch()} />;
+  const handleFilterChange = (partial: Partial<DashboardFilterState>) => {
+    setFilterState((prev) => ({ ...prev, ...partial }));
+  };
+
+  const handleResetFilters = () => {
+    setFilterState(initialFilterState);
+  };
+
+  if (data.summaryQuery.error || metricsQuery.error) {
+    return <DashboardError onRetry={() => { data.summaryQuery.refetch(); metricsQuery.refetch(); }} />;
   }
 
-  const branchCount = scopeQuery.data?.branchesCount ?? availableBranches.length;
-  const warehouseCount = scopeQuery.data?.warehousesCount ?? availableWarehouses.length;
-  const clientCount = scopeQuery.data?.clientsCount ?? 0;
-  const boxCount = scopeQuery.data?.boxesCount ?? 0;
-  const fileCount = scopeQuery.data?.filesCount ?? 0;
-  const warehouses = scopeQuery.data?.warehousesList ?? [];
+  const branchCount = metricsQuery.data?.totalBranches ?? availableBranches.length;
+  const siteCount = metricsQuery.data?.totalSites ?? 0;
+  const warehouseCount = metricsQuery.data?.totalWarehouses ?? availableWarehouses.length;
+  const clientCount = clientsQuery.data?.meta?.total ?? clientsQuery.data?.data?.length ?? 0;
+  const boxCount = metricsQuery.data?.totalBoxes ?? 0;
+  const fileCount = metricsQuery.data?.totalFiles ?? 0;
+  const warehouses = warehousesQuery.data?.data ?? availableWarehouses ?? [];
 
   const displayName = user?.fullName || `${user?.firstName || ""} ${user?.lastName || ""}`.trim() || "Company Admin";
 
@@ -174,6 +211,17 @@ export function CompanyAdminDashboard({
         </div>
       </div>
 
+      {/* Role-Scoped Filter Bar */}
+      <DashboardFilterBar
+        role="COMPANY_ADMIN"
+        state={filterState}
+        onChange={handleFilterChange}
+        onReset={handleResetFilters}
+        fixedCompanyName={company?.name || "Company"}
+        warehouses={warehouses}
+        isFetching={metricsQuery.isFetching || data.summaryQuery.isFetching}
+      />
+
       {/* Core Enterprise KPI Metrics Grid (6 Cards) */}
       <div>
         <div className="flex items-center justify-between mb-4">
@@ -197,7 +245,7 @@ export function CompanyAdminDashboard({
               <ArrowUpRight className="h-3.5 w-3.5 text-slate-300 group-hover:text-indigo-600 transition-colors" />
             </div>
             <p className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">Warehouses</p>
-            <p className="text-2xl font-extrabold text-slate-900 mt-0.5">{scopeQuery.isLoading ? "—" : warehouseCount}</p>
+            <p className="text-2xl font-extrabold text-slate-900 mt-0.5">{metricsQuery.isLoading ? "—" : warehouseCount}</p>
             <p className="text-[11px] text-slate-400 mt-1.5 flex items-center gap-1">
               <Zap className="h-3 w-3 text-indigo-500" /> Active storage hubs
             </p>
@@ -215,7 +263,7 @@ export function CompanyAdminDashboard({
               <ArrowUpRight className="h-3.5 w-3.5 text-slate-300 group-hover:text-purple-600 transition-colors" />
             </div>
             <p className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">Branches</p>
-            <p className="text-2xl font-extrabold text-slate-900 mt-0.5">{scopeQuery.isLoading ? "—" : branchCount}</p>
+            <p className="text-2xl font-extrabold text-slate-900 mt-0.5">{metricsQuery.isLoading ? "—" : branchCount}</p>
             <p className="text-[11px] text-slate-400 mt-1.5 flex items-center gap-1">
               <MapPin className="h-3 w-3 text-purple-500" /> Regional locations
             </p>
@@ -233,7 +281,7 @@ export function CompanyAdminDashboard({
               <ArrowUpRight className="h-3.5 w-3.5 text-slate-300 group-hover:text-blue-600 transition-colors" />
             </div>
             <p className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">Total Boxes</p>
-            <p className="text-2xl font-extrabold text-slate-900 mt-0.5">{scopeQuery.isLoading ? "—" : boxCount}</p>
+            <p className="text-2xl font-extrabold text-slate-900 mt-0.5">{metricsQuery.isLoading ? "—" : boxCount}</p>
             <p className="text-[11px] text-slate-400 mt-1.5 flex items-center gap-1">
               <Boxes className="h-3 w-3 text-blue-500" /> In physical storage
             </p>
@@ -251,7 +299,7 @@ export function CompanyAdminDashboard({
               <ArrowUpRight className="h-3.5 w-3.5 text-slate-300 group-hover:text-amber-600 transition-colors" />
             </div>
             <p className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">File Records</p>
-            <p className="text-2xl font-extrabold text-slate-900 mt-0.5">{scopeQuery.isLoading ? "—" : fileCount}</p>
+            <p className="text-2xl font-extrabold text-slate-900 mt-0.5">{metricsQuery.isLoading ? "—" : fileCount}</p>
             <p className="text-[11px] text-slate-400 mt-1.5 flex items-center gap-1">
               <FileCheck className="h-3 w-3 text-amber-500" /> Cataloged files
             </p>
@@ -269,7 +317,7 @@ export function CompanyAdminDashboard({
               <ArrowUpRight className="h-3.5 w-3.5 text-slate-300 group-hover:text-emerald-600 transition-colors" />
             </div>
             <p className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">Clients</p>
-            <p className="text-2xl font-extrabold text-slate-900 mt-0.5">{scopeQuery.isLoading ? "—" : clientCount}</p>
+            <p className="text-2xl font-extrabold text-slate-900 mt-0.5">{metricsQuery.isLoading ? "—" : clientCount}</p>
             <p className="text-[11px] text-slate-400 mt-1.5 flex items-center gap-1">
               <Building2 className="h-3 w-3 text-emerald-500" /> Active organizations
             </p>
@@ -316,7 +364,7 @@ export function CompanyAdminDashboard({
             </Link>
           </div>
 
-          {scopeQuery.isLoading ? (
+          {metricsQuery.isLoading ? (
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2">
               {[1, 2, 3, 4].map((n) => (
                 <div key={n} className="h-24 rounded-xl bg-slate-100 animate-pulse" />
@@ -351,7 +399,7 @@ export function CompanyAdminDashboard({
                         </span>
                       </div>
                       <p className="text-xs text-slate-500 truncate mt-0.5">
-                        {wh.address || wh.city || "Standard Storage Facility"}
+                        {(wh as any).address || (wh as any).city || "Standard Storage Facility"}
                       </p>
                     </div>
                     <span className="shrink-0 inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
@@ -361,7 +409,7 @@ export function CompanyAdminDashboard({
 
                   <div className="mt-3 pt-2.5 border-t border-slate-200/60 flex items-center justify-between text-xs">
                     <span className="text-slate-500 text-[11px]">
-                      Site: <span className="font-medium text-slate-700">{wh.site?.name || wh.siteName || "General"}</span>
+                      Site: <span className="font-medium text-slate-700">{(wh as any).site?.name || (wh as any).siteName || "General"}</span>
                     </span>
                     <Link
                       href={`/rooms?warehouseId=${wh.id}`}

@@ -66,25 +66,43 @@ export function sumOperations(counts: Record<OperationTypeKey, number>): number 
   return OPERATION_TYPES.reduce((total, type) => total + (counts[type] ?? 0), 0);
 }
 
-export function useDashboardData(scopedWarehouseId?: string, enabled = true) {
-  const from = useMemo(() => subDays(new Date(), 7).toISOString(), []);
-  const to = useMemo(() => new Date().toISOString(), []);
+export interface DashboardDataFilters {
+  scopedWarehouseId?: string;
+  fromDate?: string;
+  toDate?: string;
+  status?: string;
+  operationType?: string;
+  enabled?: boolean;
+}
+
+export function useDashboardData(
+  scopedWarehouseIdOrFilters?: string | DashboardDataFilters,
+  enabledFlag = true
+) {
+  const options: DashboardDataFilters = typeof scopedWarehouseIdOrFilters === 'object' && scopedWarehouseIdOrFilters !== null
+    ? scopedWarehouseIdOrFilters
+    : { scopedWarehouseId: scopedWarehouseIdOrFilters, enabled: enabledFlag };
+
+  const scopedWarehouseId = options.scopedWarehouseId;
+  const enabled = options.enabled !== undefined ? options.enabled : true;
+  const from = options.fromDate || subDays(new Date(), 7).toISOString();
+  const to = options.toDate || new Date().toISOString();
 
   const summaryQuery = useQuery({
-    queryKey: ["reports-summary", scopedWarehouseId],
+    queryKey: ["reports-summary", scopedWarehouseId, options.fromDate, options.toDate, options.status, options.operationType],
     queryFn: () => getReportsSummary(scopedWarehouseId),
     enabled,
     refetchInterval: 60_000,
   });
 
   const operationsQuery = useQuery({
-    queryKey: ["operations-by-day", from, to, scopedWarehouseId],
+    queryKey: ["operations-by-day", from, to, scopedWarehouseId, options.operationType],
     queryFn: () => getOperationsByDay(from, to, scopedWarehouseId),
     enabled,
   });
 
   const scansQuery = useQuery({
-    queryKey: ["recent-scans", scopedWarehouseId],
+    queryKey: ["recent-scans", scopedWarehouseId, options.operationType],
     queryFn: () => getRecentScans(10, scopedWarehouseId),
     enabled,
     refetchInterval: 5000,

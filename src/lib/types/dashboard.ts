@@ -1,9 +1,25 @@
 export interface DashboardMetrics {
-  totalWarehouses: number;
+  totalCompanies?: number;
+  totalBranches?: number;
+  totalSites?: number;
+  totalWarehouses?: number;
   totalBoxes: number;
   totalFiles: number;
   scansToday: number;
-  activeUsers: number;
+  scansPeriod?: number;
+  activeUsers?: number;
+  totalRooms?: number;
+  totalRacks?: number;
+  totalLocations?: number;
+  occupiedLocations?: number;
+  availableLocations?: number;
+  occupancyRate?: number;
+  pendingOperations?: number;
+  pendingWorkOrders?: number;
+  todayFreshBoxMoves?: number;
+  todayTransfers?: number;
+  todayRefiles?: number;
+  pendingSegregations?: number;
 }
 
 export interface ScanActivityData {

@@ -87,7 +87,7 @@ export const columns: ColumnDef<AuditLog>[] = [
     ),
     cell: ({ row }) => (
       <div className="font-mono text-xs font-semibold text-slate-600">
-        {row.getValue('entityId') || '—'}
+        {row.original.entityId || 'N/A'}
       </div>
     )
   },
@@ -103,13 +103,14 @@ export const columns: ColumnDef<AuditLog>[] = [
   {
     id: 'device',
     header: () => (
-      <span className="text-xs font-bold tracking-wider text-slate-500 uppercase">Device</span>
+      <span className="text-xs font-bold tracking-wider text-slate-500 uppercase">Device Name</span>
     ),
     cell: ({ row }) => {
       const device = row.original.device;
+      const deviceName = device?.name || device?.label || device?.model || device?.serialNumber;
       return (
-        <div className="text-xs text-slate-600 font-mono">
-          {device?.serialNumber || '—'}
+        <div className="text-xs text-slate-600 font-medium">
+          {deviceName || 'N/A'}
         </div>
       );
     }

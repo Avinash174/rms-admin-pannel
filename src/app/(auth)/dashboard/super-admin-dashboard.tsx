@@ -1,5 +1,6 @@
 "use client";
 
+import { useMemo, useState } from "react";
 import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
 import {
@@ -19,37 +20,97 @@ import {
   Activity,
   Layers,
   Settings,
-  ShieldCheck
+  ShieldCheck,
+  SearchX
 } from "lucide-react";
 import { useAuth } from "@/contexts/auth-context";
 import { getSuperAdminSummary } from "@/lib/api/dashboard";
+import { getCompanies } from "@/lib/api/company";
+import { getWarehouses } from "@/lib/api/warehouse";
 import { EntityRef } from "@/lib/types/auth";
-import { DashboardError, useDashboardData } from "./dashboard-shared";
+import { DashboardError } from "./dashboard-shared";
+import {
+  DashboardFilterBar,
+  DashboardFilterState,
+  resolveDateRange
+} from "@/components/dashboard/dashboard-filter-bar";
+
+const initialFilterState: DashboardFilterState = {
+  companyId: "ALL",
+  warehouseId: "ALL",
+  datePreset: "THIS_WEEK",
+  customFromDate: "",
+  customToDate: "",
+  status: "ALL",
+  operationType: "ALL"
+};
 
 export function SuperAdminDashboard({ company }: { company?: EntityRef | null }) {
   const { user } = useAuth();
-  const data = useDashboardData(undefined, true);
+  const [filterState, setFilterState] = useState<DashboardFilterState>(initialFilterState);
 
-  const summaryQuery = useQuery({
-    queryKey: ["super-admin-summary"],
-    queryFn: getSuperAdminSummary,
-    staleTime: 60_000,
+  // Fetch companies and warehouses for filter dropdowns
+  const { data: companiesData } = useQuery({
+    queryKey: ["companies-list-for-filter"],
+    queryFn: () => getCompanies(1, 100),
+    staleTime: 60_000
   });
 
-  if (data.summaryQuery.error) {
-    return <DashboardError onRetry={() => data.summaryQuery.refetch()} />;
+  const { data: warehousesData } = useQuery({
+    queryKey: ["warehouses-list-for-filter"],
+    queryFn: () => getWarehouses(1, 100),
+    staleTime: 60_000
+  });
+
+  const dateRange = useMemo(
+    () => resolveDateRange(filterState.datePreset, filterState.customFromDate, filterState.customToDate),
+    [filterState.datePreset, filterState.customFromDate, filterState.customToDate]
+  );
+
+  const queryFilters = useMemo(
+    () => ({
+      companyId: filterState.companyId,
+      warehouseId: filterState.warehouseId,
+      fromDate: dateRange.fromDate,
+      toDate: dateRange.toDate,
+      days: dateRange.days
+    }),
+    [filterState.companyId, filterState.warehouseId, dateRange]
+  );
+
+  const summaryQuery = useQuery({
+    queryKey: [
+      "super-admin-summary",
+      filterState.companyId,
+      filterState.warehouseId,
+      dateRange.fromDate,
+      dateRange.toDate
+    ],
+    queryFn: () => getSuperAdminSummary(queryFilters),
+    staleTime: 30_000
+  });
+
+  if (summaryQuery.error) {
+    return <DashboardError onRetry={() => summaryQuery.refetch()} />;
   }
 
   const summary = summaryQuery.data;
-  const isLoading = summaryQuery.isLoading;
+  const isLoading = summaryQuery.isLoading || summaryQuery.isFetching;
 
   const displayName = user?.fullName || `${user?.firstName || ''} ${user?.lastName || ''}`.trim() || 'Super Admin';
 
+  const handleFilterChange = (partial: Partial<DashboardFilterState>) => {
+    setFilterState((prev) => ({ ...prev, ...partial }));
+  };
+
+  const handleResetFilters = () => {
+    setFilterState(initialFilterState);
+  };
+
   return (
-    <div className="space-y-8 pb-8">
+    <div className="space-y-6 pb-8">
       {/* Premium Hero Banner Header Card */}
       <div className="relative overflow-hidden rounded-3xl bg-gradient-to-r from-slate-900 via-indigo-950 to-blue-950 p-6 sm:p-8 text-white shadow-xl border border-slate-800">
-        {/* Decorative Background Glowing Orbs */}
         <div className="absolute -top-24 -right-24 h-72 w-72 rounded-full bg-blue-500/20 blur-3xl pointer-events-none" />
         <div className="absolute -bottom-24 -left-24 h-72 w-72 rounded-full bg-indigo-500/20 blur-3xl pointer-events-none" />
         
@@ -68,8 +129,8 @@ export function SuperAdminDashboard({ company }: { company?: EntityRef | null })
             </h1>
             
             <p className="text-sm text-slate-300 leading-relaxed">
-              {company?.name
-                ? `Active Context: ${company.name} — Full system oversight across all enterprise entities.`
+              {filterState.companyId !== "ALL"
+                ? `Filtered Scope: Viewing metrics for selected company & warehouse entities.`
                 : "Real-time global command center across all companies, branches, sites, and warehouses."}
             </p>
           </div>
@@ -81,19 +142,34 @@ export function SuperAdminDashboard({ company }: { company?: EntityRef | null })
               </div>
               <div>
                 <p className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">Access Scope</p>
-                <p className="text-sm font-bold text-white">Unrestricted (Global)</p>
+                <p className="text-sm font-bold text-white">
+                  {filterState.companyId !== "ALL" ? "Scoped Entity" : "Unrestricted (Global)"}
+                </p>
               </div>
             </div>
           </div>
         </div>
       </div>
 
+      {/* Role-Based Filter Bar */}
+      <DashboardFilterBar
+        role="SUPER_ADMIN"
+        state={filterState}
+        onChange={handleFilterChange}
+        onReset={handleResetFilters}
+        companies={companiesData?.data || []}
+        warehouses={warehousesData?.data || []}
+        isFetching={summaryQuery.isFetching}
+      />
+
       {/* Main Core Infrastructure Metrics */}
       <div>
         <div className="flex items-center justify-between mb-4">
           <div>
             <h2 className="text-lg font-bold text-slate-900 tracking-tight">Core Platform Metrics</h2>
-            <p className="text-xs text-slate-500">High-level enterprise totals across all connected hubs</p>
+            <p className="text-xs text-slate-500">
+              {filterState.companyId !== "ALL" ? "Scoped totals for selected filter" : "High-level enterprise totals across all connected hubs"}
+            </p>
           </div>
           <span className="text-xs font-semibold text-slate-400 bg-slate-100 px-2.5 py-1 rounded-full">Live Overview</span>
         </div>
@@ -140,147 +216,130 @@ export function SuperAdminDashboard({ company }: { company?: EntityRef | null })
                 <Users className="h-5.5 w-5.5" />
               </div>
               <span className="inline-flex items-center gap-1 text-[11px] font-bold text-purple-700 bg-purple-50 px-2 py-0.5 rounded-full border border-purple-100">
-                Accounts
+                Personnel
               </span>
             </div>
-            <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Total Users</p>
+            <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Active Users</p>
             <p className="text-3xl font-extrabold text-slate-900 mt-1">{isLoading ? "—" : summary?.totalUsers ?? 0}</p>
             <p className="text-xs text-slate-400 mt-2 flex items-center gap-1">
-              <CheckCircle2 className="h-3.5 w-3.5 text-purple-500" /> Verified system users
+              <Activity className="h-3.5 w-3.5 text-purple-500" /> Authorized platform operators
             </p>
           </div>
 
-          {/* Boxes Card */}
-          <div className="group relative overflow-hidden rounded-2xl bg-white p-5 border border-slate-200 shadow-sm hover:shadow-md hover:border-amber-300 transition-all duration-200">
+          {/* Total Boxes Card */}
+          <div className="group relative overflow-hidden rounded-2xl bg-white p-5 border border-slate-200 shadow-sm hover:shadow-md hover:border-emerald-300 transition-all duration-200">
             <div className="flex items-center justify-between mb-3">
-              <div className="h-11 w-11 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center group-hover:scale-105 transition-transform">
+              <div className="h-11 w-11 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center group-hover:scale-105 transition-transform">
                 <Package className="h-5.5 w-5.5" />
               </div>
-              <span className="inline-flex items-center gap-1 text-[11px] font-bold text-amber-700 bg-amber-50 px-2 py-0.5 rounded-full border border-amber-100">
+              <span className="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-100">
                 Inventory
               </span>
             </div>
-            <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Total Boxes</p>
+            <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Total Stored Boxes</p>
             <p className="text-3xl font-extrabold text-slate-900 mt-1">{isLoading ? "—" : summary?.totalBoxes ?? 0}</p>
             <p className="text-xs text-slate-400 mt-2 flex items-center gap-1">
-              <Layers className="h-3.5 w-3.5 text-amber-500" /> Tracked inventory boxes
+              <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500" /> Verified archival cartons
             </p>
           </div>
         </div>
       </div>
 
-      {/* Secondary Structure Grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Sub-Entity Network Breakdown */}
-        <div className="lg:col-span-2 rounded-2xl bg-white p-6 border border-slate-200 shadow-sm space-y-4">
-          <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-            <div>
-              <h3 className="text-base font-bold text-slate-900">Entity Network Structure</h3>
-              <p className="text-xs text-slate-500">Sub-organization and client relationships overview</p>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            <div className="p-4 rounded-xl bg-slate-50 border border-slate-100">
-              <div className="flex items-center gap-2 text-slate-500 mb-1">
-                <GitBranch className="h-4 w-4 text-purple-600" />
-                <span className="text-xs font-semibold">Branches</span>
-              </div>
-              <p className="text-2xl font-bold text-slate-900">{isLoading ? "—" : summary?.totalBranches ?? 0}</p>
-            </div>
-
-            <div className="p-4 rounded-xl bg-slate-50 border border-slate-100">
-              <div className="flex items-center gap-2 text-slate-500 mb-1">
-                <MapPin className="h-4 w-4 text-emerald-600" />
-                <span className="text-xs font-semibold">Sites</span>
-              </div>
-              <p className="text-2xl font-bold text-slate-900">{isLoading ? "—" : summary?.totalSites ?? 0}</p>
-            </div>
-
-            <div className="p-4 rounded-xl bg-slate-50 border border-slate-100">
-              <div className="flex items-center gap-2 text-slate-500 mb-1">
-                <Users className="h-4 w-4 text-blue-600" />
-                <span className="text-xs font-semibold">Clients</span>
-              </div>
-              <p className="text-2xl font-bold text-slate-900">{isLoading ? "—" : summary?.totalClients ?? 0}</p>
-            </div>
-          </div>
-
-          {/* Quick Management Shortcuts */}
-          <div className="pt-2">
-            <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3">Quick System Actions</p>
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-              <Link
-                href="/companies"
-                className="flex items-center justify-between p-3 rounded-xl border border-slate-200 bg-white hover:border-blue-300 hover:bg-blue-50/40 text-xs font-bold text-slate-700 hover:text-blue-700 transition-all group"
-              >
-                <span>Companies</span>
-                <ArrowUpRight className="h-3.5 w-3.5 text-slate-400 group-hover:text-blue-600 transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
-              </Link>
-              <Link
-                href="/warehouses"
-                className="flex items-center justify-between p-3 rounded-xl border border-slate-200 bg-white hover:border-indigo-300 hover:bg-indigo-50/40 text-xs font-bold text-slate-700 hover:text-indigo-700 transition-all group"
-              >
-                <span>Warehouses</span>
-                <ArrowUpRight className="h-3.5 w-3.5 text-slate-400 group-hover:text-indigo-600 transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
-              </Link>
-              <Link
-                href="/users"
-                className="flex items-center justify-between p-3 rounded-xl border border-slate-200 bg-white hover:border-purple-300 hover:bg-purple-50/40 text-xs font-bold text-slate-700 hover:text-purple-700 transition-all group"
-              >
-                <span>Users & Roles</span>
-                <ArrowUpRight className="h-3.5 w-3.5 text-slate-400 group-hover:text-purple-600 transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
-              </Link>
-              <Link
-                href="/audit"
-                className="flex items-center justify-between p-3 rounded-xl border border-slate-200 bg-white hover:border-emerald-300 hover:bg-emerald-50/40 text-xs font-bold text-slate-700 hover:text-emerald-700 transition-all group"
-              >
-                <span>Audit Logs</span>
-                <ArrowUpRight className="h-3.5 w-3.5 text-slate-400 group-hover:text-emerald-600 transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
-              </Link>
-            </div>
-          </div>
+      {/* Secondary Records & Hierarchy Row */}
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4">
+        <div className="rounded-2xl bg-white p-4 border border-slate-200 shadow-xs">
+          <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Branches</p>
+          <p className="text-xl font-extrabold text-slate-900 mt-1">{isLoading ? "—" : summary?.totalBranches ?? 0}</p>
         </div>
+        <div className="rounded-2xl bg-white p-4 border border-slate-200 shadow-xs">
+          <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Sites</p>
+          <p className="text-xl font-extrabold text-slate-900 mt-1">{isLoading ? "—" : summary?.totalSites ?? 0}</p>
+        </div>
+        <div className="rounded-2xl bg-white p-4 border border-slate-200 shadow-xs">
+          <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Clients</p>
+          <p className="text-xl font-extrabold text-slate-900 mt-1">{isLoading ? "—" : summary?.totalClients ?? 0}</p>
+        </div>
+        <div className="rounded-2xl bg-white p-4 border border-slate-200 shadow-xs">
+          <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Vendors</p>
+          <p className="text-xl font-extrabold text-slate-900 mt-1">{isLoading ? "—" : summary?.totalVendors ?? 0}</p>
+        </div>
+        <div className="rounded-2xl bg-white p-4 border border-slate-200 shadow-xs">
+          <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">File Records</p>
+          <p className="text-xl font-extrabold text-slate-900 mt-1">{isLoading ? "—" : summary?.totalFiles ?? 0}</p>
+        </div>
+        <div className="rounded-2xl bg-white p-4 border border-slate-200 shadow-xs">
+          <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Scans in Period</p>
+          <p className="text-xl font-extrabold text-blue-600 mt-1">{isLoading ? "—" : summary?.scansToday ?? 0}</p>
+        </div>
+      </div>
 
-        {/* System Telemetry & Devices */}
-        <div className="rounded-2xl bg-white p-6 border border-slate-200 shadow-sm flex flex-col justify-between space-y-6">
-          <div className="space-y-4">
-            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-              <div className="flex items-center gap-2">
-                <div className="p-2 rounded-xl bg-purple-50 text-purple-600">
-                  <Smartphone className="h-5 w-5" />
-                </div>
-                <div>
-                  <h3 className="text-base font-bold text-slate-900">System Telemetry</h3>
-                  <p className="text-xs text-slate-500">Connected hardware devices</p>
-                </div>
+      {/* Quick Navigation Cards */}
+      <div>
+        <h3 className="text-sm font-bold text-slate-700 uppercase tracking-wider mb-3">Enterprise Masters & Operations</h3>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <Link
+            href="/companies"
+            className="flex items-center justify-between p-4 rounded-2xl bg-white border border-slate-200 shadow-xs hover:border-blue-500 hover:shadow-sm transition-all group"
+          >
+            <div className="flex items-center gap-3">
+              <div className="p-2.5 rounded-xl bg-blue-50 text-blue-600">
+                <Building2 className="w-5 h-5" />
               </div>
-              <span className="flex h-2.5 w-2.5 rounded-full bg-emerald-500 animate-pulse" title="System Online" />
+              <div>
+                <p className="text-sm font-bold text-slate-900">Company Master</p>
+                <p className="text-xs text-slate-400">Manage tenant companies</p>
+              </div>
             </div>
+            <ArrowUpRight className="w-4 h-4 text-slate-400 group-hover:text-blue-600 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-all" />
+          </Link>
 
-            <div className="bg-slate-50 p-4 rounded-xl border border-slate-100 space-y-2">
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-semibold text-slate-600">Active Mobile Scanners</span>
-                <span className="text-sm font-extrabold text-slate-900">
-                  {data.summaryQuery.data?.activeDevicesCount ?? 0}
-                </span>
+          <Link
+            href="/warehouses"
+            className="flex items-center justify-between p-4 rounded-2xl bg-white border border-slate-200 shadow-xs hover:border-indigo-500 hover:shadow-sm transition-all group"
+          >
+            <div className="flex items-center gap-3">
+              <div className="p-2.5 rounded-xl bg-indigo-50 text-indigo-600">
+                <Warehouse className="w-5 h-5" />
               </div>
-              <div className="w-full bg-slate-200 h-2 rounded-full overflow-hidden">
-                <div className="bg-purple-600 h-full rounded-full w-3/4 transition-all duration-500" />
+              <div>
+                <p className="text-sm font-bold text-slate-900">Warehouse Master</p>
+                <p className="text-xs text-slate-400">Hubs & storage facilities</p>
               </div>
-              <p className="text-[11px] text-slate-400">Handheld RFID/Barcode mobile scanners online</p>
             </div>
-          </div>
+            <ArrowUpRight className="w-4 h-4 text-slate-400 group-hover:text-indigo-600 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-all" />
+          </Link>
 
-          <div className="pt-2 border-t border-slate-100">
-            <Link
-              href="/reports"
-              className="w-full inline-flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-medium text-xs transition-colors shadow-sm"
-            >
-              <FileCheck className="h-4 w-4 text-blue-400" />
-              Open System Reports
-            </Link>
-          </div>
+          <Link
+            href="/vendors"
+            className="flex items-center justify-between p-4 rounded-2xl bg-white border border-slate-200 shadow-xs hover:border-emerald-500 hover:shadow-sm transition-all group"
+          >
+            <div className="flex items-center gap-3">
+              <div className="p-2.5 rounded-xl bg-emerald-50 text-emerald-600">
+                <Building2 className="w-5 h-5" />
+              </div>
+              <div>
+                <p className="text-sm font-bold text-slate-900">Vendor Master</p>
+                <p className="text-xs text-slate-400">Suppliers & contractors</p>
+              </div>
+            </div>
+            <ArrowUpRight className="w-4 h-4 text-slate-400 group-hover:text-emerald-600 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-all" />
+          </Link>
+
+          <Link
+            href="/users"
+            className="flex items-center justify-between p-4 rounded-2xl bg-white border border-slate-200 shadow-xs hover:border-purple-500 hover:shadow-sm transition-all group"
+          >
+            <div className="flex items-center gap-3">
+              <div className="p-2.5 rounded-xl bg-purple-50 text-purple-600">
+                <Users className="w-5 h-5" />
+              </div>
+              <div>
+                <p className="text-sm font-bold text-slate-900">User Management</p>
+                <p className="text-xs text-slate-400">RBAC & assignments</p>
+              </div>
+            </div>
+            <ArrowUpRight className="w-4 h-4 text-slate-400 group-hover:text-purple-600 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-all" />
+          </Link>
         </div>
       </div>
     </div>

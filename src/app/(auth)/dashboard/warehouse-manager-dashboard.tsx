@@ -1,5 +1,6 @@
 "use client";
 
+import { useMemo, useState } from "react";
 import { EntityRef } from "@/lib/types/auth";
 import {
   DashboardActivityPanels,
@@ -10,6 +11,21 @@ import {
   WarehouseContextHeader,
   WarehouseStructureMetrics,
 } from "./dashboard-shared";
+import {
+  DashboardFilterBar,
+  DashboardFilterState,
+  resolveDateRange,
+} from "@/components/dashboard/dashboard-filter-bar";
+
+const initialFilterState: DashboardFilterState = {
+  companyId: "",
+  warehouseId: "",
+  datePreset: "THIS_WEEK",
+  customFromDate: "",
+  customToDate: "",
+  status: "ALL",
+  operationType: "ALL",
+};
 
 export function WarehouseManagerDashboard({
   company,
@@ -21,7 +37,29 @@ export function WarehouseManagerDashboard({
   warehouse?: EntityRef | null;
 }) {
   const warehouseId = warehouse?.id;
-  const data = useDashboardData(warehouseId, Boolean(warehouseId));
+  const [filterState, setFilterState] = useState<DashboardFilterState>(initialFilterState);
+
+  const dateRange = useMemo(
+    () => resolveDateRange(filterState.datePreset, filterState.customFromDate, filterState.customToDate),
+    [filterState.datePreset, filterState.customFromDate, filterState.customToDate]
+  );
+
+  const data = useDashboardData({
+    scopedWarehouseId: warehouseId,
+    fromDate: dateRange.fromDate,
+    toDate: dateRange.toDate,
+    status: filterState.status !== "ALL" ? filterState.status : undefined,
+    operationType: filterState.operationType !== "ALL" ? filterState.operationType : undefined,
+    enabled: Boolean(warehouseId),
+  });
+
+  const handleFilterChange = (partial: Partial<DashboardFilterState>) => {
+    setFilterState((prev) => ({ ...prev, ...partial }));
+  };
+
+  const handleResetFilters = () => {
+    setFilterState(initialFilterState);
+  };
 
   if (data.summaryQuery.error) {
     return <DashboardError onRetry={() => data.summaryQuery.refetch()} />;
@@ -34,6 +72,17 @@ export function WarehouseManagerDashboard({
         warehouseCode={warehouse?.code}
         companyName={company?.name}
         branchName={branch?.name}
+      />
+
+      {/* Role-Scoped Filter Bar for Warehouse Admin */}
+      <DashboardFilterBar
+        role="WAREHOUSE_ADMIN"
+        state={filterState}
+        onChange={handleFilterChange}
+        onReset={handleResetFilters}
+        fixedCompanyName={company?.name || "Company"}
+        fixedWarehouseName={warehouse?.name ? `${warehouse.name} (${warehouse.code || ''})` : "Assigned Warehouse"}
+        isFetching={data.summaryQuery.isFetching || data.operationsQuery.isFetching}
       />
 
       <WarehouseStructureMetrics

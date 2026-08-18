@@ -113,6 +113,7 @@ export default function RackTemplatesPage() {
   const [applyTemplate, setApplyTemplate] = useState<RackTemplate | null>(null);
   const [applyWarehouseId, setApplyWarehouseId] = useState('');
   const [applyRoomId, setApplyRoomId] = useState('');
+  const [applyError, setApplyError] = useState<string | null>(null);
 
   const [confirmDelete, setConfirmDelete] = useState<{
     isOpen: boolean;
@@ -180,8 +181,11 @@ export default function RackTemplatesPage() {
     queryClient.invalidateQueries({ queryKey: ['rack-templates'] });
     queryClient.invalidateQueries({ queryKey: ['racks'] });
     queryClient.invalidateQueries({ queryKey: ['racks-list'] });
+    queryClient.invalidateQueries({ queryKey: ['rack-levels'] });
     queryClient.invalidateQueries({ queryKey: ['levels-list'] });
     queryClient.invalidateQueries({ queryKey: ['locations'] });
+    queryClient.invalidateQueries({ queryKey: ['rooms'] });
+    queryClient.invalidateQueries({ queryKey: ['warehouses-list'] });
   };
 
   const createMutation = useMutation({
@@ -249,9 +253,14 @@ export default function RackTemplatesPage() {
       setApplyTemplate(null);
       setApplyWarehouseId('');
       setApplyRoomId('');
-      toast.success(result.message || 'Template applied successfully');
+      setApplyError(null);
+      toast.success(result?.message || 'Template applied successfully');
     },
-    onError: (err: any) => toast.error(err?.message || 'Failed to apply template')
+    onError: (err: any) => {
+      const errorMsg = err?.message || 'Failed to apply template';
+      setApplyError(errorMsg);
+      toast.error(errorMsg);
+    }
   });
 
   const statusMutation = useMutation({
@@ -327,6 +336,7 @@ export default function RackTemplatesPage() {
     setApplyTemplate(template);
     setApplyWarehouseId('');
     setApplyRoomId('');
+    setApplyError(null);
     setIsApplyOpen(true);
   };
 
@@ -807,29 +817,104 @@ export default function RackTemplatesPage() {
         </div>
       </div>
 
-      {/* Apply Drawer */}
+      {/* Apply Right-Side Sheet / Drawer */}
       <div
         className={`fixed inset-0 z-50 overflow-hidden transition-opacity duration-300 ${
           isApplyOpen ? 'pointer-events-auto opacity-100' : 'pointer-events-none opacity-0'
         }`}
       >
-        <div className="absolute inset-0 bg-slate-900/40 backdrop-blur-xs" onClick={() => setIsApplyOpen(false)} />
-        <div className="absolute inset-y-0 right-0 flex max-w-full pl-10">
+        <div
+          className="absolute inset-0 bg-slate-900/40 backdrop-blur-xs"
+          onClick={() => !applyMutation.isPending && setIsApplyOpen(false)}
+        />
+        <div className="absolute inset-y-0 right-0 flex max-w-full pl-6 sm:pl-10">
           <div
-            className={`flex w-screen max-w-md transform flex-col bg-white shadow-2xl transition-transform duration-300 ${
+            className={`flex w-screen max-w-lg transform flex-col bg-white shadow-2xl transition-transform duration-300 ease-in-out ${
               isApplyOpen ? 'translate-x-0' : 'translate-x-full'
             }`}
           >
-            <div className="border-b border-slate-100 px-6 py-5">
-              <div className="flex items-center gap-2">
-                <Grid className="h-5 w-5 text-emerald-600" />
-                <h3 className="text-lg font-bold text-slate-900">Apply Template</h3>
+            {/* Sheet Header */}
+            <div className="flex items-center justify-between border-b border-slate-100 bg-slate-50/50 px-6 py-5">
+              <div>
+                <div className="flex items-center gap-2">
+                  <Grid className="h-5 w-5 text-emerald-600" />
+                  <h3 className="text-lg font-bold text-slate-900">Apply Rack Template</h3>
+                </div>
+                <p className="mt-1 text-xs text-slate-500">
+                  Select a warehouse and room to apply this template.
+                </p>
               </div>
-              <p className="mt-1 text-xs text-slate-500">
-                Generate rows, racks, levels, and locations for <strong>{applyTemplate?.name}</strong>
-              </p>
+              <Button
+                onClick={() => setIsApplyOpen(false)}
+                variant="ghost"
+                disabled={applyMutation.isPending}
+                className="h-9 w-9 rounded-full p-0 text-slate-400 hover:bg-slate-100 hover:text-slate-700"
+              >
+                <X className="h-5 w-5" />
+              </Button>
             </div>
-            <div className="space-y-4 p-6">
+
+            {/* Sheet Body */}
+            <div className="flex-1 space-y-5 overflow-y-auto p-6">
+              {/* Template Information */}
+              {applyTemplate && (
+                <div className="space-y-2">
+                  <Label className="text-xs font-bold uppercase tracking-wider text-slate-400">
+                    Template Information
+                  </Label>
+                  <div className="rounded-2xl border border-slate-150 bg-slate-50/60 p-4 space-y-3">
+                    <div className="flex items-center justify-between">
+                      <h4 className="text-sm font-extrabold text-slate-900">{applyTemplate.name}</h4>
+                      <span className="rounded-md bg-blue-50 px-2 py-0.5 text-[10px] font-bold uppercase text-blue-600">
+                        {applyTemplate.code}
+                      </span>
+                    </div>
+                    {applyTemplate.description && (
+                      <p className="text-xs text-slate-500">{applyTemplate.description}</p>
+                    )}
+
+                    <div className="grid grid-cols-2 gap-2 pt-2 border-t border-slate-200/60 text-xs">
+                      <div>
+                        <span className="text-slate-400 text-[11px] block">Warehouse Type</span>
+                        <span className="font-semibold text-slate-700">{applyTemplate.warehouseType}</span>
+                      </div>
+                      <div>
+                        <span className="text-slate-400 text-[11px] block">Rows</span>
+                        <span className="font-semibold text-slate-700">{applyTemplate.rowsCount}</span>
+                      </div>
+                      <div>
+                        <span className="text-slate-400 text-[11px] block">Racks / Row</span>
+                        <span className="font-semibold text-slate-700">{applyTemplate.racksCount}</span>
+                      </div>
+                      <div>
+                        <span className="text-slate-400 text-[11px] block">Levels / Rack</span>
+                        <span className="font-semibold text-slate-700">{applyTemplate.levelsCount}</span>
+                      </div>
+                      <div>
+                        <span className="text-slate-400 text-[11px] block">Locations / Level</span>
+                        <span className="font-semibold text-slate-700">
+                          {applyTemplate.locationPerLevelDisplay ??
+                            applyTemplate.locationPerLevel ??
+                            applyTemplate.locRows * applyTemplate.locCols}
+                        </span>
+                      </div>
+                      <div>
+                        <span className="text-slate-400 text-[11px] block">Total Locations</span>
+                        <span className="font-bold text-emerald-600">
+                          {applyTemplate.rowsCount *
+                            applyTemplate.racksCount *
+                            applyTemplate.levelsCount *
+                            (applyTemplate.locationPerLevelDisplay ??
+                              applyTemplate.locationPerLevel ??
+                              applyTemplate.locRows * applyTemplate.locCols)}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Warehouse Selection */}
               <div className="space-y-2">
                 <Label>Warehouse *</Label>
                 <select
@@ -837,8 +922,10 @@ export default function RackTemplatesPage() {
                   onChange={(e) => {
                     setApplyWarehouseId(e.target.value);
                     setApplyRoomId('');
+                    setApplyError(null);
                   }}
-                  className="h-11 w-full rounded-xl border border-slate-200 px-3 text-sm"
+                  disabled={applyMutation.isPending}
+                  className="h-11 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-500/10"
                 >
                   <option value="">Select warehouse</option>
                   {warehouses.map((w) => (
@@ -848,15 +935,20 @@ export default function RackTemplatesPage() {
                   ))}
                 </select>
               </div>
+
+              {/* Room Selection */}
               <div className="space-y-2">
                 <Label>Room *</Label>
                 <select
                   value={applyRoomId}
-                  onChange={(e) => setApplyRoomId(e.target.value)}
-                  disabled={!applyWarehouseId}
-                  className="h-11 w-full rounded-xl border border-slate-200 px-3 text-sm disabled:bg-slate-50"
+                  onChange={(e) => {
+                    setApplyRoomId(e.target.value);
+                    setApplyError(null);
+                  }}
+                  disabled={!applyWarehouseId || applyMutation.isPending}
+                  className="h-11 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm disabled:bg-slate-50 disabled:text-slate-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/10"
                 >
-                  <option value="">Select room</option>
+                  <option value="">{applyWarehouseId ? 'Select room' : 'Select warehouse first'}</option>
                   {rooms.map((r) => (
                     <option key={r.id} value={r.id}>
                       {r.name} ({r.code})
@@ -864,22 +956,51 @@ export default function RackTemplatesPage() {
                   ))}
                 </select>
               </div>
-              <div className="flex items-start gap-2 rounded-xl border border-amber-100 bg-amber-50 p-3 text-xs text-amber-800">
+
+              {/* Preview / Template Structure Information */}
+              <div className="flex items-start gap-2 rounded-xl border border-amber-100 bg-amber-50 p-3.5 text-xs text-amber-800">
                 <Info className="mt-0.5 h-4 w-4 shrink-0" />
-                Existing records with matching codes will be reused — no duplicates will be created.
+                <span>Existing records with matching codes will be reused — no duplicate rows, racks, levels, or locations will be created.</span>
               </div>
+
+              {/* Error Message Display */}
+              {applyError && (
+                <div className="flex items-start gap-2 rounded-xl border border-rose-200 bg-rose-50 p-3.5 text-xs text-rose-800">
+                  <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-rose-600" />
+                  <div>
+                    <span className="font-semibold">Application Failed:</span> {applyError}
+                  </div>
+                </div>
+              )}
             </div>
-            <div className="mt-auto flex justify-end gap-3 border-t border-slate-100 p-6">
-              <Button type="button" variant="outline" onClick={() => setIsApplyOpen(false)} className="rounded-xl">
+
+            {/* Sticky Sheet Footer */}
+            <div className="flex shrink-0 items-center justify-end gap-3 border-t border-slate-100 bg-slate-50/50 p-6">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setIsApplyOpen(false)}
+                disabled={applyMutation.isPending}
+                className="h-11 rounded-xl border-slate-200"
+              >
                 Cancel
               </Button>
               <Button
                 onClick={handleApply}
-                disabled={applyMutation.isPending || !applyTemplate}
-                className="rounded-xl bg-emerald-600 text-white hover:bg-emerald-700"
+                disabled={applyMutation.isPending || !applyTemplate || !applyWarehouseId || !applyRoomId}
+                className="h-11 rounded-xl bg-emerald-600 px-5 text-white hover:bg-emerald-700 disabled:opacity-50"
               >
-                {applyMutation.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <CheckCircle2 className="mr-2 h-4 w-4" />}
-                Apply Template
+                {applyMutation.isPending ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Applying...
+                  </>
+                ) : (
+                  <>
+                    <CheckCircle2 className="mr-2 h-4 w-4" />
+                    Apply Template
+                  </>
+                )}
               </Button>
             </div>
           </div>

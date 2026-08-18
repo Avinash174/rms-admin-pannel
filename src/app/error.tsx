@@ -25,10 +25,10 @@ export default function Error({
         <p className="text-sm text-slate-500 max-w-xs mx-auto">
           An unexpected application error occurred. You can attempt to retry the operation.
         </p>
-        {error.message && (
+        {error && (
           <div className="bg-slate-50 border border-slate-100 rounded-xl p-3 text-left max-h-32 overflow-y-auto">
             <code className="text-xs font-mono text-rose-600 block break-all">
-              {error.message}
+              {error.message || (typeof error === "string" ? error : "An unexpected error occurred")}
             </code>
           </div>
         )}

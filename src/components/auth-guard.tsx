@@ -8,6 +8,8 @@ import { isAuthenticated } from '@/lib/api/auth';
 import { hasRouteAccess } from '@/lib/route-permissions';
 import { clearPersistedSession } from '@/lib/session';
 
+import { isSuperAdmin, isCompanyAdmin } from '@/lib/permissions';
+
 export function AuthGuard({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const pathname = usePathname();
@@ -52,17 +54,32 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
     return null;
   }
 
-  if (!session?.company?.id || !session?.warehouse?.id) {
-    return (
-      <div className="flex h-screen items-center justify-center bg-slate-50 px-4">
-        <div className="text-center max-w-md">
-          <p className="text-lg font-semibold text-slate-900">Session incomplete</p>
-          <p className="text-sm text-slate-500 mt-2">
-            No active company or warehouse in your session. Contact your administrator or sign in again.
-          </p>
+  if (!isSuperAdmin(user)) {
+    if (isCompanyAdmin(user)) {
+      if (!session?.company?.id) {
+        return (
+          <div className="flex h-screen items-center justify-center bg-slate-50 px-4">
+            <div className="text-center max-w-md">
+              <p className="text-lg font-semibold text-slate-900">Session incomplete</p>
+              <p className="text-sm text-slate-500 mt-2">
+                No active company in your session. Contact your administrator or sign in again.
+              </p>
+            </div>
+          </div>
+        );
+      }
+    } else if (!session?.company?.id || !session?.warehouse?.id) {
+      return (
+        <div className="flex h-screen items-center justify-center bg-slate-50 px-4">
+          <div className="text-center max-w-md">
+            <p className="text-lg font-semibold text-slate-900">Session incomplete</p>
+            <p className="text-sm text-slate-500 mt-2">
+              No active warehouse in your session. Contact your administrator or sign in again.
+            </p>
+          </div>
         </div>
-      </div>
-    );
+      );
+    }
   }
 
   if (pathname !== '/forbidden' && !hasRouteAccess(pathname, user)) {

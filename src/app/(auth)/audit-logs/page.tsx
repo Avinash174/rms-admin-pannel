@@ -238,6 +238,10 @@ export default function AuditLogsPage() {
                 <div className="grid grid-cols-2 gap-2 bg-slate-50 p-3 rounded-xl text-slate-700">
                   <div><strong>Log ID:</strong> <span className="font-mono text-[10px]">{selectedLog?.id}</span></div>
                   <div><strong>Timestamp:</strong> {selectedLog?.createdAt ? new Date(selectedLog.createdAt).toLocaleString() : "-"}</div>
+                  <div><strong>Entity Type:</strong> <span className="font-semibold">{selectedLog?.entityType || "OTHER"}</span></div>
+                  <div><strong>Entity ID:</strong> <span className="font-mono text-[10px]">{selectedLog?.entityId || "N/A"}</span></div>
+                  <div><strong>User:</strong> {selectedLog?.userName || selectedLog?.user?.fullName || "System"}</div>
+                  <div><strong>Device Name:</strong> {selectedLog?.device?.name || selectedLog?.device?.label || selectedLog?.device?.model || selectedLog?.device?.serialNumber || "N/A"}</div>
                 </div>
 
                 <JsonBlock title="Previous State" value={detailLog?.previousState || selectedLog?.previousState} />

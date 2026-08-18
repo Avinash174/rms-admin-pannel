@@ -2,6 +2,16 @@ import { AuditLog, AuditLogFilters, AuditLogListResponse } from '../types/audit'
 import { fetchWithAuthRoot } from './auth';
 
 function mapAuditLog(log: any): AuditLog {
+  const device = log.device
+    ? {
+        id: log.device.id,
+        name: log.device.name || log.device.label || log.device.model || log.device.serialNumber || 'N/A',
+        serialNumber: log.device.serialNumber ?? null,
+        model: log.device.model ?? null,
+        label: log.device.label ?? null
+      }
+    : null;
+
   return {
     id: log.id,
     action: log.action,
@@ -10,7 +20,7 @@ function mapAuditLog(log: any): AuditLog {
     previousState: log.previousState ?? null,
     newState: log.newState ?? null,
     user: log.user ?? null,
-    device: log.device ?? null,
+    device,
     createdAt: log.createdAt,
     userName: log.user?.fullName || 'System'
   };

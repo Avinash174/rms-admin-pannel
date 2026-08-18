@@ -1,4 +1,26 @@
-export type AuditEntityType = 'BOX' | 'FILE_RECORD' | 'LOCATION' | 'USER' | 'DEVICE' | 'OTHER';
+export type AuditEntityType =
+  | 'BOX'
+  | 'FILE_RECORD'
+  | 'LOCATION'
+  | 'WAREHOUSE'
+  | 'BRANCH'
+  | 'SITE'
+  | 'ROOM'
+  | 'RACK'
+  | 'SHELF'
+  | 'CLIENT'
+  | 'DEPARTMENT'
+  | 'USER'
+  | 'DEVICE'
+  | 'BARCODE'
+  | 'WORK_ORDER'
+  | 'SERVICE_REQUEST'
+  | 'RACK_TEMPLATE'
+  | 'TRANSFER'
+  | 'SEGREGATION'
+  | 'MERGE'
+  | 'INVENTORY'
+  | 'OTHER';
 
 export interface AuditLogUser {
   id: string;
@@ -8,14 +30,16 @@ export interface AuditLogUser {
 
 export interface AuditLogDevice {
   id: string;
-  serialNumber: string;
+  name?: string | null;
+  serialNumber?: string | null;
   model?: string | null;
+  label?: string | null;
 }
 
 export interface AuditLog {
   id: string;
   action: string;
-  entityType: AuditEntityType;
+  entityType: AuditEntityType | string;
   entityId: string | null;
   previousState?: Record<string, unknown> | null;
   newState?: Record<string, unknown> | null;
@@ -29,7 +53,7 @@ export interface AuditLogFilters {
   userId?: string;
   warehouseId?: string;
   action?: string;
-  entityType?: AuditEntityType;
+  entityType?: AuditEntityType | string;
   entityId?: string;
   from?: string;
   to?: string;
