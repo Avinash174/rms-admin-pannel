@@ -100,13 +100,25 @@ export const columns: ColumnDef<RecordFile>[] = [
   },
   {
     id: 'box',
-    header: () => <span className="text-xs font-bold tracking-wider text-slate-500 uppercase">Box</span>,
-    cell: ({ row }) => (
-      <div className="flex items-center gap-1.5 font-mono text-xs font-semibold text-slate-700">
-        <BoxIcon className="w-3.5 h-3.5 text-slate-400" />
-        {row.original.box?.barcode || '—'}
-      </div>
-    ),
+    header: () => <span className="text-xs font-bold tracking-wider text-slate-500 uppercase">Current Box</span>,
+    cell: ({ row }) => {
+      const boxBarcode = row.original.box?.barcode;
+      return (
+        <div className="flex items-center gap-1.5 font-mono text-xs font-semibold">
+          <BoxIcon className="w-3.5 h-3.5 text-blue-500 shrink-0" />
+          {boxBarcode ? (
+            <a
+              href={`/boxes?search=${encodeURIComponent(boxBarcode)}`}
+              className="inline-flex items-center px-2 py-0.5 rounded-md bg-blue-50 text-blue-700 font-bold border border-blue-200/80 hover:bg-blue-100 transition-colors"
+            >
+              {boxBarcode}
+            </a>
+          ) : (
+            <span className="text-slate-400 font-normal italic">Unassigned</span>
+          )}
+        </div>
+      );
+    },
   },
   {
     id: 'client',

@@ -131,24 +131,31 @@ export const columns: ColumnDef<RecordBox>[] = [
   },
   {
     accessorKey: 'fileCount',
-    header: 'Capacity / Files',
+    header: 'Files / Capacity',
     cell: ({ row }) => {
       const fileCount = row.original.fileCount ?? 0;
-      const capacity = row.original.fileCapacity || 20;
+      const capacity = (row.original as any).capacity || row.original.fileCapacity || 25;
+      const availableSlots = Math.max(0, capacity - fileCount);
       const percentage = Math.min(100, Math.round((fileCount / capacity) * 100));
 
       return (
-        <div className="flex flex-col gap-1 w-28">
+        <div className="flex flex-col gap-1.5 w-32">
           <div className="flex justify-between items-center text-xs">
-            <span className="font-semibold text-slate-700">{fileCount} files</span>
-            <span className="text-[10px] text-slate-400 font-mono">{capacity} max</span>
+            <span className="font-bold text-slate-800 font-mono">{fileCount} / {capacity}</span>
+            <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${
+              availableSlots === 0 
+                ? 'bg-rose-100 text-rose-700' 
+                : 'bg-emerald-100 text-emerald-700'
+            }`}>
+              {availableSlots === 0 ? 'FULL' : `${availableSlots} Left`}
+            </span>
           </div>
           <div className="h-1.5 w-full bg-slate-100 rounded-full overflow-hidden border border-slate-200/50">
             <div
               className={`h-full rounded-full transition-all ${
-                percentage >= 90
+                percentage >= 100
                   ? 'bg-rose-500'
-                  : percentage >= 60
+                  : percentage >= 80
                   ? 'bg-amber-500'
                   : 'bg-emerald-500'
               }`}

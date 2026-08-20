@@ -21,7 +21,10 @@ import {
   FileSpreadsheet,
   Layers,
   Sparkles,
-  ArrowRight
+  ArrowRight,
+  Building2,
+  ChevronRight,
+  AlertTriangle
 } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import { VisualBarcode } from '@/components/records/visual-barcode';
@@ -35,10 +38,11 @@ import {
   deleteLocation,
   bulkGenerateLocations,
   bulkActionLocations,
-  bulkImportLocations,
+  importWarehouseLocations,
   BulkGenerateLocationsRequest
 } from '@/lib/api/location';
-import { Location } from '@/lib/types/location';
+import { getWarehouses } from '@/lib/api/warehouse';
+import { Location, LocationImportRow, LocationImportResult } from '@/lib/types/location';
 import { CreateLocationData, createLocationSchema } from '@/lib/validations/location';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
@@ -49,18 +53,13 @@ import { Switch } from '@/components/ui/switch';
 import { HierarchyFilters, useEffectiveHierarchyIds } from '@/components/masters/hierarchy-filters';
 import { PageHeaderCard } from '@/components/page-header-card';
 
-interface ImportLocationRow {
-  name: string;
-  barcode?: string;
-}
-
 export default function LocationsPage() {
   const [page, setPage] = useState(1);
-  const [warehouseId, setWarehouseId] = useState('');
+  const [selectedWarehouseId, setSelectedWarehouseId] = useState('');
   const [roomId, setRoomId] = useState('');
   const [rackId, setRackId] = useState('');
   const [shelfId, setShelfId] = useState('');
-  const { effectiveShelfId } = useEffectiveHierarchyIds(warehouseId, roomId, rackId, shelfId, 'shelf');
+  const { effectiveShelfId } = useEffectiveHierarchyIds(selectedWarehouseId, roomId, rackId, shelfId, 'shelf');
 
   // Drawer states
   const [isFormDrawerOpen, setIsFormDrawerOpen] = useState(false);
@@ -79,7 +78,8 @@ export default function LocationsPage() {
 
   // Bulk Import State
   const [isImportModalOpen, setIsImportModalOpen] = useState(false);
-  const [importRows, setImportRows] = useState<ImportLocationRow[]>([]);
+  const [importRows, setImportRows] = useState<LocationImportRow[]>([]);
+  const [importResult, setImportResult] = useState<LocationImportResult | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Row Selection State for Bulk Actions
@@ -105,13 +105,20 @@ export default function LocationsPage() {
 
   const queryClient = useQueryClient();
 
-  const { data, isLoading, error, refetch, isFetching } = useQuery({
-    queryKey: ['locations', effectiveShelfId, page],
-    queryFn: () => getLocations(effectiveShelfId || undefined, page, 20),
+  // Fetch Warehouses for dropdown
+  const { data: warehousesData } = useQuery({
+    queryKey: ['warehouses'],
+    queryFn: () => getWarehouses(),
+  });
+  const warehouses = warehousesData?.data || [];
+
+  const { data, isLoading, error, refetch } = useQuery({
+    queryKey: ['locations', effectiveShelfId, selectedWarehouseId, searchTerm, statusFilter, page],
+    queryFn: () => getLocations(effectiveShelfId || undefined, selectedWarehouseId || undefined, searchTerm || undefined, statusFilter, page, 20),
   });
 
   const createMutation = useMutation({
-    mutationFn: (data: CreateLocationData) => createLocation(effectiveShelfId, data),
+    mutationFn: (data: CreateLocationData) => createLocation(effectiveShelfId || undefined, { ...data, warehouseId: selectedWarehouseId || undefined }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['locations'] });
       setIsFormDrawerOpen(false);
@@ -179,15 +186,14 @@ export default function LocationsPage() {
     },
   });
 
-  // Bulk Import Mutation
+  // Bulk Import Excel Mutation
   const bulkImportMutation = useMutation({
-    mutationFn: ({ shelfId, rows }: { shelfId: string; rows: ImportLocationRow[] }) =>
-      bulkImportLocations(shelfId, rows),
+    mutationFn: ({ warehouseId, rows }: { warehouseId: string; rows: LocationImportRow[] }) =>
+      importWarehouseLocations(warehouseId, rows),
     onSuccess: (res) => {
       queryClient.invalidateQueries({ queryKey: ['locations'] });
-      setIsImportModalOpen(false);
-      setImportRows([]);
-      toast.success(res.message || 'Locations imported successfully');
+      setImportResult(res);
+      toast.success(`Import completed: ${res.imported} imported, ${res.updated} updated, ${res.failed} failed`);
     },
     onError: (error: any) => {
       toast.error(error.response?.data?.message || error.message || 'Failed to import locations');
@@ -206,10 +212,6 @@ export default function LocationsPage() {
 
   const handleFormSubmit = (data: CreateLocationData) => {
     if (formMode === 'CREATE') {
-      if (!effectiveShelfId) {
-        toast.error('Please select a Shelf in the hierarchy filters first');
-        return;
-      }
       createMutation.mutate(data);
     } else if (selectedLocation) {
       updateMutation.mutate({ id: selectedLocation.id, data });
@@ -220,7 +222,7 @@ export default function LocationsPage() {
     setConfirmDelete({
       isOpen: true,
       title: 'Delete Location',
-      description: `Are you sure you want to delete location barcode ${location.barcode}? This action cannot be undone.`,
+      description: `Are you sure you want to delete location ${location.fullLocation2 || location.barcode}? This action cannot be undone.`,
       onConfirm: () => {
         deleteMutation.mutate(location.id);
       },
@@ -230,31 +232,17 @@ export default function LocationsPage() {
   const locations = data?.data || [];
   const meta = data?.meta;
 
-  const totalCount = locations.length;
+  const totalCount = meta?.total || locations.length;
   const activeCount = locations.filter((l) => l.isActive).length;
   const inactiveCount = totalCount - activeCount;
-
-  const filteredLocations = useMemo(() => {
-    return locations.filter((l) => {
-      const matchesSearch =
-        !searchTerm ||
-        l.barcode.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        (l.name && l.name.toLowerCase().includes(searchTerm.toLowerCase()));
-      const matchesStatus =
-        statusFilter === 'ALL' ||
-        (statusFilter === 'ACTIVE' && l.isActive) ||
-        (statusFilter === 'INACTIVE' && !l.isActive);
-      return matchesSearch && matchesStatus;
-    });
-  }, [locations, searchTerm, statusFilter]);
 
   // Selected row IDs
   const selectedLocationIds = useMemo(() => {
     return Object.keys(rowSelection)
       .filter((indexStr) => rowSelection[indexStr])
-      .map((indexStr) => filteredLocations[Number(indexStr)]?.id)
+      .map((indexStr) => locations[Number(indexStr)]?.id)
       .filter(Boolean);
-  }, [rowSelection, filteredLocations]);
+  }, [rowSelection, locations]);
 
   // Bulk Generator Preview
   const previewBarcodes = useMemo(() => {
@@ -275,7 +263,7 @@ export default function LocationsPage() {
     return sample;
   }, [bulkForm]);
 
-  // Handle Excel/CSV File Upload
+  // Handle Client Excel Location Upload
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -290,42 +278,59 @@ export default function LocationsPage() {
         const rawJson: any[] = XLSX.utils.sheet_to_json(ws);
 
         if (!rawJson.length) {
-          toast.error('Uploaded file is empty.');
+          toast.error('Uploaded Excel file is empty.');
           return;
         }
 
-        const parsed: ImportLocationRow[] = rawJson
-          .map((row) => {
-            const name = String(row['Location Name'] || row['Name'] || row['name'] || row['Location'] || '').trim();
-            const barcode = String(row['Barcode'] || row['barcode'] || row['Code'] || '').trim();
-            return { name, barcode: barcode || undefined };
-          })
-          .filter((r) => r.name.length > 0);
+        const parsed: LocationImportRow[] = rawJson.map((row) => {
+          return {
+            'Full Location': row['Full Location'] || row['fullLocation'] || row['FullLocation'] || '',
+            'NRow': row['NRow'] || row['nRow'] || row['Row'] || row['row'] || '',
+            'NRack2': row['NRack2'] || row['nRack2'] || row['Rack'] || row['rack'] || '',
+            'Nlevel': row['Nlevel'] || row['nLevel'] || row['Level'] || row['level'] || '',
+            'NLocation': row['NLocation'] || row['nLocation'] || row['Location'] || row['location'] || '',
+            'NFull Location2': row['NFull Location2'] || row['nFullLocation2'] || row['FullLocation2'] || row['Barcode'] || ''
+          };
+        }).filter(r => r['NFull Location2'] || r['Full Location'] || r['NLocation']);
 
         if (!parsed.length) {
-          toast.error('No valid rows found. Ensure the file has a "Location Name" column.');
+          toast.error('No valid location rows found. Ensure the file has client location columns (Full Location, NRow, NRack2, Nlevel, NLocation, NFull Location2).');
           return;
         }
 
         setImportRows(parsed);
-        toast.success(`Parsed ${parsed.length} locations ready for import`);
+        setImportResult(null);
+        toast.success(`Parsed ${parsed.length} client location records ready for import`);
       } catch (err: any) {
-        toast.error('Failed to parse file: ' + err.message);
+        toast.error('Failed to parse Excel file: ' + err.message);
       }
     };
     reader.readAsBinaryString(file);
   };
 
-  // Download Sample Template
+  // Download Client Excel Template
   const handleDownloadSample = () => {
     const ws = XLSX.utils.json_to_sheet([
-      { 'Location Name': 'LOC-001', 'Barcode': 'WH1-RM1-RK1-S1-LOC-001' },
-      { 'Location Name': 'LOC-002', 'Barcode': 'WH1-RM1-RK1-S1-LOC-002' },
-      { 'Location Name': 'LOC-003', 'Barcode': 'WH1-RM1-RK1-S1-LOC-003' },
+      {
+        'Full Location': 'AB1W-01-A1-01-01',
+        'NRow': 'R23',
+        'NRack2': '01',
+        'Nlevel': 'A1',
+        'NLocation': '01',
+        'NFull Location2': 'R23-01-A1-01'
+      },
+      {
+        'Full Location': 'AB1W-01-A1-01-02',
+        'NRow': 'R23',
+        'NRack2': '01',
+        'Nlevel': 'A1',
+        'NLocation': '02',
+        'NFull Location2': 'R23-01-A1-02'
+      }
     ]);
     const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, 'Locations_Template');
-    XLSX.writeFile(wb, 'Locations_Import_Template.xlsx');
+    XLSX.utils.book_append_sheet(wb, ws, 'Location_Master_Template');
+    XLSX.writeFile(wb, 'Warehouse_Location_Master_Template.xlsx');
   };
 
   if (isLoading) {
@@ -358,26 +363,25 @@ export default function LocationsPage() {
     <div className="w-full space-y-6 px-4 sm:px-6 lg:px-0 pb-16">
       {/* Header */}
       <PageHeaderCard
-        title="Location Master"
-        description="Manage physical folder storage locations, bulk generation, barcodes & shelf levels."
+        title="Warehouse Location Master"
+        description="Client Warehouse Location Structure & Barcode Master (Full Location, Row, Rack, Level, Location)."
         badge="Warehouse Structure · Locations"
         icon={MapPin}
       >
         <div className="flex items-center gap-2.5 flex-wrap">
-          {/* Bulk Import Button */}
+          {/* Bulk Import Client Excel */}
           <Button
             onClick={() => {
-              if (!effectiveShelfId) {
-                toast.error('Please select a Shelf in the hierarchy filters first');
-                return;
+              if (!selectedWarehouseId && warehouses.length > 0) {
+                setSelectedWarehouseId(warehouses[0].id);
               }
               setIsImportModalOpen(true);
             }}
             variant="outline"
             className="rounded-xl border-slate-200 text-slate-700 hover:bg-slate-50 h-10 px-3.5 text-xs font-semibold shadow-xs"
           >
-            <Upload className="w-4 h-4 mr-2 text-slate-500" />
-            Import Excel
+            <Upload className="w-4 h-4 mr-2 text-blue-600" />
+            Import Client Excel
           </Button>
 
           {/* Bulk Generate Button */}
@@ -398,10 +402,6 @@ export default function LocationsPage() {
           {/* Single Add Button */}
           <Button
             onClick={() => {
-              if (!effectiveShelfId) {
-                toast.error('Please select a Shelf in the hierarchy filters first');
-                return;
-              }
               setFormMode('CREATE');
               setSelectedLocation(null);
               form.reset({
@@ -420,46 +420,71 @@ export default function LocationsPage() {
         </div>
       </PageHeaderCard>
 
-      <HierarchyFilters
-        depth="shelf"
-        warehouseId={warehouseId}
-        roomId={roomId}
-        rackId={rackId}
-        shelfId={shelfId}
-        onWarehouseChange={setWarehouseId}
-        onRoomChange={setRoomId}
-        onRackChange={setRackId}
-        onShelfChange={setShelfId}
-      />
+      {/* Warehouse Selector & Hierarchy Filters */}
+      <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-xs space-y-4">
+        <div className="flex flex-col md:flex-row gap-4 items-center justify-between">
+          <div className="flex items-center gap-3 w-full md:w-auto">
+            <Building2 className="w-5 h-5 text-blue-600 shrink-0" />
+            <span className="text-xs font-bold text-slate-700 uppercase tracking-wider">Select Warehouse:</span>
+            <select
+              value={selectedWarehouseId}
+              onChange={(e) => setSelectedWarehouseId(e.target.value)}
+              className="h-10 px-3.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold text-slate-800 focus:bg-white focus:ring-2 focus:ring-blue-500/20"
+            >
+              <option value="">All Warehouses</option>
+              {warehouses.map((w) => (
+                <option key={w.id} value={w.id}>
+                  {w.name} ({w.code})
+                </option>
+              ))}
+            </select>
+          </div>
+          <span className="text-xs text-slate-400 font-medium">
+            Showing {locations.length} of {totalCount} locations
+          </span>
+        </div>
+
+        <HierarchyFilters
+          depth="shelf"
+          warehouseId={selectedWarehouseId}
+          roomId={roomId}
+          rackId={rackId}
+          shelfId={shelfId}
+          onWarehouseChange={setSelectedWarehouseId}
+          onRoomChange={setRoomId}
+          onRackChange={setRackId}
+          onShelfChange={setShelfId}
+        />
+      </div>
 
       {/* Metrics Section */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         {/* Total */}
-        <div className="relative overflow-hidden bg-white p-6 rounded-2xl border border-slate-150 shadow-sm hover:shadow-md transition-all duration-300 group">
+        <div className="relative overflow-hidden bg-white p-6 rounded-2xl border border-slate-150 shadow-xs hover:shadow-md transition-all duration-300 group">
           <div className="absolute top-0 right-0 w-28 h-28 bg-gradient-to-bl from-blue-50 to-indigo-50/30 rounded-bl-full -z-0 opacity-80 transition-transform duration-500 group-hover:scale-105" />
           <div className="relative z-10 flex items-center justify-between">
             <div className="space-y-2">
-              <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">Total Barcodes</p>
+              <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">Total Locations</p>
               <h3 className="text-3xl font-extrabold text-slate-900 tracking-tight">{totalCount}</h3>
             </div>
-            <div className="p-3.5 bg-blue-50 text-blue-600 rounded-2xl border border-blue-100/50 shadow-sm">
+            <div className="p-3.5 bg-blue-50 text-blue-600 rounded-2xl border border-blue-100/50 shadow-xs">
               <MapPin className="w-6 h-6 stroke-[2]" />
             </div>
           </div>
           <div className="mt-5 text-xs text-slate-400 flex items-center gap-1.5 border-t border-slate-50 pt-4">
-            <Info className="w-4 h-4 text-blue-500" /> Physical storage location labels
+            <Info className="w-4 h-4 text-blue-500" /> Physical warehouse storage location master
           </div>
         </div>
 
         {/* Active */}
-        <div className="relative overflow-hidden bg-white p-6 rounded-2xl border border-slate-150 shadow-sm hover:shadow-md transition-all duration-300 group">
+        <div className="relative overflow-hidden bg-white p-6 rounded-2xl border border-slate-150 shadow-xs hover:shadow-md transition-all duration-300 group">
           <div className="absolute top-0 right-0 w-28 h-28 bg-gradient-to-bl from-emerald-50 to-teal-50/30 rounded-bl-full -z-0 opacity-80 transition-transform duration-500 group-hover:scale-105" />
           <div className="relative z-10 flex items-center justify-between">
             <div className="space-y-2">
-              <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">Active Labels</p>
+              <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">Active Locations</p>
               <h3 className="text-3xl font-extrabold text-slate-900 tracking-tight">{activeCount}</h3>
             </div>
-            <div className="p-3.5 bg-emerald-50 text-emerald-600 rounded-2xl border border-emerald-100/50 shadow-sm">
+            <div className="p-3.5 bg-emerald-50 text-emerald-600 rounded-2xl border border-emerald-100/50 shadow-xs">
               <CheckCircle2 className="w-6 h-6 stroke-[2]" />
             </div>
           </div>
@@ -473,14 +498,14 @@ export default function LocationsPage() {
         </div>
 
         {/* Suspended */}
-        <div className="relative overflow-hidden bg-white p-6 rounded-2xl border border-slate-150 shadow-sm hover:shadow-md transition-all duration-300 group">
+        <div className="relative overflow-hidden bg-white p-6 rounded-2xl border border-slate-150 shadow-xs hover:shadow-md transition-all duration-300 group">
           <div className="absolute top-0 right-0 w-28 h-28 bg-gradient-to-bl from-rose-50 to-red-50/30 rounded-bl-full -z-0 opacity-80 transition-transform duration-500 group-hover:scale-105" />
           <div className="relative z-10 flex items-center justify-between">
             <div className="space-y-2">
-              <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">Inactive Labels</p>
+              <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">Inactive Locations</p>
               <h3 className="text-3xl font-extrabold text-slate-900 tracking-tight">{inactiveCount}</h3>
             </div>
-            <div className="p-3.5 bg-rose-50 text-rose-600 rounded-2xl border border-rose-100/50 shadow-sm">
+            <div className="p-3.5 bg-rose-50 text-rose-600 rounded-2xl border border-rose-100/50 shadow-xs">
               <X className="w-6 h-6 stroke-[2]" />
             </div>
           </div>
@@ -490,7 +515,7 @@ export default function LocationsPage() {
         </div>
       </div>
 
-      {/* Toolbar & Bulk Actions Bar */}
+      {/* Toolbar & Search Bar */}
       <div className="space-y-3">
         {selectedLocationIds.length > 0 && (
           <div className="flex items-center justify-between bg-slate-900 text-white px-5 py-3 rounded-2xl shadow-lg animate-in slide-in-from-top-2 duration-200">
@@ -542,13 +567,13 @@ export default function LocationsPage() {
           </div>
         )}
 
-        <div className="flex flex-col md:flex-row gap-4 justify-between items-center bg-white p-4 rounded-2xl border border-slate-100 shadow-sm">
-          <div className="relative w-full md:w-80">
+        <div className="flex flex-col md:flex-row gap-4 justify-between items-center bg-white p-4 rounded-2xl border border-slate-100 shadow-xs">
+          <div className="relative w-full md:w-96">
             <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
             <Input
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              placeholder="Search by barcode or description..."
+              placeholder="Search Full Location, Row, Rack, Level, Location..."
               className="pl-10 h-11 bg-slate-50 border-slate-200 focus:bg-white focus:ring-2 focus:ring-blue-500/10 focus:border-blue-500 transition-all rounded-xl text-sm"
             />
           </div>
@@ -559,7 +584,7 @@ export default function LocationsPage() {
                 onClick={() => setStatusFilter(status)}
                 className={`flex-1 md:flex-none px-5 py-1.5 text-xs font-bold tracking-wide rounded-lg transition-all capitalize ${
                   statusFilter === status
-                    ? 'bg-white text-blue-600 shadow-sm border border-slate-200/50'
+                    ? 'bg-white text-blue-600 shadow-xs border border-slate-200/50'
                     : 'text-slate-500 hover:text-slate-800'
                 }`}
               >
@@ -571,8 +596,8 @@ export default function LocationsPage() {
       </div>
 
       {/* Table Container */}
-      <div className="bg-white rounded-[14px] border border-slate-200 shadow-sm">
-        {filteredLocations.length === 0 ? (
+      <div className="bg-white rounded-[14px] border border-slate-200 shadow-xs">
+        {locations.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-80 text-slate-400 p-6 space-y-3">
             <div className="p-4 bg-slate-50 rounded-full">
               <MapPin className="w-10 h-10 text-slate-350 stroke-[1.5]" />
@@ -580,14 +605,14 @@ export default function LocationsPage() {
             <div className="text-center space-y-1">
               <p className="text-sm font-semibold text-slate-800">No locations found</p>
               <p className="text-xs text-slate-400">
-                Select a shelf in the hierarchy filter, then click &quot;Bulk Generate&quot; or &quot;Add Location&quot;.
+                Click &quot;Import Client Excel&quot; to upload client location master or &quot;Add Location&quot; to create manually.
               </p>
             </div>
           </div>
         ) : (
           <DataTable
             columns={columns}
-            data={filteredLocations}
+            data={locations}
             meta={meta}
             rowSelection={rowSelection}
             onRowSelectionChange={setRowSelection}
@@ -616,174 +641,26 @@ export default function LocationsPage() {
         )}
       </div>
 
-      {/* SLIDE-OVER DRAWER: Bulk Generate Locations (Like Box Master) */}
-      <div
-        className={`fixed inset-0 z-50 overflow-hidden transition-opacity duration-300 ${
-          isBulkDrawerOpen ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'
-        }`}
-      >
-        <div className="absolute inset-0 bg-slate-900/40 backdrop-blur-xs" onClick={() => setIsBulkDrawerOpen(false)} />
-        <div className="absolute inset-y-0 right-0 max-w-full flex pl-10">
-          <div
-            className={`w-screen max-w-md bg-white shadow-2xl flex flex-col transform transition-transform duration-300 ease-in-out ${
-              isBulkDrawerOpen ? 'translate-x-0' : 'translate-x-full'
-            }`}
-          >
-            <div className="px-6 py-5 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
-              <div className="flex items-center gap-2">
-                <div className="p-2 bg-indigo-50 text-indigo-600 rounded-xl">
-                  <Sparkles className="w-5 h-5" />
-                </div>
-                <div>
-                  <h3 className="text-base font-bold text-slate-900">Bulk Generate Locations</h3>
-                  <p className="text-xs text-slate-400">Instantly generate consecutive storage locations</p>
-                </div>
-              </div>
-              <Button onClick={() => setIsBulkDrawerOpen(false)} variant="ghost" className="h-9 w-9 p-0 hover:bg-slate-100 rounded-full">
-                <X className="w-5 h-5 text-slate-400" />
-              </Button>
-            </div>
-
-            <div className="flex-1 overflow-y-auto p-6 space-y-5">
-              <div className="p-4 bg-indigo-50/60 border border-indigo-100 rounded-2xl space-y-1">
-                <span className="text-[11px] font-bold text-indigo-800 uppercase tracking-wider">Target Shelf</span>
-                <p className="text-xs font-semibold text-slate-700">
-                  {effectiveShelfId ? `Shelf ID: ${effectiveShelfId}` : 'No shelf selected. Select one in hierarchy filters.'}
-                </p>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="bulk-prefix">Location Prefix</Label>
-                  <Input
-                    id="bulk-prefix"
-                    value={bulkForm.prefix}
-                    onChange={(e) => setBulkForm({ ...bulkForm, prefix: e.target.value.toUpperCase() })}
-                    placeholder="LOC"
-                    className="h-11 rounded-xl uppercase font-mono"
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="bulk-padding">Padding (Digits)</Label>
-                  <Input
-                    id="bulk-padding"
-                    type="number"
-                    min={1}
-                    max={6}
-                    value={bulkForm.padding}
-                    onChange={(e) => setBulkForm({ ...bulkForm, padding: Number(e.target.value) || 3 })}
-                    className="h-11 rounded-xl"
-                  />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="bulk-start">Starting Number</Label>
-                  <Input
-                    id="bulk-start"
-                    type="number"
-                    min={1}
-                    value={bulkForm.startingNumber}
-                    onChange={(e) => setBulkForm({ ...bulkForm, startingNumber: Number(e.target.value) || 1 })}
-                    className="h-11 rounded-xl"
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="bulk-qty">Quantity to Generate</Label>
-                  <Input
-                    id="bulk-qty"
-                    type="number"
-                    min={1}
-                    max={500}
-                    value={bulkForm.quantity}
-                    onChange={(e) => setBulkForm({ ...bulkForm, quantity: Number(e.target.value) || 20 })}
-                    className="h-11 rounded-xl font-bold text-indigo-600"
-                  />
-                </div>
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="bulk-barcode-prefix">
-                  Custom Barcode Prefix <span className="text-slate-400 font-normal text-[11px]">(Optional)</span>
-                </Label>
-                <Input
-                  id="bulk-barcode-prefix"
-                  value={bulkForm.barcodePrefix}
-                  onChange={(e) => setBulkForm({ ...bulkForm, barcodePrefix: e.target.value.toUpperCase() })}
-                  placeholder="e.g. WH1-RM1-RK1-S1 (Leave empty to auto-generate)"
-                  className="h-11 rounded-xl font-mono text-xs uppercase"
-                />
-              </div>
-
-              {/* Live Preview */}
-              <div className="space-y-2 pt-2">
-                <Label className="text-xs text-slate-500 font-bold uppercase tracking-wider">Preview Generated Sample</Label>
-                <div className="p-4 bg-slate-50 border border-slate-200/80 rounded-2xl space-y-3">
-                  {previewBarcodes.map((code, idx) => (
-                    <div key={idx} className="flex items-center justify-between p-2 bg-white rounded-xl border border-slate-100 shadow-2xs">
-                      <div className="flex items-center gap-2 text-xs font-mono font-bold text-slate-800">
-                        <span className="w-2 h-2 rounded-full bg-indigo-500" />
-                        <span>{code}</span>
-                      </div>
-                      {!code.includes('...') && (
-                        <VisualBarcode code={code} width={100} height={18} showText={false} />
-                      )}
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
-
-            <div className="p-6 border-t border-slate-100 bg-slate-50/50 flex items-center justify-end gap-3 shrink-0">
-              <Button type="button" variant="outline" onClick={() => setIsBulkDrawerOpen(false)} className="rounded-xl border-slate-200 h-11">
-                Cancel
-              </Button>
-              <Button
-                type="button"
-                disabled={bulkGenerateMutation.isPending || !effectiveShelfId}
-                onClick={() =>
-                  bulkGenerateMutation.mutate({
-                    shelfId: effectiveShelfId,
-                    prefix: bulkForm.prefix,
-                    startingNumber: bulkForm.startingNumber,
-                    quantity: bulkForm.quantity,
-                    padding: bulkForm.padding,
-                    barcodePrefix: bulkForm.barcodePrefix || undefined,
-                  })
-                }
-                className="bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl shadow-md h-11 px-5 text-xs font-bold"
-              >
-                {bulkGenerateMutation.isPending ? (
-                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                ) : (
-                  <Sparkles className="w-4 h-4 mr-2" />
-                )}
-                Generate {bulkForm.quantity} Locations
-              </Button>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* MODAL: Bulk Import Excel / CSV */}
+      {/* MODAL: Import Client Excel Location Master */}
       {isImportModalOpen && (
         <div className="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white rounded-3xl shadow-2xl border border-slate-100 max-w-xl w-full p-6 space-y-5 animate-in zoom-in-95 duration-200">
+          <div className="bg-white rounded-3xl shadow-2xl border border-slate-100 max-w-2xl w-full p-6 space-y-5 animate-in zoom-in-95 duration-200">
             <div className="flex items-center justify-between border-b pb-4">
               <div className="flex items-center gap-2.5">
                 <div className="p-2 bg-blue-50 text-blue-600 rounded-xl">
                   <FileSpreadsheet className="w-5 h-5" />
                 </div>
                 <div>
-                  <h3 className="font-bold text-slate-900 text-base">Import Locations from Excel / CSV</h3>
-                  <p className="text-xs text-slate-400">Upload batch spreadsheet to bulk create locations</p>
+                  <h3 className="font-bold text-slate-900 text-base">Import Client Location Master</h3>
+                  <p className="text-xs text-slate-400">Upload Excel spreadsheet with client location columns</p>
                 </div>
               </div>
               <button
-                onClick={() => setIsImportModalOpen(false)}
+                onClick={() => {
+                  setIsImportModalOpen(false);
+                  setImportRows([]);
+                  setImportResult(null);
+                }}
                 className="text-slate-400 hover:text-slate-600 p-1.5 rounded-lg hover:bg-slate-100"
               >
                 <X className="h-5 w-5" />
@@ -791,255 +668,257 @@ export default function LocationsPage() {
             </div>
 
             <div className="space-y-4">
+              <div className="space-y-2">
+                <Label className="text-xs font-bold text-slate-700 uppercase tracking-wider">Target Warehouse</Label>
+                <select
+                  value={selectedWarehouseId}
+                  onChange={(e) => setSelectedWarehouseId(e.target.value)}
+                  className="w-full h-11 px-3.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold text-slate-800 focus:bg-white focus:ring-2 focus:ring-blue-500/20"
+                >
+                  <option value="">Select Warehouse</option>
+                  {warehouses.map((w) => (
+                    <option key={w.id} value={w.id}>
+                      {w.name} ({w.code})
+                    </option>
+                  ))}
+                </select>
+              </div>
+
               <div className="flex items-center justify-between p-3.5 bg-slate-50 border border-slate-100 rounded-2xl text-xs">
                 <div className="flex items-center gap-2 text-slate-600 font-medium">
                   <Download className="w-4 h-4 text-blue-600" />
-                  Need the Excel template format?
+                  Download client location Excel template
                 </div>
                 <button
                   onClick={handleDownloadSample}
-                  className="text-blue-600 font-bold hover:underline"
+                  className="text-blue-600 hover:text-blue-700 font-bold underline cursor-pointer"
                 >
-                  Download Sample (.xlsx)
+                  Download Template
                 </button>
               </div>
 
               <div
                 onClick={() => fileInputRef.current?.click()}
-                className="border-2 border-dashed border-slate-200 hover:border-blue-400 p-8 rounded-2xl text-center cursor-pointer transition-colors space-y-2 bg-slate-50/50"
+                className="border-2 border-dashed border-slate-200 hover:border-blue-400 bg-slate-50/50 hover:bg-blue-50/20 rounded-2xl p-8 text-center cursor-pointer transition-all duration-200 group"
               >
-                <Upload className="w-8 h-8 text-slate-400 mx-auto stroke-[1.5]" />
-                <p className="text-xs font-bold text-slate-700">Click to upload spreadsheet file (.xlsx, .csv)</p>
-                <p className="text-[11px] text-slate-400">Required column: Location Name (Barcode optional)</p>
                 <input
-                  ref={fileInputRef}
                   type="file"
+                  ref={fileInputRef}
+                  onChange={handleFileUpload}
                   accept=".xlsx,.xls,.csv"
                   className="hidden"
-                  onChange={handleFileUpload}
                 />
+                <div className="p-3 bg-blue-50 text-blue-600 rounded-2xl w-fit mx-auto mb-3 group-hover:scale-110 transition-transform">
+                  <Upload className="w-6 h-6" />
+                </div>
+                <p className="text-sm font-bold text-slate-800">Click to upload client Excel file</p>
+                <p className="text-xs text-slate-400 mt-1">
+                  Supports columns: Full Location, NRow, NRack2, Nlevel, NLocation, NFull Location2
+                </p>
               </div>
 
-              {importRows.length > 0 && (
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between text-xs font-bold text-slate-700">
-                    <span>Parsed Locations ({importRows.length} rows)</span>
-                    <span className="text-emerald-600">Ready to Import</span>
+              {importRows.length > 0 && !importResult && (
+                <div className="p-4 bg-blue-50/60 border border-blue-100 rounded-2xl flex items-center justify-between">
+                  <div className="flex items-center gap-2.5">
+                    <CheckCircle2 className="w-5 h-5 text-blue-600" />
+                    <div>
+                      <p className="text-xs font-bold text-slate-900">{importRows.length} Location Records Loaded</p>
+                      <p className="text-[11px] text-slate-500">Ready to import into selected warehouse</p>
+                    </div>
                   </div>
-                  <div className="max-h-48 overflow-y-auto border rounded-xl divide-y text-xs">
-                    {importRows.slice(0, 10).map((row, idx) => (
-                      <div key={idx} className="flex justify-between px-3 py-2 text-slate-600">
-                        <span className="font-semibold">{row.name}</span>
-                        <span className="font-mono text-slate-400">{row.barcode || 'Auto Barcode'}</span>
-                      </div>
-                    ))}
-                    {importRows.length > 10 && (
-                      <div className="text-center py-2 text-[11px] text-slate-400 bg-slate-50">
-                        ... and {importRows.length - 10} more rows
-                      </div>
-                    )}
+                  <Button
+                    disabled={bulkImportMutation.isPending || !selectedWarehouseId}
+                    onClick={() => bulkImportMutation.mutate({ warehouseId: selectedWarehouseId, rows: importRows })}
+                    className="bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded-xl h-9 px-4"
+                  >
+                    {bulkImportMutation.isPending ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null}
+                    Confirm Import
+                  </Button>
+                </div>
+              )}
+
+              {/* Import Summary Result Modal */}
+              {importResult && (
+                <div className="p-4 bg-slate-50 border border-slate-200 rounded-2xl space-y-3">
+                  <h4 className="text-xs font-bold text-slate-900 uppercase tracking-wider">Import Summary Report</h4>
+                  <div className="grid grid-cols-4 gap-2 text-center">
+                    <div className="p-2.5 bg-blue-50 rounded-xl">
+                      <span className="text-lg font-extrabold text-blue-700">{importResult.totalRecords}</span>
+                      <p className="text-[10px] font-bold text-slate-500 uppercase">Total</p>
+                    </div>
+                    <div className="p-2.5 bg-emerald-50 rounded-xl">
+                      <span className="text-lg font-extrabold text-emerald-700">{importResult.imported}</span>
+                      <p className="text-[10px] font-bold text-slate-500 uppercase">Imported</p>
+                    </div>
+                    <div className="p-2.5 bg-amber-50 rounded-xl">
+                      <span className="text-lg font-extrabold text-amber-700">{importResult.updated}</span>
+                      <p className="text-[10px] font-bold text-slate-500 uppercase">Updated</p>
+                    </div>
+                    <div className="p-2.5 bg-rose-50 rounded-xl">
+                      <span className="text-lg font-extrabold text-rose-700">{importResult.failed}</span>
+                      <p className="text-[10px] font-bold text-slate-500 uppercase">Failed</p>
+                    </div>
                   </div>
+
+                  {importResult.errors.length > 0 && (
+                    <div className="space-y-2 pt-2">
+                      <p className="text-xs font-bold text-rose-600 flex items-center gap-1">
+                        <AlertTriangle className="w-3.5 h-3.5" /> Validation Errors ({importResult.errors.length})
+                      </p>
+                      <div className="max-h-32 overflow-y-auto space-y-1.5 p-2 bg-rose-50/50 rounded-xl border border-rose-100 text-xs">
+                        {importResult.errors.map((err, i) => (
+                          <div key={i} className="flex items-center justify-between text-slate-700">
+                            <span>Row {err.row}: {err.location}</span>
+                            <span className="text-rose-600 font-semibold">{err.error}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
             </div>
 
-            <div className="flex items-center justify-end gap-3 pt-4 border-t">
+            <div className="flex justify-end gap-2 border-t pt-4">
               <Button
                 variant="outline"
-                onClick={() => setIsImportModalOpen(false)}
-                className="rounded-xl border-slate-200 h-10 text-xs"
+                onClick={() => {
+                  setIsImportModalOpen(false);
+                  setImportRows([]);
+                  setImportResult(null);
+                }}
+                className="rounded-xl border-slate-200 text-xs font-semibold"
               >
-                Cancel
-              </Button>
-              <Button
-                disabled={importRows.length === 0 || bulkImportMutation.isPending || !effectiveShelfId}
-                onClick={() =>
-                  bulkImportMutation.mutate({
-                    shelfId: effectiveShelfId,
-                    rows: importRows,
-                  })
-                }
-                className="bg-blue-600 hover:bg-blue-700 text-white rounded-xl h-10 px-5 text-xs font-bold"
-              >
-                {bulkImportMutation.isPending ? (
-                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                ) : (
-                  <Upload className="w-4 h-4 mr-2" />
-                )}
-                Import {importRows.length} Locations
+                Close
               </Button>
             </div>
           </div>
         </div>
       )}
 
-      {/* SLIDE-OVER DRAWER: Add/Edit Single Location */}
-      <div
-        className={`fixed inset-0 z-50 overflow-hidden transition-opacity duration-300 ${
-          isFormDrawerOpen ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'
-        }`}
-      >
-        <div className="absolute inset-0 bg-slate-900/40 backdrop-blur-xs transition-opacity duration-300" onClick={() => setIsFormDrawerOpen(false)} />
-        <div className="absolute inset-y-0 right-0 max-w-full flex pl-10">
-          <div
-            className={`w-screen max-w-md bg-white shadow-2xl flex flex-col transform transition-transform duration-300 ease-in-out ${
-              isFormDrawerOpen ? 'translate-x-0' : 'translate-x-full'
-            }`}
-          >
-            <div className="px-6 py-5 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
-              <div className="flex items-center gap-2">
-                <MapPin className="w-5 h-5 text-blue-600" />
-                <h3 className="text-lg font-bold text-slate-900">
-                  {formMode === 'CREATE' ? 'Add Location' : 'Edit Location'}
-                </h3>
-              </div>
-              <Button onClick={() => setIsFormDrawerOpen(false)} variant="ghost" className="h-9 w-9 p-0 hover:bg-slate-100 rounded-full">
-                <X className="w-5 h-5 text-slate-400" />
-              </Button>
-            </div>
-
-            <form onSubmit={form.handleSubmit(handleFormSubmit)} className="flex-1 flex flex-col overflow-hidden">
-              <div className="flex-1 overflow-y-auto p-6 space-y-6">
-                <div className="space-y-2">
-                  <Label htmlFor="barcode">Barcode Identifier</Label>
-                  <Input id="barcode" placeholder="LOC-001" className="h-11 rounded-xl border-slate-200 uppercase font-mono" {...form.register('barcode')} />
-                  {form.formState.errors.barcode && <p className="text-xs text-red-500">{form.formState.errors.barcode.message}</p>}
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="name">Location Description Name</Label>
-                  <Input id="name" placeholder="Shelf 1 - Rack A1" className="h-11 rounded-xl border-slate-200" {...form.register('name')} />
-                </div>
-
-                <div className="flex items-center justify-between p-4 bg-slate-50 border border-slate-100 rounded-2xl">
-                  <div className="space-y-0.5">
-                    <Label htmlFor="isActive" className="text-sm font-bold text-slate-800">Active Status</Label>
-                    <p className="text-[10px] text-slate-400 font-semibold">Enable or disable operator visibility for this location barcode</p>
+      {/* DETAILS DRAWER: Location Inspection & Client Hierarchy View */}
+      {isDetailsOpen && selectedLocationForDetail && (
+        <div className="fixed inset-0 z-50 overflow-hidden transition-opacity duration-300">
+          <div className="absolute inset-0 bg-slate-900/40 backdrop-blur-xs" onClick={() => setIsDetailsOpen(false)} />
+          <div className="absolute inset-y-0 right-0 max-w-full flex pl-10">
+            <div className="w-screen max-w-md bg-white shadow-2xl flex flex-col transform transition-transform duration-300">
+              <div className="px-6 py-5 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
+                <div className="flex items-center gap-2.5">
+                  <div className="p-2.5 bg-blue-50 text-blue-600 rounded-xl">
+                    <MapPin className="w-5 h-5" />
                   </div>
-                  <Switch
-                    id="isActive"
-                    checked={form.watch('isActive')}
-                    onCheckedChange={(checked) => form.setValue('isActive', checked)}
+                  <div>
+                    <h3 className="text-base font-bold text-slate-900">Location Inspector</h3>
+                    <p className="text-xs text-slate-400">Physical Warehouse Storage Detail</p>
+                  </div>
+                </div>
+                <Button onClick={() => setIsDetailsOpen(false)} variant="ghost" className="h-9 w-9 p-0 rounded-full">
+                  <X className="w-5 h-5 text-slate-400" />
+                </Button>
+              </div>
+
+              <div className="flex-1 overflow-y-auto p-6 space-y-6">
+                {/* Location Barcode Badge */}
+                <div className="p-5 bg-slate-900 text-white rounded-2xl space-y-3">
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Location Barcode</span>
+                  <div className="flex items-center justify-between">
+                    <h4 className="text-xl font-mono font-extrabold text-blue-400">
+                      {selectedLocationForDetail.fullLocation2 || selectedLocationForDetail.barcode}
+                    </h4>
+                    <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold ${
+                      selectedLocationForDetail.isActive ? 'bg-emerald-500/20 text-emerald-400' : 'bg-rose-500/20 text-rose-400'
+                    }`}>
+                      {selectedLocationForDetail.isActive ? 'Active' : 'Inactive'}
+                    </span>
+                  </div>
+                  <VisualBarcode
+                    code={selectedLocationForDetail.fullLocation2 || selectedLocationForDetail.barcode}
+                    width={280}
+                    height={36}
+                    showText={false}
                   />
                 </div>
-              </div>
 
-              <div className="p-6 border-t border-slate-100 bg-slate-50/50 flex items-center justify-end gap-3 shrink-0">
-                <Button type="button" variant="outline" onClick={() => setIsFormDrawerOpen(false)} className="rounded-xl border-slate-200 h-11">
-                  Cancel
-                </Button>
-                <Button
-                  type="submit"
-                  disabled={createMutation.isPending || updateMutation.isPending}
-                  className="bg-blue-600 hover:bg-blue-700 text-white rounded-xl shadow-md hover:shadow-blue-500/20 transition-all duration-300 h-11 px-5"
-                >
-                  {(createMutation.isPending || updateMutation.isPending) && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
-                  Save Changes
-                </Button>
-              </div>
-            </form>
-          </div>
-        </div>
-      </div>
-
-      {/* SLIDE-OVER DRAWER: Location Details */}
-      <div
-        className={`fixed inset-0 z-50 overflow-hidden transition-opacity duration-300 ${
-          isDetailsOpen ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'
-        }`}
-      >
-        <div className="absolute inset-0 bg-slate-900/40 backdrop-blur-xs" onClick={() => setIsDetailsOpen(false)} />
-        <div className="absolute inset-y-0 right-0 max-w-full flex pl-10">
-          <div
-            className={`w-screen max-w-md bg-white shadow-2xl flex flex-col transform transition-transform duration-300 ease-in-out ${
-              isDetailsOpen ? 'translate-x-0' : 'translate-x-full'
-            }`}
-          >
-            <div className="px-6 py-5 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
-              <div className="flex items-center gap-2">
-                <MapPin className="w-5 h-5 text-blue-600" />
-                <h3 className="text-lg font-bold text-slate-900">Location Details</h3>
-              </div>
-              <Button onClick={() => setIsDetailsOpen(false)} variant="ghost" className="h-9 w-9 p-0 hover:bg-slate-100 rounded-full">
-                <X className="w-5 h-5 text-slate-400" />
-              </Button>
-            </div>
-
-            {selectedLocationForDetail && (
-              <div className="flex-1 overflow-y-auto p-6 space-y-6">
-                <div className="flex flex-col items-center text-center p-6 bg-gradient-to-b from-blue-50/30 to-indigo-50/10 rounded-2xl border border-slate-100">
-                  <div className="w-16 h-16 rounded-2xl bg-blue-600 text-white flex items-center justify-center font-mono font-bold text-sm shadow-md mb-3">
-                    {selectedLocationForDetail.barcode}
-                  </div>
-                  <h4 className="text-base font-extrabold text-slate-900">{selectedLocationForDetail.name || 'Unnamed'}</h4>
-                  
-                  <div className="my-3 p-3 bg-white rounded-2xl border border-slate-200/80 shadow-xs flex items-center justify-center">
-                    <VisualBarcode code={selectedLocationForDetail.barcode} width={200} height={40} showText={true} />
-                  </div>
-
-                  <span
-                    className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-xl text-xs font-bold border ${
-                      selectedLocationForDetail.isActive
-                        ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
-                        : 'bg-rose-50 text-rose-700 border-rose-200'
-                    }`}
-                  >
-                    {selectedLocationForDetail.isActive ? 'Active' : 'Inactive'}
-                  </span>
-                </div>
-
-                <div className="space-y-4">
-                  <h5 className="text-xs font-bold text-slate-400 uppercase tracking-widest">Metadata Info</h5>
-                  <div className="divide-y divide-slate-100 border border-slate-100 rounded-2xl overflow-hidden bg-white shadow-xs">
-                    <div className="flex justify-between items-center px-4 py-3">
-                      <span className="text-xs font-semibold text-slate-500">Shelf level Name</span>
-                      <span className="text-xs font-semibold text-slate-700">{selectedLocationForDetail.shelfName || '-'}</span>
+                {/* Client Hierarchy View: Warehouse -> Row -> Rack -> Level -> Location */}
+                <div className="space-y-3">
+                  <h4 className="text-xs font-bold text-slate-500 uppercase tracking-wider">Location Hierarchy</h4>
+                  <div className="p-4 bg-slate-50 border border-slate-200/80 rounded-2xl space-y-2.5 font-mono text-xs">
+                    <div className="flex items-center gap-2 text-slate-700">
+                      <Building2 className="w-4 h-4 text-blue-600 shrink-0" />
+                      <span className="font-bold text-slate-900">
+                        Warehouse: {selectedLocationForDetail.warehouseName || selectedLocationForDetail.warehouse?.name || 'Main Warehouse'}
+                      </span>
+                    </div>
+                    <div className="pl-5 border-l-2 border-slate-200 space-y-2">
+                      <div className="flex items-center gap-2">
+                        <ChevronRight className="w-3.5 h-3.5 text-slate-400" />
+                        <span className="text-slate-500 font-semibold">Row (NRow):</span>
+                        <span className="font-bold text-slate-900 bg-white px-2 py-0.5 rounded border">{selectedLocationForDetail.row || '-'}</span>
+                      </div>
+                      <div className="pl-4 border-l-2 border-slate-200 space-y-2">
+                        <div className="flex items-center gap-2">
+                          <ChevronRight className="w-3.5 h-3.5 text-slate-400" />
+                          <span className="text-slate-500 font-semibold">Rack (NRack2):</span>
+                          <span className="font-bold text-slate-900 bg-white px-2 py-0.5 rounded border">{selectedLocationForDetail.rack || '-'}</span>
+                        </div>
+                        <div className="pl-4 border-l-2 border-slate-200 space-y-2">
+                          <div className="flex items-center gap-2">
+                            <ChevronRight className="w-3.5 h-3.5 text-slate-400" />
+                            <span className="text-slate-500 font-semibold">Level (Nlevel):</span>
+                            <span className="font-bold text-slate-900 bg-white px-2 py-0.5 rounded border">{selectedLocationForDetail.level || '-'}</span>
+                          </div>
+                          <div className="pl-4 border-l-2 border-blue-300">
+                            <div className="flex items-center gap-2">
+                              <ChevronRight className="w-3.5 h-3.5 text-blue-600" />
+                              <span className="text-blue-600 font-semibold">Location (NLocation):</span>
+                              <span className="font-extrabold text-blue-700 bg-blue-50 px-2 py-0.5 rounded border border-blue-200">
+                                {selectedLocationForDetail.location || selectedLocationForDetail.name || '-'}
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
                     </div>
                   </div>
                 </div>
 
-                <div className="pt-6 border-t border-slate-100 space-y-3">
-                  <Button
-                    onClick={() => {
-                      setSelectedLocation(selectedLocationForDetail);
-                      setFormMode('EDIT');
-                      form.reset({
-                        barcode: selectedLocationForDetail.barcode,
-                        name: selectedLocationForDetail.name || '',
-                        shelfId: selectedLocationForDetail.shelfId,
-                        isActive: selectedLocationForDetail.isActive,
-                      });
-                      setIsDetailsOpen(false);
-                      setIsFormDrawerOpen(true);
-                    }}
-                    className="w-full bg-slate-900 hover:bg-slate-800 text-white rounded-xl h-11 text-xs font-bold"
-                  >
-                    Edit Location
-                  </Button>
-                  <Button
-                    onClick={() => handleDelete(selectedLocationForDetail)}
-                    variant="outline"
-                    className="w-full text-red-650 hover:bg-red-50 text-red-650 hover:text-red-700 rounded-xl h-11 text-xs font-bold border-red-200"
-                  >
-                    Delete Location
-                  </Button>
+                {/* Additional Attributes */}
+                <div className="space-y-3">
+                  <h4 className="text-xs font-bold text-slate-500 uppercase tracking-wider">Location Attributes</h4>
+                  <div className="divide-y divide-slate-100 border border-slate-100 rounded-2xl overflow-hidden bg-white text-xs">
+                    <div className="p-3 flex justify-between">
+                      <span className="text-slate-500">Full Location:</span>
+                      <span className="font-mono font-bold text-slate-900">{selectedLocationForDetail.fullLocation || '-'}</span>
+                    </div>
+                    <div className="p-3 flex justify-between">
+                      <span className="text-slate-500">NFull Location2:</span>
+                      <span className="font-mono font-bold text-slate-900">{selectedLocationForDetail.fullLocation2 || '-'}</span>
+                    </div>
+                    <div className="p-3 flex justify-between">
+                      <span className="text-slate-500">Occupancy Status:</span>
+                      <span className="font-bold text-slate-900">{selectedLocationForDetail.isOccupied ? 'Occupied' : 'Empty'}</span>
+                    </div>
+                  </div>
                 </div>
               </div>
-            )}
+
+              <div className="p-6 border-t border-slate-100 bg-slate-50/50 flex justify-end">
+                <Button variant="outline" onClick={() => setIsDetailsOpen(false)} className="rounded-xl border-slate-200 text-xs font-semibold">
+                  Close Inspector
+                </Button>
+              </div>
+            </div>
           </div>
         </div>
-      </div>
+      )}
 
+      {/* Confirm Delete Modal */}
       <ConfirmDialog
         isOpen={confirmDelete.isOpen}
         onClose={() => setConfirmDelete((prev) => ({ ...prev, isOpen: false }))}
-        onConfirm={() => {
-          confirmDelete.onConfirm();
-          setConfirmDelete((prev) => ({ ...prev, isOpen: false }));
-        }}
+        onConfirm={confirmDelete.onConfirm}
         title={confirmDelete.title}
         description={confirmDelete.description}
-        isLoading={deleteMutation.isPending || bulkActionMutation.isPending}
       />
     </div>
   );

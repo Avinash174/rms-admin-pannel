@@ -1544,16 +1544,27 @@ export default function BoxesPage() {
                         className="flex items-center justify-between p-3 bg-white rounded-xl border border-slate-200/80 shadow-2xs hover:border-blue-200 transition-all text-xs"
                       >
                         <div className="flex items-center gap-3">
-                          <FileBox className="w-4 h-4 text-indigo-600" />
+                          <FileBox className="w-4 h-4 text-indigo-600 shrink-0" />
                           <div>
-                            <span className="font-mono font-bold text-slate-900 block">{file.barcode}</span>
+                            <a
+                              href={`/file-records?search=${encodeURIComponent(file.barcode)}`}
+                              className="font-mono font-bold text-blue-600 hover:underline block"
+                            >
+                              {file.barcode}
+                            </a>
                             <span className="text-slate-500 text-[11px]">{file.label || 'No label'}</span>
                           </div>
                         </div>
-                        <div className="text-right">
-                          <span className="inline-flex px-2 py-0.5 rounded-md bg-slate-100 text-slate-700 text-[10px] font-bold uppercase">
-                            {file.status}
+                        <div className="flex items-center gap-2">
+                          <span className="inline-flex px-2 py-0.5 rounded-md bg-emerald-50 text-emerald-700 border border-emerald-200 text-[10px] font-bold uppercase">
+                            {file.status || 'IN_BOX'}
                           </span>
+                          <a
+                            href={`/file-records?search=${encodeURIComponent(file.barcode)}`}
+                            className="text-[11px] font-bold text-blue-600 hover:text-blue-800 underline px-1 py-0.5"
+                          >
+                            View
+                          </a>
                         </div>
                       </div>
                     ))}

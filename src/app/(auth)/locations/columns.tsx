@@ -1,6 +1,6 @@
 import { ColumnDef } from '@tanstack/react-table';
 import { Location } from '@/lib/types/location';
-import { Calendar, MapPin } from 'lucide-react';
+import { Calendar, MapPin, Building2, Layers } from 'lucide-react';
 import { Checkbox } from '@/components/ui/checkbox';
 import { VisualBarcode } from '@/components/records/visual-barcode';
 
@@ -51,13 +51,13 @@ export const columns: ColumnDef<Location>[] = [
     enableHiding: false,
   },
   {
-    accessorKey: 'barcode',
-    header: () => <span className="text-xs font-bold tracking-wider text-slate-500 uppercase">Barcode</span>,
+    accessorKey: 'fullLocation2',
+    header: () => <span className="text-xs font-bold tracking-wider text-slate-500 uppercase">Location (NFull Location2)</span>,
     cell: ({ row, table }) => {
       const location = row.original;
-      const barcode = location.barcode || 'Unknown Barcode';
-      const initials = getInitials(location.name || barcode);
-      const style = getAvatarGradient(location.name || barcode);
+      const displayCode = location.fullLocation2 || location.barcode || 'Unknown Location';
+      const initials = getInitials(location.location || location.name || displayCode);
+      const style = getAvatarGradient(displayCode);
       const meta = table.options.meta as any;
 
       return (
@@ -66,7 +66,7 @@ export const columns: ColumnDef<Location>[] = [
           onClick={() => meta?.onCustomAction?.(location)}
         >
           <div
-            className="flex items-center justify-center w-10 h-10 rounded-2xl text-xs font-bold tracking-wider shadow-sm transition-all duration-300 group-hover:scale-105 group-hover:shadow-md shrink-0"
+            className="flex items-center justify-center w-10 h-10 rounded-2xl text-xs font-bold tracking-wider shadow-xs transition-all duration-300 group-hover:scale-105 group-hover:shadow-md shrink-0"
             style={{ 
               background: style.background, 
               color: style.color,
@@ -77,12 +77,12 @@ export const columns: ColumnDef<Location>[] = [
           </div>
           <div className="flex flex-col gap-1 items-start">
             <span className="font-mono font-bold text-slate-900 text-sm leading-tight group-hover:text-blue-600 transition-colors duration-200">
-              {barcode}
+              {displayCode}
             </span>
-            <VisualBarcode code={barcode} width={130} height={20} showText={false} />
-            {location.name && (
-              <span className="text-[11px] text-slate-400 font-semibold">
-                Name: {location.name}
+            <VisualBarcode code={displayCode} width={130} height={18} showText={false} />
+            {location.fullLocation && (
+              <span className="text-[11px] text-slate-400 font-medium">
+                Full: {location.fullLocation}
               </span>
             )}
           </div>
@@ -91,11 +91,48 @@ export const columns: ColumnDef<Location>[] = [
     },
   },
   {
-    accessorKey: 'shelfName',
-    header: () => <span className="text-xs font-bold tracking-wider text-slate-500 uppercase">Shelf Level</span>,
+    accessorKey: 'row',
+    header: () => <span className="text-xs font-bold tracking-wider text-slate-500 uppercase">NRow</span>,
     cell: ({ row }) => (
-      <div className="text-xs text-slate-800 font-semibold">
-        {row.getValue('shelfName') || '-'}
+      <span className="text-xs font-mono font-bold text-slate-800 bg-slate-100 px-2 py-1 rounded-lg">
+        {row.original.row || '-'}
+      </span>
+    ),
+  },
+  {
+    accessorKey: 'rack',
+    header: () => <span className="text-xs font-bold tracking-wider text-slate-500 uppercase">NRack2</span>,
+    cell: ({ row }) => (
+      <span className="text-xs font-mono font-bold text-slate-800 bg-slate-100 px-2 py-1 rounded-lg">
+        {row.original.rack || '-'}
+      </span>
+    ),
+  },
+  {
+    accessorKey: 'level',
+    header: () => <span className="text-xs font-bold tracking-wider text-slate-500 uppercase">Nlevel</span>,
+    cell: ({ row }) => (
+      <span className="text-xs font-mono font-bold text-slate-800 bg-slate-100 px-2 py-1 rounded-lg">
+        {row.original.level || '-'}
+      </span>
+    ),
+  },
+  {
+    accessorKey: 'location',
+    header: () => <span className="text-xs font-bold tracking-wider text-slate-500 uppercase">NLocation</span>,
+    cell: ({ row }) => (
+      <span className="text-xs font-mono font-bold text-blue-600 bg-blue-50 px-2.5 py-1 rounded-lg border border-blue-100">
+        {row.original.location || row.original.name || '-'}
+      </span>
+    ),
+  },
+  {
+    accessorKey: 'warehouseName',
+    header: () => <span className="text-xs font-bold tracking-wider text-slate-500 uppercase">Warehouse</span>,
+    cell: ({ row }) => (
+      <div className="flex items-center gap-1.5 text-xs text-slate-700 font-semibold">
+        <Building2 className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+        <span>{row.original.warehouseName || row.original.warehouse?.name || '-'}</span>
       </div>
     ),
   },
@@ -107,14 +144,13 @@ export const columns: ColumnDef<Location>[] = [
       const capacity = row.original.capacity ?? 1;
       const percent = Math.round((occupied / capacity) * 100);
       return (
-        <div className="min-w-[120px]">
+        <div className="min-w-[100px]">
           <div className="mb-1 flex items-center justify-between text-xs font-semibold text-slate-700">
-            <span>{occupied}/{capacity}</span>
-            <span>{percent}%</span>
+            <span>{occupied > 0 ? 'Occupied' : 'Empty'}</span>
           </div>
-          <div className="h-2 rounded-full bg-slate-100">
+          <div className="h-1.5 rounded-full bg-slate-100">
             <div
-              className={`h-2 rounded-full ${occupied > 0 ? 'bg-amber-500' : 'bg-emerald-500'}`}
+              className={`h-1.5 rounded-full ${occupied > 0 ? 'bg-amber-500' : 'bg-emerald-500'}`}
               style={{ width: `${percent}%` }}
             />
           </div>
@@ -138,8 +174,8 @@ export const columns: ColumnDef<Location>[] = [
           }}
           className={`group flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs font-bold transition-all duration-300 border ${
             isActive
-              ? 'bg-emerald-50/60 text-emerald-700 border-emerald-200 hover:bg-emerald-100/80 shadow-sm shadow-emerald-500/5'
-              : 'bg-rose-50/60 text-rose-700 border-rose-200 hover:bg-rose-100/80 shadow-sm shadow-rose-500/5'
+              ? 'bg-emerald-50/60 text-emerald-700 border-emerald-200 hover:bg-emerald-100/80 shadow-xs'
+              : 'bg-rose-50/60 text-rose-700 border-rose-200 hover:bg-rose-100/80 shadow-xs'
           }`}
         >
           <span className="relative flex h-2 w-2">

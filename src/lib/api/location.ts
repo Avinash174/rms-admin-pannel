@@ -1,24 +1,41 @@
-import { Location, LocationListResponse, CreateLocationRequest, UpdateLocationRequest } from '../types/location';
+import { Location, LocationListResponse, CreateLocationRequest, UpdateLocationRequest, LocationImportRow, LocationImportResult } from '../types/location';
 import { fetchWithAuth } from './auth';
 
-// Backend route is flat (`/locations?shelfId=...`), optional shelfId returns all locations.
-export async function getLocations(shelfId?: string, page: number = 1, pageSize: number = 20): Promise<LocationListResponse> {
-  const url = shelfId ? `/locations?shelfId=${shelfId}` : '/locations';
+export async function getLocations(
+  shelfId?: string,
+  warehouseId?: string,
+  search?: string,
+  status?: string,
+  page: number = 1,
+  pageSize: number = 20
+): Promise<LocationListResponse> {
+  const queryParams = new URLSearchParams();
+  if (shelfId) queryParams.append('shelfId', shelfId);
+  if (warehouseId) queryParams.append('warehouseId', warehouseId);
+  if (search) queryParams.append('search', search);
+  if (status) queryParams.append('status', status);
+  queryParams.append('page', page.toString());
+  queryParams.append('limit', pageSize.toString());
+
+  const url = `/locations?${queryParams.toString()}`;
   const response = await fetchWithAuth(url);
   const rows = Array.isArray(response.data) ? response.data : [];
+  const meta = response.meta || {
+    page,
+    pageSize,
+    total: rows.length,
+    totalPages: Math.max(1, Math.ceil(rows.length / pageSize))
+  };
+
   return {
     data: rows.map((row: any) => ({
       ...row,
       shelfName: row.shelf?.name || row.shelfName,
+      warehouseName: row.warehouse?.name || row.shelf?.rack?.room?.warehouse?.name || row.warehouseName,
       isOccupied: row.isOccupied ?? false,
       capacity: 1
     })),
-    meta: {
-      page,
-      pageSize,
-      total: rows.length,
-      totalPages: Math.max(1, Math.ceil(rows.length / pageSize))
-    }
+    meta
   };
 }
 
@@ -27,7 +44,7 @@ export async function getLocation(id: string): Promise<Location> {
   return response.data;
 }
 
-export async function createLocation(shelfId: string, data: CreateLocationRequest): Promise<Location> {
+export async function createLocation(shelfId: string | undefined, data: CreateLocationRequest): Promise<Location> {
   const response = await fetchWithAuth('/locations', {
     method: 'POST',
     body: JSON.stringify({ ...data, shelfId }),
@@ -47,6 +64,14 @@ export async function deleteLocation(id: string): Promise<void> {
   await fetchWithAuth(`/locations/${id}`, {
     method: 'DELETE',
   });
+}
+
+export async function importWarehouseLocations(warehouseId: string, rows: LocationImportRow[]): Promise<LocationImportResult> {
+  const response = await fetchWithAuth(`/locations/warehouses/${warehouseId}/import-locations`, {
+    method: 'POST',
+    body: JSON.stringify({ rows }),
+  });
+  return response.data;
 }
 
 export async function getLocationByBarcode(barcode: string): Promise<Location> {

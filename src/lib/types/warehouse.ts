@@ -8,6 +8,7 @@ export interface Warehouse {
   country?: string;
   zipCode?: number;
   phone?: string;
+  maxFilesPerBox?: number;
   siteId?: string;
   siteName?: string;
   site?: {
@@ -49,6 +50,7 @@ export interface UpdateWarehouseRequest {
   country?: string;
   zipCode?: number;
   phone?: string;
+  maxFilesPerBox?: number;
   siteId?: string;
   isActive?: boolean;
 }
