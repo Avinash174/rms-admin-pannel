@@ -110,7 +110,10 @@ export const NAV_SECTIONS: NavSectionConfig[] = [
   {
     category: 'Work Management',
     isCollapsible: true,
-    items: [{ href: '/work-orders', label: 'Work Orders', permission: ['workflow:execute', 'report:view'] }],
+    items: [
+      { href: '/tasks', label: 'Tasks', permission: ['workflow:execute', 'report:view'] },
+      { href: '/work-orders', label: 'Work Orders', permission: ['workflow:execute', 'report:view'] },
+    ],
   },
   {
     category: 'Reports',
