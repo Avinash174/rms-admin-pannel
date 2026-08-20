@@ -688,7 +688,7 @@ export default function TasksPage() {
         isOpen={Boolean(cancelTaskId)}
         title="Cancel Task"
         description="Are you sure you want to cancel this task? The assigned employee will no longer be able to execute it."
-        confirmText="Cancel Task"
+        confirmLabel="Cancel Task"
         variant="danger"
         isLoading={cancelMutation.isPending}
         onConfirm={() => cancelTaskId && cancelMutation.mutate(cancelTaskId)}
