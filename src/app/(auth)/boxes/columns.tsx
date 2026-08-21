@@ -207,7 +207,7 @@ export const columns: ColumnDef<RecordBox>[] = [
               className="gap-2 cursor-pointer text-slate-700"
               onClick={() => meta?.onEdit?.(box)}
             >
-              <Edit className="w-4 h-4 text-indigo-600" /> Edit Label
+              <Edit className="w-4 h-4 text-indigo-600" /> Edit Box
             </DropdownMenuItem>
             <DropdownMenuItem
               className="gap-2 cursor-pointer text-slate-700"

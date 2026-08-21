@@ -3,7 +3,8 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev -H 0.0.0.0 -p 3000",
+    "predev": "lsof -ti:3000 | xargs kill -9 2>/dev/null || true",
+    "dev": "(lsof -ti:3000 | xargs kill -9 2>/dev/null || true) && next dev -H 0.0.0.0 -p 3000",
     "build": "next build",
     "start": "next start",
     "lint": "next lint"

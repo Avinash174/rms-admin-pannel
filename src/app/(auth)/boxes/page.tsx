@@ -115,6 +115,7 @@ export default function BoxesPage() {
 
   // Edit State
   const [editLabel, setEditLabel] = useState('');
+  const [editCapacity, setEditCapacity] = useState<number>(25);
   const [fileSearchQuery, setFileSearchQuery] = useState('');
 
   // Single Box Creation Form State
@@ -311,15 +312,19 @@ export default function BoxesPage() {
   });
 
   const updateMutation = useMutation({
-    mutationFn: ({ id, label }: { id: string; label: string }) =>
-      updateRecordBox(id, { label }),
-    onSuccess: () => {
+    mutationFn: ({ id, label, capacity }: { id: string; label?: string; capacity?: number }) =>
+      updateRecordBox(id, { label, capacity, fileCapacity: capacity }),
+    onSuccess: (updatedBox) => {
       queryClient.invalidateQueries({ queryKey: ['record-boxes'] });
       queryClient.invalidateQueries({ queryKey: ['record-box-detail'] });
+      if (updatedBox && selectedBox) {
+        setSelectedBox((prev) => (prev ? { ...prev, ...updatedBox } : updatedBox));
+      }
       setIsEditOpen(false);
-      toast.success('Box label updated successfully');
+      toast.success('Box updated successfully');
+      refetch();
     },
-    onError: (err: Error) => toast.error(err.message || 'Failed to update box label'),
+    onError: (err: Error) => toast.error(err.message || 'Failed to update box'),
   });
 
   const deleteMutation = useMutation({
@@ -343,7 +348,7 @@ export default function BoxesPage() {
     const active = boxes.filter((b) => b.status === 'ACTIVE').length;
     const inTransit = boxes.filter((b) => b.status === 'IN_TRANSIT').length;
     const totalFiles = boxes.reduce((acc, b) => acc + (b.fileCount || 0), 0);
-    const totalCapacity = boxes.reduce((acc, b) => acc + (b.fileCapacity || 20), 0);
+    const totalCapacity = boxes.reduce((acc, b) => acc + (b.capacity || b.fileCapacity || 25), 0);
     const capacityRatio = totalCapacity > 0 ? Math.round((totalFiles / totalCapacity) * 100) : 0;
     const boxBarcodes = statsData?.boxCount || 0;
     const assigned = statsData?.assignedCount || 0;
@@ -823,24 +828,31 @@ export default function BoxesPage() {
                           )}
                         </td>
                         <td className="p-3.5">
-                          <div className="flex flex-col gap-1 w-28">
-                            <div className="flex justify-between items-center text-xs">
-                              <span className="font-semibold text-slate-700">{box.fileCount ?? 0} files</span>
-                              <span className="text-[10px] text-slate-400 font-mono">{box.fileCapacity || 20} max</span>
-                            </div>
-                            <div className="h-1.5 w-full bg-slate-100 rounded-full overflow-hidden border border-slate-200/50">
-                              <div
-                                className={`h-full rounded-full transition-all ${
-                                  ((box.fileCount || 0) / (box.fileCapacity || 20)) >= 0.9
-                                    ? 'bg-rose-500'
-                                    : ((box.fileCount || 0) / (box.fileCapacity || 20)) >= 0.6
-                                    ? 'bg-amber-500'
-                                    : 'bg-emerald-500'
-                                }`}
-                                style={{ width: `${Math.min(100, Math.round(((box.fileCount || 0) / (box.fileCapacity || 20)) * 100))}%` }}
-                              />
-                            </div>
-                          </div>
+                          {(() => {
+                            const cap = box.capacity || box.fileCapacity || 25;
+                            const count = box.fileCount ?? 0;
+                            const ratio = count / cap;
+                            return (
+                              <div className="flex flex-col gap-1 w-28">
+                                <div className="flex justify-between items-center text-xs">
+                                  <span className="font-semibold text-slate-700">{count} files</span>
+                                  <span className="text-[10px] text-slate-400 font-mono">{cap} max</span>
+                                </div>
+                                <div className="h-1.5 w-full bg-slate-100 rounded-full overflow-hidden border border-slate-200/50">
+                                  <div
+                                    className={`h-full rounded-full transition-all ${
+                                      ratio >= 0.9
+                                        ? 'bg-rose-500'
+                                        : ratio >= 0.6
+                                        ? 'bg-amber-500'
+                                        : 'bg-emerald-500'
+                                    }`}
+                                    style={{ width: `${Math.min(100, Math.round(ratio * 100))}%` }}
+                                  />
+                                </div>
+                              </div>
+                            );
+                          })()}
                         </td>
                         <td className="p-3.5 font-mono text-slate-500">
                           {new Date(box.updatedAt).toLocaleDateString()}
@@ -867,9 +879,10 @@ export default function BoxesPage() {
                               onClick={() => {
                                 setSelectedBox(box);
                                 setEditLabel(box.label || '');
+                                setEditCapacity(box.capacity || box.fileCapacity || 25);
                                 setIsEditOpen(true);
                               }}
-                              title="Edit Box Label"
+                              title="Edit Box"
                             >
                               <Edit2 className="w-4 h-4" />
                             </Button>
@@ -1000,20 +1013,35 @@ export default function BoxesPage() {
 
                         {/* File capacity progress */}
                         <div className="pt-2">
-                          <div className="flex justify-between text-[11px] mb-1">
-                            <span className="text-slate-500 font-medium">Files inside</span>
-                            <span className="font-bold text-slate-800">
-                              {box.fileCount ?? 0} / {box.fileCapacity || 20}
-                            </span>
-                          </div>
-                          <div className="h-1.5 w-full bg-slate-100 rounded-full overflow-hidden">
-                            <div
-                              className="h-full bg-blue-600 rounded-full"
-                              style={{
-                                width: `${Math.min(100, Math.round(((box.fileCount || 0) / (box.fileCapacity || 20)) * 100))}%`,
-                              }}
-                            />
-                          </div>
+                          {(() => {
+                            const cap = box.capacity || box.fileCapacity || 25;
+                            const count = box.fileCount ?? 0;
+                            const ratio = count / cap;
+                            return (
+                              <>
+                                <div className="flex justify-between text-[11px] mb-1">
+                                  <span className="text-slate-500 font-medium">Files inside</span>
+                                  <span className="font-bold text-slate-800">
+                                    {count} / {cap}
+                                  </span>
+                                </div>
+                                <div className="h-1.5 w-full bg-slate-100 rounded-full overflow-hidden">
+                                  <div
+                                    className={`h-full rounded-full transition-all ${
+                                      ratio >= 0.9
+                                        ? 'bg-rose-500'
+                                        : ratio >= 0.6
+                                        ? 'bg-amber-500'
+                                        : 'bg-blue-600'
+                                    }`}
+                                    style={{
+                                      width: `${Math.min(100, Math.round(ratio * 100))}%`,
+                                    }}
+                                  />
+                                </div>
+                              </>
+                            );
+                          })()}
                         </div>
                       </div>
                     </div>
@@ -1039,8 +1067,10 @@ export default function BoxesPage() {
                         onClick={() => {
                           setSelectedBox(box);
                           setEditLabel(box.label || '');
+                          setEditCapacity(box.capacity || box.fileCapacity || 25);
                           setIsEditOpen(true);
                         }}
+                        title="Edit Box"
                       >
                         <Edit2 className="w-3.5 h-3.5" />
                       </Button>
@@ -1463,6 +1493,20 @@ export default function BoxesPage() {
                 variant="ghost"
                 size="sm"
                 className="text-slate-300 hover:text-white hover:bg-slate-800 rounded-xl"
+                onClick={() => {
+                  if (selectedBox) {
+                    setEditLabel(selectedBox.label || '');
+                    setEditCapacity(boxDetail?.capacity || selectedBox.capacity || selectedBox.fileCapacity || 25);
+                    setIsEditOpen(true);
+                  }
+                }}
+              >
+                <Edit2 className="w-4 h-4 mr-1 text-indigo-400" /> Edit
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="text-slate-300 hover:text-white hover:bg-slate-800 rounded-xl"
                 onClick={() => selectedBox && handleTriggerPrint([selectedBox.id])}
               >
                 <Printer className="w-4 h-4 mr-1 text-emerald-400" /> Print
@@ -1491,6 +1535,29 @@ export default function BoxesPage() {
             <div>
               <span className="text-[10px] text-slate-400 uppercase font-bold block">Current Location</span>
               <span className="font-mono font-semibold text-slate-800">{selectedBox?.location?.barcode || '—'}</span>
+            </div>
+            <div>
+              <span className="text-[10px] text-slate-400 uppercase font-bold block">Capacity</span>
+              <span className="font-mono font-semibold text-slate-800">
+                {boxDetail?.capacity || selectedBox?.capacity || selectedBox?.fileCapacity || 25} files
+              </span>
+            </div>
+            <div>
+              <span className="text-[10px] text-slate-400 uppercase font-bold block">Files in Box</span>
+              <span className="font-mono font-semibold text-slate-800">
+                {boxDetail?.files?.length ?? selectedBox?.fileCount ?? 0} / {boxDetail?.capacity || selectedBox?.capacity || selectedBox?.fileCapacity || 25}
+              </span>
+            </div>
+            <div>
+              <span className="text-[10px] text-slate-400 uppercase font-bold block">Available Slots</span>
+              <span className="font-mono font-semibold text-emerald-600">
+                {Math.max(
+                  0,
+                  (boxDetail?.capacity || selectedBox?.capacity || selectedBox?.fileCapacity || 25) -
+                    (boxDetail?.files?.length ?? selectedBox?.fileCount ?? 0)
+                )}{' '}
+                left
+              </span>
             </div>
           </div>
 
@@ -1605,28 +1672,45 @@ export default function BoxesPage() {
         </div>
       </div>
 
-      {/* Edit Label Dialog */}
+      {/* Slide-Over Drawer: Edit Box */}
       {isEditOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs">
-          <div className="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl border border-slate-100 space-y-5 animate-in fade-in zoom-in duration-200">
-            <div className="flex items-center justify-between border-b pb-4">
+        <div className="fixed inset-0 z-50 overflow-hidden bg-slate-900/50 backdrop-blur-xs flex justify-end">
+          <div className="w-full max-w-md bg-white h-full shadow-2xl flex flex-col justify-between animate-in slide-in-from-right duration-200">
+            <div className="p-6 border-b flex items-center justify-between bg-slate-900 text-white">
               <div className="flex items-center gap-2">
-                <Edit2 className="w-5 h-5 text-indigo-600" />
-                <h3 className="font-bold text-slate-900 text-lg">Edit Box Label</h3>
+                <Edit2 className="w-5 h-5 text-indigo-400" />
+                <div>
+                  <h3 className="font-bold text-lg">Edit Box</h3>
+                  <p className="text-xs text-slate-400 font-mono">{selectedBox?.barcode}</p>
+                </div>
               </div>
-              <Button variant="ghost" size="sm" onClick={() => setIsEditOpen(false)} className="h-8 w-8 p-0">
-                <X className="w-4 h-4" />
+              <Button variant="ghost" size="sm" onClick={() => setIsEditOpen(false)} className="text-slate-400 hover:text-white">
+                <X className="w-5 h-5" />
               </Button>
             </div>
 
-            <div className="space-y-3">
-              <div>
-                <Label className="text-xs font-bold text-slate-700">Box Barcode</Label>
-                <Input value={selectedBox?.barcode || ''} disabled className="mt-1 font-mono bg-slate-100" />
+            <div className="p-6 space-y-5 flex-1 overflow-y-auto">
+              <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200 space-y-2.5">
+                <div className="flex justify-between items-center text-xs">
+                  <span className="text-slate-500 font-medium">Box Barcode</span>
+                  <span className="font-mono font-bold text-slate-900">{selectedBox?.barcode}</span>
+                </div>
+                <div className="flex justify-between items-center text-xs">
+                  <span className="text-slate-500 font-medium">Current Files in Box</span>
+                  <span className="font-bold text-blue-600 bg-blue-50 px-2 py-0.5 rounded-md border border-blue-100 font-mono">
+                    {selectedBox?.fileCount || 0} files
+                  </span>
+                </div>
+                <div className="flex justify-between items-center text-xs">
+                  <span className="text-slate-500 font-medium">Current Capacity</span>
+                  <span className="font-bold text-slate-700 font-mono">
+                    {selectedBox?.capacity || selectedBox?.fileCapacity || 25} files
+                  </span>
+                </div>
               </div>
 
               <div>
-                <Label className="text-xs font-bold text-slate-700">New Label / Description</Label>
+                <Label className="text-xs font-bold text-slate-700">Label / Description</Label>
                 <Input
                   value={editLabel}
                   onChange={(e) => setEditLabel(e.target.value)}
@@ -1635,24 +1719,64 @@ export default function BoxesPage() {
                   autoFocus
                 />
               </div>
+
+              <div>
+                <Label className="text-xs font-bold text-slate-700">Box Capacity (Max Files)</Label>
+                <Input
+                  type="number"
+                  min={Math.max(1, selectedBox?.fileCount || 0)}
+                  value={isNaN(editCapacity) ? '' : editCapacity}
+                  onChange={(e) => setEditCapacity(parseInt(e.target.value, 10))}
+                  placeholder="e.g. 25, 30, 50"
+                  className="mt-1 rounded-xl font-mono text-sm"
+                />
+                {editCapacity < (selectedBox?.fileCount || 0) && (
+                  <p className="text-xs text-rose-600 mt-1.5 flex items-center gap-1 font-medium">
+                    <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                    Cannot reduce box capacity below current file count ({selectedBox?.fileCount || 0}).
+                  </p>
+                )}
+                {editCapacity < 1 && (
+                  <p className="text-xs text-rose-600 mt-1.5 flex items-center gap-1 font-medium">
+                    <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                    Box capacity must be at least 1.
+                  </p>
+                )}
+              </div>
             </div>
 
-            <div className="flex items-center justify-end gap-2 pt-3 border-t">
+            <div className="p-4 border-t flex items-center justify-end gap-2 bg-slate-50">
               <Button variant="outline" onClick={() => setIsEditOpen(false)} className="rounded-xl">
                 Cancel
               </Button>
-
               <Button
                 onClick={() => {
                   if (selectedBox) {
-                    updateMutation.mutate({ id: selectedBox.id, label: editLabel });
+                    if (editCapacity < (selectedBox.fileCount || 0)) {
+                      toast.error(`Cannot reduce box capacity below current file count (${selectedBox.fileCount || 0}).`);
+                      return;
+                    }
+                    if (editCapacity < 1) {
+                      toast.error('Box capacity must be at least 1.');
+                      return;
+                    }
+                    updateMutation.mutate({
+                      id: selectedBox.id,
+                      label: editLabel,
+                      capacity: Number(editCapacity)
+                    });
                   }
                 }}
-                disabled={updateMutation.isPending}
-                className="bg-blue-600 hover:bg-blue-700 rounded-xl"
+                disabled={
+                  updateMutation.isPending ||
+                  isNaN(editCapacity) ||
+                  editCapacity < 1 ||
+                  editCapacity < (selectedBox?.fileCount || 0)
+                }
+                className="bg-blue-600 hover:bg-blue-700 text-white rounded-xl"
               >
                 {updateMutation.isPending ? (
-                  <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                  <Loader2 className="w-4 h-4 animate-spin mr-1" />
                 ) : (
                   'Save Changes'
                 )}

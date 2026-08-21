@@ -15,9 +15,12 @@ export interface RecordBox {
   barcode: string;
   label?: string;
   status: string;
+  capacity?: number;
   fileCapacity?: number;
   fileCount?: number;
+  availableSlots?: number;
   client?: { id: string; code: string; name: string };
+  department?: { id: string; code: string; name: string };
   location?: { id: string; barcode: string; name: string };
   files?: Array<{
     id: string;
@@ -86,7 +89,10 @@ export async function getRecordBox(id: string): Promise<RecordBox> {
   return response.data;
 }
 
-export async function updateRecordBox(id: string, data: { label?: string }) {
+export async function updateRecordBox(
+  id: string,
+  data: { label?: string; capacity?: number; fileCapacity?: number }
+) {
   const response = await fetchWithAuthRoot(`/records/boxes/${id}`, {
     method: 'PATCH',
     body: JSON.stringify(data),
